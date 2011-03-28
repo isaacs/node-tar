@@ -42,6 +42,7 @@ Parser.prototype.write = function (chunk) {
         return this._parseHeader()
       }
       return true
+
     case BODY:
       // stream it through until the end of the file is reached,
       // and then step over any \0 byte padding.
@@ -57,6 +58,7 @@ Parser.prototype.write = function (chunk) {
       this.currentFile.write(c)
       this._closeFile()
       return this.write(chunk.slice(s - bp))
+
     case PAD:
       for (var i = 0, l = chunk.length; i < l; i ++) {
         if (chunk[i] !== 0) {
@@ -85,8 +87,10 @@ Parser.prototype._parseHeader = function () {
     "Trying to parse header before finished"))
 
   if (hp > 512) {
-    rem = last.slice(hp - 512)
-    last = last.slice(0, hp - 512)
+    var ll = last.length
+      , llIntend = 512 - hp + ll
+    rem = last.slice(llIntend)
+    last = last.slice(0, llIntend)
   }
   this._header.push(last)
 
@@ -115,16 +119,85 @@ Parser.prototype._parseHeader = function () {
     }
   })
 
-  // TODO: If the filename is foo/bar/PaxHeader/baz.ext,
-  // then read in the file's key=val pairs.
-  // If there's a line that isn't key=val, or if a file
-  // doesn't come along named foo/bar/baz.ext, then emit the
-  // PaxHeader file.  Otherwise, attach the meta info to the file.
-  // This enables custom extension as well as longer/non-ascii
-  // filenames and so on.
-  // For now, just do the dumb thing and create PaxHeader dirs.
-  this.currentFile = new File(set)
-  this.emit("file", this.currentFile)
+  this._header.length = 0
+
+  // type definitions here:
+  // http://cdrecord.berlios.de/private/man/star/star.4.html
+  var type = set.TYPE.toString()
+    , file = this.currentFile = new File(set)
+  if (type === "\0" ||
+      type >= "0" && type <= "7") {
+    this._addExtended(file)
+    this.emit("file", file)
+  } else if (type === "g") {
+    this._global = this._global || {}
+    readPax(this, file, this._global)
+  } else if (type === "h" || type === "x" || type === "X") {
+    this._extended = this._extended || {}
+    readPax(this, file, this._extended)
+  } else if (type === "K") {
+    this._readLongField(file, "linkname")
+  } else if (type === "L") {
+    this._readLongField(file, "name")
+  }
+
+  this.state = BODY
+  if (rem) return this.write(rem)
+  return true
+}
+
+function readPax (self, file, obj) {
+  var buf = ""
+  file.on("data", function (c) {
+    buf += c
+    var lines = buf.split(/\r?\n/)
+    buf = lines.pop()
+    lines.forEach(function (line) {
+      line = line.match(/^[0-9]+ ([^=]+)=(.*)/)
+      if (!line) return
+      obj[line[1]] = line[2]
+    })
+  })
+}
+
+Parser.prototype._readLongField = function (f, field) {
+  var self = this
+  this._longFields[field] = ""
+  f.on("data", function (c) {
+    self._longFields[field] += c
+  })
+}
+
+Parser.prototype._addExtended = function (file) {
+  var g = this._global || {}
+    , e = this._extended || {}
+  file.extended = {}
+  ;[g, e].forEach(function (h) {
+    Object.keys(h).forEach(function (k) {
+      file.extended[k] = h[k]
+      // handle known fields
+      switch (k) {
+        case "path": file.name = h[k]; break
+        case "ctime": file.ctime = new Date(1000 * h[k]); break
+        case "mtime": file.mtime = new Date(1000 * h[k]); break
+        case "gid": file.gid = parseInt(h[k], 10); break
+        case "uid": file.uid = parseInt(h[k], 10); break
+        case "charset": file.charset = h[k]; break
+        case "gname": file.group = h[k]; break
+        case "uname": file.user = h[k]; break
+        case "linkpath": file.linkname = h[k]; break
+        case "size": file.size = parseInt(h[k], 10); break
+        case "SCHILY.devmajor": file.dev.major = parseInt(h[k], 10); break
+        case "SCHILY.devminor": file.dev.minor = parseInt(h[k], 10); break
+      }
+    })
+  })
+  var lf = this._longFields || {}
+  Object.keys(lf).forEach(function (f) {
+    file[f] = lf[f]
+  })
+  this._extended = {}
+  this._longFields = {}
 }
 
 Parser.prototype._closeFile = function () {
@@ -144,7 +217,46 @@ function strF (f) {
   return f.toString("ascii").split("\0").shift() || ""
 }
 
+function parse256 (buf) {
+  // first byte MUST be either 80 or FF
+  // 80 for positive, FF for 2's comp
+  var positive
+  if (buf[0] === 0x80) positive = true
+  else if (buf[0] === 0xFF) positive = false
+  else return 0
+
+  if (!positive) {
+    // this is rare enough that the string slowness
+    // is not a big deal.  You need *very* old files
+    // to ever hit this path.
+    var s = ""
+    for (var i = 1, l = buf.length; i < l; i ++) {
+      var byte = buf[i].toString(2)
+      if (byte.length < 8) {
+        byte = new Array(byte.length - 8 + 1).join("1") + byte
+      }
+      s += byte
+    }
+    var ht = s.match(/^([01]*)(10*)$/)
+      , head = ht[1]
+      , tail = ht[2]
+    head = head.split("1").join("2")
+               .split("0").join("1")
+               .split("2").join("0")
+    return -1 * parseInt(head + tail, 2)
+  }
+
+  var sum = 0
+  for (var i = 1, l = buf.length, p = l - 1; i < l; i ++, p--) {
+    sum += buf[i] * Math.pow(256, p)
+  }
+  return sum
+}
+
 function nF (f) {
+  if (f[0] & 128 === 128) {
+    return parse256(f)
+  }
   return parseInt(f.toString("ascii").replace(/\0+/g, "").trim(), 8) || 0
 }
 
@@ -163,9 +275,9 @@ function File (fields) {
   this.uid = nF(fields.UID)
   this.gid = nF(fields.GID)
   this.size = nF(fields.SIZE)
-  this.mtime = new Date(nF(fields.MTIME))
+  this.mtime = new Date(nF(fields.MTIME) * 1000)
   this.cksum = nF(fields.CKSUM)
-  this.type = nF(fields.TYPE)
+  this.type = strF(fields.TYPE)
   this.linkname = strF(fields.LINKNAME)
 
   this.ustar = bufferMatch(fields.USTAR, tar.ustar)
@@ -177,6 +289,9 @@ function File (fields) {
     this.dev = { major: nF(fields.DEVMAJ)
                , minor: nF(fields.DEVMIN) }
     this.prefix = strF(fields.PREFIX)
+    if (this.prefix) {
+      this.name = this.prefix + "/" + this.name
+    }
   }
 
   this.writable = true
@@ -186,14 +301,14 @@ function File (fields) {
 
 File.prototype = Object.create(Stream.prototype)
 
-File.types = { File: 0
-             , HardLink: 1
-             , SymbolicLink: 2
-             , CharacterDevice: 3
-             , BlockDevice: 4
-             , Directory: 5
-             , FIFO: 6
-             , ContiguousFile: 7 }
+File.types = { File:            "0"
+             , HardLink:        "1"
+             , SymbolicLink:    "2"
+             , CharacterDevice: "3"
+             , BlockDevice:     "4"
+             , Directory:       "5"
+             , FIFO:            "6"
+             , ContiguousFile:  "7" }
 
 Object.keys(File.types).forEach(function (t) {
   File.prototype["is"+t] = function () {
@@ -204,7 +319,13 @@ Object.keys(File.types).forEach(function (t) {
 
 // contiguous files are treated as regular files for most purposes.
 File.prototype.isFile = function () {
-  return this.type === 0 || this.type === 7
+  return this.type === "0" && this.name.slice(-1) !== "/"
+      || this.type === "7"
+}
+
+File.prototype.isDirectory = function () {
+  return this.type === "5"
+      || this.type === "0" && this.name.slice(-1) === "/"
 }
 
 File.prototype.write = function (c) {

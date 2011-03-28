@@ -48,8 +48,10 @@ fieldSize[DEVMIN] = 8
 fieldSize[PREFIX] = 155
 
 var fieldEnds = {}
+  , fieldOffs = {}
   , fe = 0
 for (var i = 0; i < f; i ++) {
+  fieldOffs[i] = fe
   fieldEnds[i] = (fe += fieldSize[i])
 }
 
@@ -61,6 +63,7 @@ Object.keys(fields).forEach(function (f) {
 exports.ustar = ustar
 exports.fields = fields
 exports.fieldSize = fieldSize
+exports.fieldOffs = fieldOffs
 exports.fieldEnds = fieldEnds
 exports.headerSize = headerSize
 
