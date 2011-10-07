@@ -6,17 +6,25 @@ var tar = require("./tar")
   , Parser = require("./parser")
   , fs = require("fs")
 
-function create () {
-  return new Generator()
+function create (opts) {
+  return new Generator(opts)
 }
 
-function Generator () {
+function Generator (opts) {
   this.readable = true
   this.currentFile = null
 
   this._paused = false
   this._ended = false
   this._queue = []
+
+  this.options = { cwd: process.cwd() }
+  Object.keys(opts).forEach(function (o) {
+    this.options[o] = opts[o]
+  }, this)
+  if (this.options.cwd.slice(-1) !== "/") {
+    this.options.cwd += "/"
+  }
 
   Stream.apply(this)
 }
@@ -50,14 +58,20 @@ Generator.prototype.append = function (f, st) {
   // if it's a Stats, then treat it as a stat object
   // if it's a Stream, then stream it in.
   var s = toFileStream(f, st)
-  if (!s) return this.emit("error", new Error(
+  if (!s) return this.emit("error", new TypeError(
     "Invalid argument: "+f))
 
+  // make sure it's in the folder being added.
+  if (s.name.indexOf(this.options.cwd) !== 0) {
+    this.emit("error", new Error(
+      "Invalid argument: "+s.name+"\nOutside of "+this.options.cwd))
+  }
+
+  s.name = s.name.substr(this.options.cwd.length)
   s.pause()
   this._queue.push(s)
 
   if (!s._needStat) return this._processQueue()
-
 
   var self = this
   fs.lstat(s.name, function (er, st) {
@@ -81,6 +95,10 @@ Generator.prototype.append = function (f, st) {
     // for now, skip over unknown ones.
     if (s.type === null) {
       console.error("Unknown file type: " + s.name)
+      // kick out of the queue
+      var i = self._queue.indexOf(s)
+      if (i !== -1) self._queue.splice(i, 1)
+      self._processQueue()
       return
     }
 
@@ -128,7 +146,7 @@ function toFileStream (thing) {
   return null
 }
 
-Generator.prototype._processQueue = function () {
+Generator.prototype._processQueue = function processQueue () {
   console.error("processQueue", this._queue[0])
   if (this._paused) return false
 
@@ -150,9 +168,15 @@ Generator.prototype._processQueue = function () {
   }
 
   if (f.type === Parser.File.types.Directory &&
-      f.name.slice(-1) !== "/") f.name += "/"
+      f.name.slice(-1) !== "/") {
+    f.name += "/"
+  }
+
+  // write out a Pax header if the file isn't kosher.
+  if (this._needPax(f)) this._emitPax(f)
 
   // write out the header
+  f.ustar = true
   this._emitHeader(f)
   var fpos = 0
     , self = this
@@ -162,14 +186,102 @@ Generator.prototype._processQueue = function () {
     self.fpos += c.length
   })
   f.on("error", function (er) { self.emit("error", er) })
-  f.on("end", function () {
+  f.on("end", function $END () {
     // pad with \0 out to an even multiple of 512 bytes.
     // this ensures that every file starts on a block.
-    self.emit("data", new Buffer(new Array( fpos % 512 )))
+    var b = new Buffer(fpos % 512 || 512)
+
+    for (var i = 0, l = b.length; i < l; i ++) b[i] = 0
+    //console.log(b.length, b)
+    self.emit("data", b)
     self.currentFile = null
     self._processQueue()
   })
   f.resume()
+}
+
+Generator.prototype._needPax = function (f) {
+  // meh.  why not?
+  return true
+
+  return oddTextField(f.name, "NAME") ||
+         oddTextField(f.link, "LINK") ||
+         oddTextField(f.gname, "GNAME") ||
+         oddTextField(f.uname, "UNAME") ||
+         oddTextField(f.prefix, "PREFIX")
+}
+
+// check if a text field is too long or non-ascii
+function oddTextField (val, field) {
+  var nl = Buffer.byteLength(val)
+    , len = tar.fieldSize[field]
+  if (nl > len || nl !== val.length) return true
+}
+
+// emit a Pax header of "key = val" for any file with
+// odd or too-long field values.
+Generator.prototype._emitPax = function (f) {
+  // since these tend to be relatively small, just go ahead
+  // and emit it all in-band.  That saves having to keep
+  // track of the pax state in the generator, and we can
+  // go right back to emitting the file in the same tick.
+  var dir = f.name.replace(/[^\/]+\/?$/, "")
+    , base = f.name.substr(dir.length)
+  var pax = { name: dir + "PaxHeader/" +base
+            , mode: 0644
+            , uid: f.uid
+            , gid: f.gid
+            , mtime: +f.mtime
+            // don't know size yet.
+            , size: -1
+            , type: "x" // extended header
+            , ustar: true
+            , ustarVersion: "00"
+            , user: f.user || f.uname || ""
+            , group: f.group || f.gname || ""
+            , dev: { major: f.dev && f.dev.major || 0
+                   , minor: f.dev && f.dev.minor || 0 }
+            , prefix: f.prefix
+            , linkname: "" }
+
+  // generate the Pax body
+  var kv = { path: (f.prefix ? f.prefix + "/" : "") + f.name
+           , atime: f.atime
+           , mtime: f.mtime
+           , ctime: f.ctime
+           , charset: "UTF-8"
+           , gid: f.gid
+           , uid: f.uid
+           , uname: f.user || f.uname || ""
+           , gname: f.group || f.gname || ""
+           , linkpath: f.linkpath || ""
+           , size: f.size
+           }
+  // "%d %s=%s\n", <length>, <keyword>, <value>
+  // length includes the length of the length number,
+  // the key=val, and the \n.
+  var body = new Buffer(Object.keys(kv).map(function (key) {
+    if (!kv[key]) return ["", ""]
+
+    var s = new Buffer(" " + key + "=" + kv[key]+"\n")
+      , digits = Math.floor(Math.log(s.length) / Math.log(10)) + 1
+
+    // if adding that many digits will make it go over that length,
+    // then add one to it
+    if (s.length > Math.pow(10, digits) - digits) digits ++
+
+    return [s.length + digits, s]
+  }).reduce(function (l, r) {
+    return l + r[0] + r[1]
+  }, ""))
+
+  pax.size = body.length
+  this._emitHeader(pax)
+  this.emit("data", body)
+  // now the trailing buffer to make it an even number of 512 blocks
+  var b = new Buffer(512 + (body.length % 512 || 512))
+  for (var i = 0, l = b.length; i < l; i ++) b[i] = 0
+  this.emit("data", b)
 }
 
 Generator.prototype._emitHeader = function (f) {
@@ -192,6 +304,7 @@ Generator.prototype._emitHeader = function (f) {
   addField(header, "TYPE", f.type)
   addField(header, "LINKNAME", f.linkname || "")
   if (f.ustar) {
+    console.error(">>> ustar!!")
     addField(header, "USTAR", tar.ustar)
     addField(header, "USTARVER", 0)
     addField(header, "UNAME", f.user || "")
@@ -201,6 +314,8 @@ Generator.prototype._emitHeader = function (f) {
       addField(header, "DEVMIN", f.dev.minor || 0)
     }
     addField(header, "PREFIX", f.prefix)
+  } else {
+    console.error(">>> no ustar!")
   }
 
   // now the header is written except for checksum.
@@ -217,7 +332,7 @@ function addField (buf, field, val) {
   console.error("Adding field", field, val)
   val = typeof val === "number"
       ? nF(val, tar.fieldSize[f])
-      : new Buffer(val, "ascii")
+      : new Buffer(val || "")
   val.copy(buf, tar.fieldOffs[f])
 }
 

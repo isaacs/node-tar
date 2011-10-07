@@ -17,10 +17,10 @@ p.on("file", function (file) {
 })
 
 
-var s = fs.createReadStream(__dirname + "/tar-files/Ω.tar")
-//s.on("data", function (c) {
-//  console.error("stream data", c.toString())
-//})
+var s = fs.createReadStream(__dirname + "/test-generator.tar")
+s.on("data", function (c) {
+  console.error("stream data", c.toString())
+})
 s.on("end", function () { console.error("stream end") })
 s.on("close", function () { console.error("stream close") })
 p.on("end", function () { console.error("parser end") })
