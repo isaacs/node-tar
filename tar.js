@@ -2,56 +2,54 @@
 // header is padded to 512 bytes.
 var f = 0
   , fields = {}
-  , NAME = fields.NAME = f++
-  , MODE = fields.MODE = f++
-  , UID = fields.UID = f++
-  , GID = fields.GID = f++
-  , SIZE = fields.SIZE = f++
-  , MTIME = fields.MTIME = f++
-  , CKSUM = fields.CKSUM = f++
-  , TYPE = fields.TYPE = f++
-  , LINKNAME = fields.LINKNAME = f++
+  , name = fields.name = f++
+  , mode = fields.mode = f++
+  , uid = fields.uid = f++
+  , gid = fields.gid = f++
+  , size = fields.size = f++
+  , mtime = fields.mtime = f++
+  , cksum = fields.cksum = f++
+  , type = fields.type = f++
+  , linkname = fields.linkname = f++
   , headerSize = 512
   , blockSize = 512
   , fieldSize = []
 
-fieldSize[NAME] = 100
-fieldSize[MODE] = 8
-fieldSize[UID] = 8
-fieldSize[GID] = 8
-fieldSize[SIZE] = 12
-fieldSize[MTIME] = 12
-fieldSize[CKSUM] = 8
-fieldSize[TYPE] = 1
-fieldSize[LINKNAME] = 100
+fieldSize[name] = 100
+fieldSize[mode] = 8
+fieldSize[uid] = 8
+fieldSize[gid] = 8
+fieldSize[size] = 12
+fieldSize[mtime] = 12
+fieldSize[cksum] = 8
+fieldSize[type] = 1
+fieldSize[linkname] = 100
 
 // "ustar\0" may introduce another bunch of headers.
 // these are optional, and will be nulled out if not present.
-var ustar = new Buffer(6)
-ustar.asciiWrite("ustar\0")
 
-var USTAR = fields.USTAR = f++
-  , USTARVER = fields.USTARVER = f++
-  , UNAME = fields.UNAME = f++
-  , GNAME = fields.GNAME = f++
-  , DEVMAJ = fields.DEVMAJ = f++
-  , DEVMIN = fields.DEVMIN = f++
-  , PREFIX = fields.PREFIX = f++
-  , FILL = fields.FILL = f++
+var ustar = fields.ustar = f++
+  , ustarver = fields.ustarver = f++
+  , uname = fields.uname = f++
+  , gname = fields.gname = f++
+  , devmaj = fields.devmaj = f++
+  , devmin = fields.devmin = f++
+  , prefix = fields.prefix = f++
+  , fill = fields.fill = f++
 
 // terminate fields.
 fields[f] = null
 
-fieldSize[USTAR] = 6
-fieldSize[USTARVER] = 2
-fieldSize[UNAME] = 32
-fieldSize[GNAME] = 32
-fieldSize[DEVMAJ] = 8
-fieldSize[DEVMIN] = 8
-fieldSize[PREFIX] = 155
-fieldSize[FILL] = 12
+fieldSize[ustar] = 6
+fieldSize[ustarver] = 2
+fieldSize[uname] = 32
+fieldSize[gname] = 32
+fieldSize[devmaj] = 8
+fieldSize[devmin] = 8
+fieldSize[prefix] = 155
+fieldSize[fill] = 12
 
-// nb: PREFIX field may in fact be 130 bytes of prefix,
+// nb: prefix field may in fact be 130 bytes of prefix,
 // a null char, 12 bytes for atime, 12 bytes for ctime.
 //
 // To recognize this format:
@@ -106,8 +104,8 @@ Object.keys(types).forEach(function (t) {
 
 // values for the mode field
 var modes =
-  { suid: 04000 // set UID on extraction
-  , sgid: 02000 // set GID on extraction
+  { suid: 04000 // set uid on extraction
+  , sgid: 02000 // set gid on extraction
   , svtx: 01000 // set restricted deletion flag on dirs on extraction
   , uread:  0400
   , uwrite: 0200
@@ -125,7 +123,6 @@ Object.keys(modes).forEach(function (t) {
   modes[modes[t]] = modes[modes[t]] || t
 })
 
-exports.ustar = ustar
 exports.fields = fields
 exports.fieldSize = fieldSize
 exports.fieldOffs = fieldOffs
