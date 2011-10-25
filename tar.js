@@ -132,8 +132,10 @@ exports.modes = modes
 exports.headerSize = headerSize
 exports.blockSize = blockSize
 
-var Parser = exports.Parser = require("./parser.js")
-exports.createParser = Parser.create
-
-var Generator = exports.Generator = require("./generator.js")
-exports.createGenerator = Generator.create
+// nyi
+//
+// var Parser = exports.Parser = require("./parser.js")
+// exports.createParser = Parser.create
+//
+// var Generator = exports.Generator = require("./generator.js")
+// exports.createGenerator = Generator.create
