@@ -89,8 +89,8 @@ var types =
   , A: "SolarisACL" // skip
   , D: "GNUDumpDir" // like 5, but with data, which should be skipped
   , I: "Inode" // metadata only, skip
-  , K: "nextFileHasLongLinkname" // data = link name of next file
-  , L: "nextFileHasLongName" // data = name of next file
+  , K: "NextFileHasLongLinkname" // data = link name of next file
+  , L: "NextFileHasLongName" // data = name of next file
   , M: "ContinuationFile" // skip
   , N: "OldGnuLongName" // like L
   , S: "SparseFile" // skip
@@ -132,10 +132,9 @@ exports.modes = modes
 exports.headerSize = headerSize
 exports.blockSize = blockSize
 
+exports.createReader = exports.Reader = require("./reader.js")
+
 // nyi
-//
-// var Parser = exports.Parser = require("./parser.js")
-// exports.createParser = Parser.create
 //
 // var Generator = exports.Generator = require("./generator.js")
 // exports.createGenerator = Generator.create
