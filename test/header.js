@@ -134,8 +134,8 @@ tap.test("encoding", function (t) {
 
     // might have slightly different bytes, since the standard
     // isn't very strict, but should have the same semantics
+    // checkSum will be different, but cksumValid will be true
 
-    // t.equal(encoded.toString("hex"), expect, "encode "+name)
     var th = new TarHeader(encoded)
     delete h[1].block
     delete h[1].needExtended
@@ -145,7 +145,7 @@ tap.test("encoding", function (t) {
   t.end()
 })
 
-// test these manually, since it's a bit rare to find in the wild
+// test these manually.  they're a bit rare to find in the wild
 tap.test("parseNumeric tests", function (t) {
   var parseNumeric = TarHeader.parseNumeric
     , numbers =
