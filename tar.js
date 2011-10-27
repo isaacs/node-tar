@@ -1,8 +1,8 @@
-// field names that every tar file must have.
+// field paths that every tar file must have.
 // header is padded to 512 bytes.
 var f = 0
   , fields = {}
-  , name = fields.name = f++
+  , path = fields.path = f++
   , mode = fields.mode = f++
   , uid = fields.uid = f++
   , gid = fields.gid = f++
@@ -10,12 +10,12 @@ var f = 0
   , mtime = fields.mtime = f++
   , cksum = fields.cksum = f++
   , type = fields.type = f++
-  , linkname = fields.linkname = f++
+  , linkpath = fields.linkpath = f++
   , headerSize = 512
   , blockSize = 512
   , fieldSize = []
 
-fieldSize[name] = 100
+fieldSize[path] = 100
 fieldSize[mode] = 8
 fieldSize[uid] = 8
 fieldSize[gid] = 8
@@ -23,7 +23,7 @@ fieldSize[size] = 12
 fieldSize[mtime] = 12
 fieldSize[cksum] = 8
 fieldSize[type] = 1
-fieldSize[linkname] = 100
+fieldSize[linkpath] = 100
 
 // "ustar\0" may introduce another bunch of headers.
 // these are optional, and will be nulled out if not present.
@@ -65,13 +65,13 @@ for (var i = 0; i < f; i ++) {
   fieldEnds[i] = (fe += fieldSize[i])
 }
 
-// build a translation table of field names.
+// build a translation table of field paths.
 Object.keys(fields).forEach(function (f) {
   if (fields[f] !== null) fields[fields[f]] = f
 })
 
 // different values of the 'type' field
-// names match the values of Stats.isX() functions, where appropriate
+// paths match the values of Stats.isX() functions, where appropriate
 var types =
   { 0: "File"
   , "\0": "OldFile" // like 0
@@ -89,10 +89,10 @@ var types =
   , A: "SolarisACL" // skip
   , D: "GNUDumpDir" // like 5, but with data, which should be skipped
   , I: "Inode" // metadata only, skip
-  , K: "NextFileHasLongLinkname" // data = link name of next file
-  , L: "NextFileHasLongName" // data = name of next file
+  , K: "NextFileHasLongLinkpath" // data = link path of next file
+  , L: "NextFileHasLongPath" // data = path of next file
   , M: "ContinuationFile" // skip
-  , N: "OldGnuLongName" // like L
+  , N: "OldGnuLongPath" // like L
   , S: "SparseFile" // skip
   , V: "TapeVolumeHeader" // skip
   , X: "OldExtendedHeader" // like x
