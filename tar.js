@@ -146,7 +146,7 @@ exports.numeric = numeric
 exports.headerSize = headerSize
 exports.blockSize = blockSize
 
-// exports.createReader = exports.Reader = require("./lib/reader.js")
+exports.createReader = exports.Reader = require("./lib/reader.js")
 
 // nyi
 //
