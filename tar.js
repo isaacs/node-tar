@@ -67,7 +67,7 @@ for (var i = 0; i < f; i ++) {
 
 // build a translation table of field names.
 Object.keys(fields).forEach(function (f) {
-  fields[fields[f]] = f
+  if (fields[f] !== null) fields[fields[f]] = f
 })
 
 // different values of the 'type' field
@@ -119,6 +119,19 @@ var modes =
   , all: 07777
   }
 
+var numeric =
+  { mode: true
+  , uid: true
+  , gid: true
+  , size: true
+  , mtime: true
+  , devmaj: true
+  , devmin: true
+  , cksum: true
+  , atime: true
+  , ctime: true
+  }
+
 Object.keys(modes).forEach(function (t) {
   modes[modes[t]] = modes[modes[t]] || t
 })
@@ -129,10 +142,11 @@ exports.fieldOffs = fieldOffs
 exports.fieldEnds = fieldEnds
 exports.types = types
 exports.modes = modes
+exports.numeric = numeric
 exports.headerSize = headerSize
 exports.blockSize = blockSize
 
-exports.createReader = exports.Reader = require("./reader.js")
+// exports.createReader = exports.Reader = require("./lib/reader.js")
 
 // nyi
 //
