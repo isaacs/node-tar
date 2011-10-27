@@ -23,7 +23,6 @@ var headers =
       , gname: 'staff'
       , devmaj: 0
       , devmin: 0
-      , prefix: ''
       , fill: '' }
     ]
 
@@ -45,7 +44,6 @@ var headers =
       , gname: 'staff'
       , devmaj: 0
       , devmin: 0
-      , prefix: ''
       , fill: '' } ]
 
   , "omega file header":
@@ -66,7 +64,6 @@ var headers =
       , gname: 'staff'
       , devmaj: 0
       , devmin: 0
-      , prefix: ''
       , fill: '' } ]
 
   , "foo.js file header":
@@ -87,7 +84,6 @@ var headers =
       , gname: 'staff'
       , devmaj: 0
       , devmin: 0
-      , prefix: ''
       , fill: '' }
     ]
 
@@ -109,7 +105,6 @@ var headers =
       , gname: 'staff'
       , devmaj: 0
       , devmin: 0
-      , prefix: ''
       , fill: '' }
     ]
   }
