@@ -9,6 +9,12 @@ fs.createReadStream(__dirname + "/../test/fixtures/c.tar")
       console.error("extended pax fields:", e.fields)
     })
   })
+  .on("longPath", function (e) {
+    console.error("longPath entry", e.props)
+    e.on("end", function () {
+      console.error("value=%j", e.body.toString())
+    })
+  })
   .on("entry", function (e) {
     console.error("entry", e.props)
     e.on("data", function (c) {
