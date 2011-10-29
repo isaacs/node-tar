@@ -237,7 +237,6 @@ tap.test("reader test", function (t) {
     .pipe(reader)
     .on("*", function (ev, entry) {
       var wanted = expect[index]
-      console.error(wanted)
       if (!wanted) {
         t.fail("Unexpected event: " + ev)
       }
@@ -245,7 +244,7 @@ tap.test("reader test", function (t) {
       entry.on("end", function () {
         result.push(entry.fields || entry.body)
         t.equal(ev, wanted[0], index + " event type")
-        t.similar(entry.props, wanted[1], index + " entry properties")
+        t.equivalent(entry.props, wanted[1], index + " entry properties")
         if (wanted[2]) {
           t.equivalent(result[2], wanted[2], index + " metadata values")
         }
