@@ -130,6 +130,9 @@ var numeric =
   , cksum: true
   , atime: true
   , ctime: true
+  , dev: true
+  , ino: true
+  , nlink: true
   }
 
 Object.keys(modes).forEach(function (t) {
@@ -147,6 +150,7 @@ exports.headerSize = headerSize
 exports.blockSize = blockSize
 
 exports.createReader = exports.Reader = require("./lib/reader.js")
+exports.createExtract = exports.Extract = require("./lib/extract.js")
 
 // nyi
 //

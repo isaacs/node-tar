@@ -12,11 +12,12 @@
     "test": "tap test/*.js"
   },
   "engines": {
-    "node": "0.4 || ~0.5.9 || 0.6"
+    "node": "~0.5.9 || 0.6"
   },
   "dependencies": {
-    "inherits": "~1.0.0",
-    "block-stream": "*"
+    "inherits": "1.x",
+    "block-stream": "*",
+    "fstream": "0.x"
   },
   "devDependencies": {
     "tap": "0.0.10"
