@@ -20,6 +20,7 @@
     "fstream": "0.x"
   },
   "devDependencies": {
-    "tap": "0.0.10"
+    "tap": "0.x",
+    "rimraf": "1.x"
   }
 }
