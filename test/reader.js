@@ -623,10 +623,11 @@ tap.test("reader test", function (t) {
       var result = [ev, entry.props]
       entry.on("end", function () {
         result.push(entry.fields || entry.body)
+        console.error(result)
         t.equal(ev, wanted[0], index + " event type")
-        t.equivalent(entry.props, wanted[1], index + " entry properties")
+        t.equivalent(entry.props, wanted[1], wanted[1].path + " entry properties")
         if (wanted[2]) {
-          t.equivalent(result[2], wanted[2], index + " metadata values")
+          t.equivalent(result[2], wanted[2], "metadata values")
         }
         index ++
       })
