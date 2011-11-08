@@ -4,6 +4,7 @@ var tap = require("tap")
   , path = require("path")
   , file = path.resolve(__dirname, "fixtures/c.tar")
   , index = 0
+
   , expect =
     [ [ 'entry',
         { path: 'c.txt',
@@ -22,6 +23,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'cc.txt',
           mode: 420,
@@ -39,6 +41,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -56,6 +59,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'Ω.txt',
           mode: 420,
@@ -73,6 +77,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/Ω.txt',
           mode: 420,
@@ -90,6 +95,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'Ω.txt',
           mode: 420,
@@ -112,6 +118,7 @@ var tap = require("tap")
           dev: 234881026,
           ino: 51693379,
           nlink: 1 } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -129,6 +136,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -152,6 +160,7 @@ var tap = require("tap")
           dev: 234881026,
           ino: 51681874,
           nlink: 1 } ],
+
       [ 'longPath',
         { path: '././@LongLink',
           mode: 0,
@@ -163,6 +172,7 @@ var tap = require("tap")
           type: 'L',
           linkpath: '',
           ustar: false } ],
+
       [ 'entry',
         { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -174,6 +184,7 @@ var tap = require("tap")
           type: '0',
           linkpath: '',
           ustar: false } ],
+
       [ 'longLinkpath',
         { path: '././@LongLink',
           mode: 0,
@@ -185,6 +196,7 @@ var tap = require("tap")
           type: 'K',
           linkpath: '',
           ustar: false } ],
+
       [ 'longPath',
         { path: '././@LongLink',
           mode: 0,
@@ -196,6 +208,7 @@ var tap = require("tap")
           type: 'L',
           linkpath: '',
           ustar: false } ],
+
       [ 'entry',
         { path: '200LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL',
           mode: 511,
@@ -207,6 +220,7 @@ var tap = require("tap")
           type: '2',
           linkpath: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           ustar: false } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/200-hard',
           mode: 420,
@@ -224,6 +238,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: '200-hard',
           mode: 420,
@@ -247,6 +262,7 @@ var tap = require("tap")
           dev: 234881026,
           ino: 51681874,
           nlink: 2 } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -264,6 +280,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -287,6 +304,7 @@ var tap = require("tap")
           dev: 234881026,
           ino: 51681874,
           nlink: 2 } ],
+
       [ 'entry',
         { path: 'c.txt',
           mode: 420,
@@ -304,6 +322,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'cc.txt',
           mode: 420,
@@ -321,6 +340,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -338,6 +358,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'Ω.txt',
           mode: 420,
@@ -355,6 +376,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/Ω.txt',
           mode: 420,
@@ -372,6 +394,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: 'Ω.txt',
           mode: 420,
@@ -394,6 +417,7 @@ var tap = require("tap")
           dev: 234881026,
           ino: 51693379,
           nlink: 1 } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -411,6 +435,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -434,6 +459,7 @@ var tap = require("tap")
           dev: 234881026,
           ino: 51681874,
           nlink: 1 } ],
+
       [ 'longPath',
         { path: '././@LongLink',
           mode: 0,
@@ -445,6 +471,7 @@ var tap = require("tap")
           type: 'L',
           linkpath: '',
           ustar: false } ],
+
       [ 'entry',
         { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -456,6 +483,7 @@ var tap = require("tap")
           type: '0',
           linkpath: '',
           ustar: false } ],
+
       [ 'longLinkpath',
         { path: '././@LongLink',
           mode: 0,
@@ -467,6 +495,7 @@ var tap = require("tap")
           type: 'K',
           linkpath: '',
           ustar: false } ],
+
       [ 'longPath',
         { path: '././@LongLink',
           mode: 0,
@@ -478,6 +507,7 @@ var tap = require("tap")
           type: 'L',
           linkpath: '',
           ustar: false } ],
+
       [ 'entry',
         { path: '200LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL',
           mode: 511,
@@ -489,6 +519,7 @@ var tap = require("tap")
           type: '2',
           linkpath: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           ustar: false } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/200-hard',
           mode: 420,
@@ -506,6 +537,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: '200-hard',
           mode: 420,
@@ -529,6 +561,7 @@ var tap = require("tap")
           dev: 234881026,
           ino: 51681874,
           nlink: 2 } ],
+
       [ 'extendedHeader',
         { path: 'PaxHeader/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
@@ -546,6 +579,7 @@ var tap = require("tap")
           devmaj: 0,
           devmin: 0,
           fill: '' } ],
+
       [ 'entry',
         { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
           mode: 420,
