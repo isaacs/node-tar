@@ -9,7 +9,7 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "tap test/*.js"
+    "test": "tap test/*.js && npm test block-stream && npm test fstream"
   },
   "engines": {
     "node": "~0.5.9 || 0.6"
