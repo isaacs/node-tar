@@ -167,10 +167,6 @@ exports.headerSize = headerSize
 exports.blockSize = blockSize
 exports.knownExtended = knownExtended
 
-exports.createReader = exports.Reader = require("./lib/reader.js")
-exports.createExtract = exports.Extract = require("./lib/extract.js")
-
-// nyi
-//
-// var Generator = exports.Generator = require("./generator.js")
-// exports.createGenerator = Generator.create
+exports.Pack = require("./lib/pack.js")
+exports.Parse = require("./lib/parse.js")
+exports.Extract = require("./lib/extract.js")

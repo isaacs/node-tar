@@ -329,16 +329,16 @@ var tap = require("tap")
     undefined ] ]
 
 
-tap.test("reader test", function (t) {
-  var reader = tar.Reader()
+tap.test("parser test", function (t) {
+  var parser = tar.Parse()
 
-  reader.on("end", function () {
+  parser.on("end", function () {
     t.equal(index, expect.length, "saw all expected events")
     t.end()
   })
 
   fs.createReadStream(file)
-    .pipe(reader)
+    .pipe(parser)
     .on("*", function (ev, entry) {
       var wanted = expect[index]
       if (!wanted) {
