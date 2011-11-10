@@ -139,6 +139,23 @@ Object.keys(modes).forEach(function (t) {
   modes[modes[t]] = modes[modes[t]] || t
 })
 
+var knownExtended =
+  { atime: true
+  , charset: true
+  , comment: true
+  , ctime: true
+  , gid: true
+  , gname: true
+  , linkpath: true
+  , mtime: true
+  , path: true
+  , realtime: true
+  , security: true
+  , size: true
+  , uid: true
+  , uname: true }
+
+
 exports.fields = fields
 exports.fieldSize = fieldSize
 exports.fieldOffs = fieldOffs
@@ -148,6 +165,7 @@ exports.modes = modes
 exports.numeric = numeric
 exports.headerSize = headerSize
 exports.blockSize = blockSize
+exports.knownExtended = knownExtended
 
 exports.createReader = exports.Reader = require("./lib/reader.js")
 exports.createExtract = exports.Extract = require("./lib/extract.js")
