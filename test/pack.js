@@ -12,9 +12,10 @@ var tap = require("tap")
 tap.test("make a tar", function (t) {
   // put the package.json in as a global header, for kicks.
   var reader = Reader({ path: dir
-                      // , filter: function () {
-                      //     return !this.path.match(/\.tar$/)
-                      //   }
+                      , filter: function () {
+                          return !this.path.match(/\.tar$/)
+                               && !this.path.match(/\.hex$/)
+                        }
                       })
   var pack = Pack(pkg)
   var writer = Writer(target)

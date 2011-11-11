@@ -11,6 +11,7 @@
   "scripts": {
     "test": "tap test/*.js"
   },
+  "foo": "bar",
   "engines": {
     "node": "~0.5.9 || 0.6"
   },
