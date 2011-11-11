@@ -9,7 +9,7 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "tap test/*.js"
+    "test": "rm -rf test/tmp; tap test/*.js"
   },
   "foo": "bar",
   "engines": {
