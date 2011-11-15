@@ -17,7 +17,7 @@ var headers =
       , cksum: 5417
       , type: '0'
       , linkpath: ''
-      , ustar: 'ustar'
+      , ustar: 'ustar\0'
       , ustarver: '00'
       , uname: 'isaacs'
       , gname: 'staff'
@@ -38,7 +38,7 @@ var headers =
       , cksum: 6697
       , type: 'x'
       , linkpath: ''
-      , ustar: 'ustar'
+      , ustar: 'ustar\0'
       , ustarver: '00'
       , uname: 'isaacs'
       , gname: 'staff'
@@ -58,7 +58,7 @@ var headers =
       , cksum: 5690
       , type: '0'
       , linkpath: ''
-      , ustar: 'ustar'
+      , ustar: 'ustar\0'
       , ustarver: '00'
       , uname: 'isaacs'
       , gname: 'staff'
@@ -78,7 +78,7 @@ var headers =
       , cksum: 5519
       , type: '0'
       , linkpath: ''
-      , ustar: 'ustar'
+      , ustar: 'ustar\0'
       , ustarver: '00'
       , uname: 'isaacs'
       , gname: 'staff'
@@ -99,7 +99,7 @@ var headers =
       , cksum: 5425
       , type: '0'
       , linkpath: ''
-      , ustar: 'ustar'
+      , ustar: 'ustar\0'
       , ustarver: '00'
       , uname: 'isaacs'
       , gname: 'staff'
@@ -120,7 +120,7 @@ var headers =
       , cksum: 18124
       , type: '0'
       , linkpath: ''
-      , ustar: 'ustar'
+      , ustar: 'ustar\0'
       , ustarver: '00'
       , uname: 'isaacs'
       , gname: 'staff'
