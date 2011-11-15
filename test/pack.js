@@ -23,7 +23,7 @@ tap.test("make a tar", function (t) {
                         }
                       })
 
-  var pack = Pack(pkg)
+  var pack = Pack({}) // Pack(pkg)
   var writer = Writer(target)
 
   t.ok(reader, "reader ok")
@@ -43,7 +43,7 @@ tap.test("make a tar", function (t) {
   })
 
   parse.on("*", function (ev, e) {
-    console.error("      entry %s", ev, e.props)
+    console.log("      entry %s", ev, e.props)
   })
 
 
