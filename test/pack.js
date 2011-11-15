@@ -9,13 +9,22 @@ var tap = require("tap")
   , input = path.resolve(__dirname, "fixtures/")
   , target = path.resolve(__dirname, "tmp/pack.tar")
 
-process.on("uncaughtException", function (er) {
-  console.error(er.stack)
-  console.error(er)
-  process.exit(1)
-})
+// process.on("uncaughtException", function (er) {
+//   console.error(er.stack)
+//   console.error(er)
+//   process.exit(1)
+// })
 
-tap.test("make a tar", function (t) {
+// first, make sure that the hardlinks are actually hardlinks, or this
+// won't work.  Git has a way of replacing them with a copy.
+var hard1 = path.resolve(__dirname, "fixtures/hardlink-1")
+  , hard2 = path.resolve(__dirname, "fixtures/hardlink-2")
+  , fs = require("fs")
+
+try { fs.unlinkSync(hard2) } catch (e) {}
+fs.linkSync(hard1, hard2)
+
+tap.test("make a tar", { timeout: 1000 }, function (t) {
   // put the package.json in as a global header, for kicks.
   var reader = Reader({ path: input
                       , filter: function () {
@@ -43,7 +52,7 @@ tap.test("make a tar", function (t) {
   })
 
   parse.on("*", function (ev, e) {
-    console.log("      entry %s", ev, e.props)
+    console.error("      entry %s", ev, e.props)
   })
 
 
