@@ -11,7 +11,6 @@ var tap = require("tap")
   , uid = process.getuid ? process.getuid() : 0
   , gid = process.getgid ? process.getgid() : 0
 
-  , entry = 0
   , entries =
 
     // the global header and root fixtures/ dir are going to get
@@ -265,8 +264,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Mon, 14 Nov 2011 21:42:24 GMT'),
-        cksum: 5527,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -285,6 +282,24 @@ var tap = require("tap")
         size: 2,
         mtime: new Date('Mon, 14 Nov 2011 21:42:24 GMT'),
         cksum: 6440,
+        type: '0',
+        linkpath: '',
+        ustar: 'ustar\u0000',
+        ustarver: '00',
+        uname: '',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        fill: '' } ]
+
+    , [ 'entry',
+      { path: 'fixtures/packtest/star.4.html',
+        mode: 420,
+        uid: uid,
+        gid: gid,
+        size: 54081,
+        mtime: new Date("Sun, 06 May 2007 13:25:06 GMT"),
+        cksum: 6566,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -856,16 +871,26 @@ var hard1 = path.resolve(__dirname, "fixtures/hardlink-1")
 try { fs.unlinkSync(hard2) } catch (e) {}
 fs.linkSync(hard1, hard2)
 
-tap.test("make a tar", { timeout: 1000 }, function (t) {
-  // put the package.json in as a global header, for kicks.
+tap.test("with global header", { timeout: 1000 }, function (t) {
+  runTest(t, true)
+})
+
+tap.test("without global header", { timeout: 1000 }, function (t) {
+  runTest(t, false)
+})
+
+function runTest (t, doGH) {
   var reader = Reader({ path: input
                       , filter: function () {
                           return !this.path.match(/\.(tar|hex)$/)
                         }
                       })
 
-  var pack = Pack(pkg)
+  var pack = Pack(doGH ? pkg : null)
   var writer = Writer(target)
+
+  // skip the global header if we're not doing that.
+  var entry = doGH ? 0 : 1
 
   t.ok(reader, "reader ok")
   t.ok(pack, "pack ok")
@@ -906,11 +931,19 @@ tap.test("make a tar", { timeout: 1000 }, function (t) {
 
   parse.on("*", function (ev, e) {
     var wanted = entries[entry++]
+    if (!wanted) {
+      t.fail("unexpected event: "+ev)
+      return
+    }
     t.equal(ev, wanted[0], "event type should be "+wanted[0])
-    t.has(e.props, wanted[1], "should get expected properties")
+    // if (ev !== wanted[0] || e.path !== wanted[1].path) {
+    //   console.error(wanted)
+    //   console.error([ev, e.props])
+    //   throw "break"
+    // }
+    t.has(e.props, wanted[1], "properties "+wanted[1].path)
     if (wanted[2]) {
       e.on("end", function () {
-        if (wanted[2].fail) console.error(e.fields)
         t.has(e.fields, wanted[2], "should get expected fields")
       })
     }
@@ -919,8 +952,9 @@ tap.test("make a tar", { timeout: 1000 }, function (t) {
   reader.pipe(pack)
 
   writer.on("close", function () {
+    t.equal(entry, entries.length, "should get all expected entries")
     t.pass("it finished")
     t.end()
   })
 
-})
+}
