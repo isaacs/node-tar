@@ -95,7 +95,7 @@ var tap = require("tap")
     type: '1',
     depth: undefined,
     size: 0,
-    linkpath: '200-hard',
+    linkpath: path.resolve(target, '200-hard'),
     nlink: 2,
     dev: 234881026,
     ino: 51681874 } ]

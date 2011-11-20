@@ -22,7 +22,6 @@ var tap = require("tap")
         mode: 438,
         uid: 0,
         gid: 0,
-        size: 565,
         type: 'g',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -32,21 +31,15 @@ var tap = require("tap")
         devmaj: 0,
         devmin: 0,
         fill: '' },
-      { "NODETAR.author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
-        "NODETAR.name": "tar",
-        "NODETAR.description": "tar for node",
-        "NODETAR.version": "0.0.0",
-        "NODETAR.repository.type": "git",
-        "NODETAR.repository.url": "git://github.com/isaacs/node-tar.git",
-        "NODETAR.main": "tar.js",
-        "NODETAR.scripts.test": "rm -rf test/tmp; tap test/*.js",
-        "NODETAR.foo": "bar",
-        "NODETAR.engines.node": "~0.5.9 || 0.6",
-        "NODETAR.dependencies.inherits": "1.x",
-        "NODETAR.dependencies.block-stream": "*",
-        "NODETAR.dependencies.fstream": "0.x",
-        "NODETAR.devDependencies.tap": "0.x",
-        "NODETAR.devDependencies.rimraf": "1.x" } ]
+      { "NODETAR.author": pkg.author,
+        "NODETAR.name": pkg.name,
+        "NODETAR.description": pkg.description,
+        "NODETAR.version": pkg.version,
+        "NODETAR.repository.type": pkg.repository.type,
+        "NODETAR.repository.url": pkg.repository.url,
+        "NODETAR.main": pkg.main,
+        "NODETAR.scripts.test": pkg.scripts.test,
+        "NODETAR.engines.node": pkg.engines.node } ]
 
     , [ 'entry',
       { path: 'fixtures/',
@@ -871,11 +864,11 @@ var hard1 = path.resolve(__dirname, "fixtures/hardlink-1")
 try { fs.unlinkSync(hard2) } catch (e) {}
 fs.linkSync(hard1, hard2)
 
-tap.test("with global header", { timeout: 1000 }, function (t) {
+tap.test("with global header", { timeout: 10000 }, function (t) {
   runTest(t, true)
 })
 
-tap.test("without global header", { timeout: 1000 }, function (t) {
+tap.test("without global header", { timeout: 10000 }, function (t) {
   runTest(t, false)
 })
 

@@ -11,14 +11,13 @@
   "scripts": {
     "test": "rm -rf test/tmp; tap test/*.js"
   },
-  "foo": "bar",
   "engines": {
-    "node": "~0.5.9 || 0.6"
+    "node": "~0.5.9 || 0.6 || 0.7 || 0.8"
   },
   "dependencies": {
     "inherits": "1.x",
     "block-stream": "*",
-    "fstream": "0.x"
+    "fstream": "~0.1"
   },
   "devDependencies": {
     "tap": "0.x",
