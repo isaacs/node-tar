@@ -121,7 +121,7 @@ var tap = require("tap")
     type: 'Link',
     depth: 1,
     size: 200,
-    linkpath: '/Users/isaacs/dev-src/js/node-tar/test/tmp/extract-test/200-hard',
+    linkpath: path.join(target, '200-hard'),
     nlink: 2 },
   { path: '/200LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL',
     mode: '120777',
