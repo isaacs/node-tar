@@ -16,7 +16,7 @@ var tap = require("tap")
     // the global header and root fixtures/ dir are going to get
     // a different date each time, so omit that bit.
     // Also, dev/ino values differ across machines, so that's not
-    // included.  Rather than use 
+    // included.
     [ [ 'globalExtendedHeader',
       { path: 'PaxHeader/',
         mode: 438,
@@ -62,7 +62,6 @@ var tap = require("tap")
         mode: 420,
         uid: uid,
         gid: gid,
-        mtime: new Date('Thu, 27 Oct 2011 03:41:08 GMT'),
         type: 'x',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -88,8 +87,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 200,
-        mtime: new Date('Thu, 27 Oct 2011 03:41:08 GMT'),
-        cksum: 13475,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -111,8 +108,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 257,
-        mtime: new Date('Mon, 24 Oct 2011 22:04:11 GMT'),
-        cksum: 5114,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -129,8 +124,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 512,
-        mtime: new Date('Mon, 24 Oct 2011 22:07:59 GMT'),
-        cksum: 5122,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -147,8 +140,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 513,
-        mtime: new Date('Wed, 26 Oct 2011 01:10:58 GMT'),
-        cksum: 5119,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -165,8 +156,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 513,
-        mtime: new Date('Wed, 26 Oct 2011 01:11:02 GMT'),
-        cksum: 5222,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -183,8 +172,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 4,
-        mtime: new Date('Fri, 21 Oct 2011 21:19:29 GMT'),
-        cksum: 5211,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -201,8 +188,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 200,
-        mtime: new Date('Tue, 15 Nov 2011 03:10:09 GMT'),
-        cksum: 5554,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -219,8 +204,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Tue, 15 Nov 2011 03:10:09 GMT'),
-        cksum: 7428,
         type: '1',
         linkpath: 'fixtures/hardlink-1',
         ustar: 'ustar\u0000',
@@ -237,8 +220,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 2,
-        mtime: new Date('Fri, 21 Oct 2011 21:19:29 GMT'),
-        cksum: 5537,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -271,8 +252,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 2,
-        mtime: new Date('Mon, 14 Nov 2011 21:42:24 GMT'),
-        cksum: 6440,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -289,8 +268,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 54081,
-        mtime: new Date("Sun, 06 May 2007 13:25:06 GMT"),
-        cksum: 6566,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -306,7 +283,6 @@ var tap = require("tap")
         mode: 420,
         uid: uid,
         gid: gid,
-        mtime: new Date('Mon, 14 Nov 2011 21:39:39 GMT'),
         type: 'x',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -332,8 +308,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 2,
-        mtime: new Date('Mon, 14 Nov 2011 21:39:39 GMT'),
-        cksum: 6297,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -355,8 +329,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 4789,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -373,8 +345,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 4937,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -391,8 +361,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 5081,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -409,8 +377,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 5236,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -427,8 +393,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 5391,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -445,8 +409,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 5559,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -463,8 +425,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 5651,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -481,8 +441,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 5798,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -499,8 +457,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 5946,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -517,8 +473,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 6094,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -535,8 +489,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 6253,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -553,8 +505,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 6345,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -571,8 +521,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 6494,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -589,8 +537,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 6652,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -607,8 +553,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 6807,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -625,8 +569,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 6954,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -643,8 +585,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 7102,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -661,8 +601,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 7263,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -679,8 +617,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 7355,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -697,8 +633,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 7514,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -715,8 +649,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 7658,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -733,8 +665,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:42:46 GMT'),
-        cksum: 7821,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -751,8 +681,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Thu, 27 Oct 2011 03:43:23 GMT'),
-        cksum: 7967,
         type: '5',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -769,8 +697,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 100,
-        mtime: new Date('Thu, 27 Oct 2011 03:43:23 GMT'),
-        cksum: 17821,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -783,12 +709,9 @@ var tap = require("tap")
 
     , [ 'entry',
       { path: 'fixtures/symlink',
-        mode: 493,
         uid: uid,
         gid: gid,
         size: 0,
-        mtime: new Date('Tue, 15 Nov 2011 19:57:48 GMT'),
-        cksum: 6337,
         type: '2',
         linkpath: 'hardlink-1',
         ustar: 'ustar\u0000',
@@ -804,7 +727,6 @@ var tap = require("tap")
         mode: 420,
         uid: uid,
         gid: gid,
-        mtime: new Date('Thu, 27 Oct 2011 17:51:49 GMT'),
         type: 'x',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -830,8 +752,6 @@ var tap = require("tap")
         uid: uid,
         gid: gid,
         size: 2,
-        mtime: new Date('Thu, 27 Oct 2011 17:51:49 GMT'),
-        cksum: 5392,
         type: '0',
         linkpath: '',
         ustar: 'ustar\u0000',
@@ -866,11 +786,21 @@ tap.test("without global header", { timeout: 10000 }, function (t) {
   runTest(t, false)
 })
 
+function alphasort (a, b) {
+  return a === b ? 0
+       : a.toLowerCase() > b.toLowerCase() ? 1
+       : a.toLowerCase() < b.toLowerCase() ? -1
+       : a > b ? 1
+       : -1
+}
+
+
 function runTest (t, doGH) {
   var reader = Reader({ path: input
                       , filter: function () {
                           return !this.path.match(/\.(tar|hex)$/)
                         }
+                      , sort: alphasort
                       })
 
   var pack = Pack(doGH ? pkg : null)
@@ -890,7 +820,10 @@ function runTest (t, doGH) {
 
   pack.on("data", function (c) {
     // console.error("PACK DATA")
-    t.equal(c.length, 512, "parser should emit data in 512byte blocks")
+    if (c.length !== 512) {
+      // this one is too noisy, only assert if it'll be relevant
+      t.equal(c.length, 512, "parser should emit data in 512byte blocks")
+    }
     parse.write(c)
   })
 
@@ -923,15 +856,21 @@ function runTest (t, doGH) {
       return
     }
     t.equal(ev, wanted[0], "event type should be "+wanted[0])
+
     // if (ev !== wanted[0] || e.path !== wanted[1].path) {
     //   console.error(wanted)
     //   console.error([ev, e.props])
     //   throw "break"
     // }
+
     t.has(e.props, wanted[1], "properties "+wanted[1].path)
     if (wanted[2]) {
       e.on("end", function () {
-        t.has(e.fields, wanted[2], "should get expected fields")
+        if (!e.fields) {
+          t.ok(e.fields, "should get fields")
+        } else {
+          t.has(e.fields, wanted[2], "should get expected fields")
+        }
       })
     }
   })
