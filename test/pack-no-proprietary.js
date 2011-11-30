@@ -5,6 +5,17 @@
 // tarballs that are supported by more versions of tar, especially
 // old non-spec-compliant copies of gnutar.
 
+// the symlink file is excluded from git, because it makes
+// windows freak the hell out.
+var fs = require("fs")
+  , path = require("path")
+  , symlink = path.resolve(__dirname, "fixtures/symlink")
+try { fs.unlinkSync(symlink) } catch (e) {}
+fs.symlinkSync("./hardlink-1", symlink)
+process.on("exit", function () {
+  fs.unlinkSync(symlink)
+})
+
 var tap = require("tap")
   , tar = require("../tar.js")
   , pkg = require("../package.json")
@@ -12,7 +23,6 @@ var tap = require("tap")
   , fstream = require("fstream")
   , Reader = fstream.Reader
   , Writer = fstream.Writer
-  , path = require("path")
   , input = path.resolve(__dirname, "fixtures/")
   , target = path.resolve(__dirname, "tmp/pack.tar")
   , uid = process.getuid ? process.getuid() : 0
