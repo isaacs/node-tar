@@ -9,7 +9,7 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "rm -rf test/tmp; tap test/*.js"
+    "test": "tap test/*.js"
   },
   "engines": {
     "node": "~0.5.9 || 0.6 || 0.7 || 0.8"
