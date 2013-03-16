@@ -2,7 +2,7 @@
   "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
   "name": "tar",
   "description": "tar for node",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "repository": {
     "type": "git",
     "url": "git://github.com/isaacs/node-tar.git"
@@ -12,7 +12,7 @@
     "test": "tap test/*.js"
   },
   "engines": {
-    "node": "~0.5.9 || 0.6 || 0.7 || 0.8"
+    "node": "~0.5.9 || 0.6 || 0.7 || 0.8 || 0.10"
   },
   "dependencies": {
     "inherits": "1.x",
