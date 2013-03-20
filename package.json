@@ -11,9 +11,6 @@
   "scripts": {
     "test": "tap test/*.js"
   },
-  "engines": {
-    "node": "~0.5.9 || 0.6 || 0.7 || 0.8"
-  },
   "dependencies": {
     "inherits": "1.x",
     "block-stream": "*",
