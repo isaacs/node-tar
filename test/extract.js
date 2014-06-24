@@ -114,6 +114,13 @@ var tap = require("tap")
     size: 200,
     linkpath: undefined,
     nlink: 2 },
+  { path: '/200LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL',
+    mode: '120755',
+    type: 'SymbolicLink',
+    depth: 1,
+    size: 200,
+    linkpath: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    nlink: 1 },
   { path: '/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
     mode: '100644',
     type: 'Link',
@@ -121,13 +128,6 @@ var tap = require("tap")
     size: 200,
     linkpath: path.join(target, '200-hard'),
     nlink: 2 },
-  { path: '/200LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL',
-    mode: '120777',
-    type: 'SymbolicLink',
-    depth: 1,
-    size: 200,
-    linkpath: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    nlink: 1 },
   { path: '/c.txt',
     mode: '100644',
     type: 'File',
@@ -279,6 +279,12 @@ var tap = require("tap")
 
 // So, this is as much a test of fstream.Reader and fstream.Writer
 // as it is of tar.Extract, but it sort of makes sense.
+
+tap.test("preclean", function (t) {
+  require("rimraf").sync(__dirname + "/tmp/extract-test")
+  t.pass("cleaned!")
+  t.end()
+})
 
 tap.test("extract test", function (t) {
   var extract = tar.Extract(target)
