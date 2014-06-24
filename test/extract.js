@@ -1,3 +1,6 @@
+// Set the umask, so that it works the same everywhere.
+process.umask(parseInt('22', 8))
+
 var tap = require("tap")
   , tar = require("../tar.js")
   , fs = require("fs")
