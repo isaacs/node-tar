@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "block-stream": "*",
-    "fstream": "~0.1.28",
+    "fstream": "^1.0.0",
     "inherits": "2"
   },
   "devDependencies": {
