@@ -13,12 +13,13 @@
   },
   "dependencies": {
     "block-stream": "*",
-    "fstream": "^1.0.0",
+    "fstream": "^1.0.2",
     "inherits": "2"
   },
   "devDependencies": {
-    "tap": "0.x",
-    "rimraf": "1.x"
+    "graceful-fs": "^3.0.2",
+    "rimraf": "1.x",
+    "tap": "0.x"
   },
   "license": "BSD"
 }
