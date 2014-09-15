@@ -7,5 +7,5 @@ fs.createReadStream(__dirname + "/../test/fixtures/c.tar")
     console.error("error here")
   })
   .on("end", function () {
-    console.error("done")
+    console.log("done")
   })
