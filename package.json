@@ -19,7 +19,8 @@
   "devDependencies": {
     "graceful-fs": "^3.0.2",
     "rimraf": "1.x",
-    "tap": "0.x"
+    "tap": "0.x",
+    "mkdirp": "^0.5.0"
   },
   "license": "BSD"
 }
