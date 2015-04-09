@@ -127,9 +127,10 @@ test('extract test', function (t) {
   })
 
   extract.on('entry', function (entry) {
+    var mode = entry.props.mode & (~parseInt('22', 8))
     var found = {
       path: entry.path,
-      mode: entry.props.mode.toString(8),
+      mode: mode.toString(8),
       type: entry.props.type,
       linkpath: entry.props.linkpath,
     }
@@ -153,9 +154,10 @@ test('extract test', function (t) {
 
     function foundEntry (entry) {
       var p = entry.path.substr(target.length)
+      var mode = entry.props.mode & (~parseInt('22', 8))
       var found = {
         path: p,
-        mode: entry.props.mode.toString(8),
+        mode: mode.toString(8),
         type: entry.props.type,
         depth: entry.props.depth,
         linkpath: entry.props.linkpath
