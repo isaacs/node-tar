@@ -6,8 +6,8 @@ var tap = require("tap")
 
 tap.test("parser test", function (t) {
   var parser = tar.Parse()
-  var total = 0;
-  var dataTotal = 0;
+  var total = 0
+  var dataTotal = 0
 
   parser.on("end", function () {
 
