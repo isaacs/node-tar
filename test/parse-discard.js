@@ -19,7 +19,7 @@ tap.test("parser test", function (t) {
   fs.createReadStream(file)
     .pipe(parser)
     .on('entry',function(entry){
-      if(entry.path === 'c.txt') entry.discard()
+      if(entry.path === 'c.txt') entry.abort()
       
       total += entry.size;
       entry.on('data',function(data){
