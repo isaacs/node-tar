@@ -17,7 +17,7 @@
     "inherits": "2"
   },
   "devDependencies": {
-    "graceful-fs": "^3.0.2",
+    "graceful-fs": "^4.1.2",
     "rimraf": "1.x",
     "tap": "0.x",
     "mkdirp": "^0.5.0"
