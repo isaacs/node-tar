@@ -18,8 +18,14 @@ tap.test('preclean', function (t) {
 tap.test('extract test', function (t) {
   var extract = tar.Extract(target)
   var inp = fs.createReadStream(file)
+  var gunzip = inp.pipe(zlib.createGunzip())
 
-  inp.pipe(zlib.createGunzip()).pipe(extract)
+  gunzip.pipe(extract)
+
+  gunzip.on('error', function (er) {
+    t.equal(er.message, 'unexpected end of file')
+    t.end()
+  })
 
   extract.on('error', function (er) {
     t.equal(er.message, 'unexpected eof', 'error noticed')
