@@ -834,6 +834,20 @@ tap.test("with from base", { timeout: 10000 }, function (t) {
   runTest(t, true, true)
 })
 
+tap.test("with pathTransform", { timeout: 10000 }, function (t) {
+  var _origin = 'fixtures'
+  var _new = 'newdir/subdir/' + _origin
+
+  var _transform = function (p) {
+    return p.replace(new RegExp(_origin, 'g'), _new)
+  }
+  runTest(t, true, false, {
+    pathTransform : _transform,
+    origin : _origin,
+    transform : _new
+  })
+})
+
 function alphasort (a, b) {
   return a === b ? 0
        : a.toLowerCase() > b.toLowerCase() ? 1
@@ -842,8 +856,8 @@ function alphasort (a, b) {
        : -1
 }
 
-
-function runTest (t, doGH, doFromBase) {
+function runTest (t, doGH, doFromBase, doPathTransform) {
+  var tEntries = JSON.parse( JSON.stringify(entries) )
   var reader = Reader({ path: input
                       , filter: function () {
                           return !this.path.match(/\.(tar|hex)$/)
@@ -851,8 +865,14 @@ function runTest (t, doGH, doFromBase) {
                       , sort: alphasort
                       })
 
-  var props = doGH ? pkg : {}
-  if(doFromBase) props.fromBase = true;
+  var props = doGH ? pkg : null
+  if (props) {
+      if (doFromBase) props.fromBase = true;
+      else props.fromBase = false;
+
+      if (doPathTransform && doPathTransform.pathTransform) props.pathTransform = doPathTransform.pathTransform;
+      else props.pathTransform = null;
+  }
 
   var pack = Pack(props)
   var writer = Writer(target)
@@ -901,7 +921,7 @@ function runTest (t, doGH, doFromBase) {
   })
 
   parse.on("*", function (ev, e) {
-    var wanted = entries[entry++]
+    var wanted = tEntries[entry++]
     if (!wanted) {
       t.fail("unexpected event: "+ev)
       return
@@ -919,6 +939,22 @@ function runTest (t, doGH, doFromBase) {
       wanted[1].linkpath = wanted[1].linkpath.replace('fixtures/', '')
     }
 
+    if (doPathTransform && doPathTransform.origin && doPathTransform.transform) {
+        if(wanted[1]) {
+            if( (wanted[1].path.indexOf(doPathTransform.origin) != -1) && wanted[1].path.length == 100) {
+                var diff = doPathTransform.transform.length - doPathTransform.origin.length;
+                if (diff > 0) {
+                    wanted[1].path = wanted[1].path.replace(doPathTransform.origin, doPathTransform.transform).slice(0, 100);
+                } else {
+                    wanted[1].path = wanted[1].path.replace(doPathTransform.origin, doPathTransform.transform) + Array(diff).join('c')
+                }
+            } else
+                wanted[1].path = wanted[1].path.replace(doPathTransform.origin, doPathTransform.transform)
+            wanted[1].linkpath = wanted[1].linkpath.replace(doPathTransform.origin, doPathTransform.transform)
+        }
+        if(wanted[2] && wanted[2].path) wanted[2].path = wanted[2].path.replace(doPathTransform.origin, doPathTransform.transform)
+    }
+
     if (ev !== wanted[0] || e.path !== wanted[1].path) {
       console.error("wanted", wanted)
       console.error([ev, e.props])
@@ -927,7 +963,6 @@ function runTest (t, doGH, doFromBase) {
         throw "break"
       })
     }
-
 
     t.has(e.props, wanted[1], "properties "+wanted[1].path)
     if (wanted[2]) {
