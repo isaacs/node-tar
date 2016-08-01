@@ -24,7 +24,7 @@ This only works with directories, it does not work with individual files.
 The optional `properties` object are used to set properties in the tar
 'Global Extended Header'. If the `fromBase` property is set to true,
 the tar will contain files relative to the path passed, and not with
-the path included.
+the path included. And `pathTransform` property is set with the callback function, the path of each file will be transformed.
 
 ### tar.Extract([options])
 
