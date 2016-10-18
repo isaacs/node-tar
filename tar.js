@@ -105,19 +105,19 @@ Object.keys(types).forEach(function (t) {
 
 // values for the mode field
 var modes =
-  { suid: 04000 // set uid on extraction
-  , sgid: 02000 // set gid on extraction
-  , svtx: 01000 // set restricted deletion flag on dirs on extraction
-  , uread:  0400
-  , uwrite: 0200
-  , uexec:  0100
-  , gread:  040
-  , gwrite: 020
-  , gexec:  010
-  , oread:  4
-  , owrite: 2
-  , oexec:  1
-  , all: 07777
+  { suid: parseInt('04000', 8) // set uid on extraction
+  , sgid: parseInt('02000', 8) // set gid on extraction
+  , svtx: parseInt('01000', 8) // set restricted deletion flag on dirs on extraction
+  , uread:  parseInt('0400', 8)
+  , uwrite: parseInt('0200', 8)
+  , uexec:  parseInt('0100', 8)
+  , gread:  parseInt('040', 8)
+  , gwrite: parseInt('020', 8)
+  , gexec:  parseInt('010', 8)
+  , oread:  parseInt('4', 8)
+  , owrite: parseInt('2', 8)
+  , oexec:  parseInt('1', 8)
+  , all: parseInt('07777', 8)
   }
 
 var numeric =
