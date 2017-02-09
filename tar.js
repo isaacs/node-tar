@@ -1,3 +1,5 @@
+"use strict"
+
 // field paths that every tar file must have.
 // header is padded to 512 bytes.
 var f = 0
