@@ -1,3 +1,5 @@
+"use strict"
+
 // field paths that every tar file must have.
 // header is padded to 512 bytes.
 var f = 0
@@ -105,19 +107,19 @@ Object.keys(types).forEach(function (t) {
 
 // values for the mode field
 var modes =
-  { suid: 04000 // set uid on extraction
-  , sgid: 02000 // set gid on extraction
-  , svtx: 01000 // set restricted deletion flag on dirs on extraction
-  , uread:  0400
-  , uwrite: 0200
-  , uexec:  0100
-  , gread:  040
-  , gwrite: 020
-  , gexec:  010
+  { suid: 2048 // 04000 set uid on extraction
+  , sgid: 1024 // 02000 set gid on extraction
+  , svtx: 512 // 01000 set restricted deletion flag on dirs on extraction
+  , uread: 256 // 0400
+  , uwrite: 128 // 0200
+  , uexec: 64 // 0100
+  , gread: 32 // 040
+  , gwrite: 16 // 020
+  , gexec: 8 // 010
   , oread:  4
   , owrite: 2
   , oexec:  1
-  , all: 07777
+  , all: 4095 // 07777
   }
 
 var numeric =
