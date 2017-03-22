@@ -15,15 +15,15 @@ var f = 0
   , blockSize = 512
   , fieldSize = []
 
-fieldSize[path] = 100
-fieldSize[mode] = 8
-fieldSize[uid] = 8
-fieldSize[gid] = 8
-fieldSize[size] = 12
-fieldSize[mtime] = 12
-fieldSize[cksum] = 8
-fieldSize[type] = 1
-fieldSize[linkpath] = 100
+fieldSize[path] = 100 // 0-100
+fieldSize[mode] = 8 // 100-108
+fieldSize[uid] = 8 // 108-116
+fieldSize[gid] = 8 // 116-124
+fieldSize[size] = 12 // 124-136
+fieldSize[mtime] = 12 // 136-148
+fieldSize[cksum] = 8 // 148-156
+fieldSize[type] = 1 // 156-157
+fieldSize[linkpath] = 100 // 157-257
 
 // "ustar\0" may introduce another bunch of headers.
 // these are optional, and will be nulled out if not present.
@@ -40,14 +40,14 @@ var ustar = fields.ustar = f++
 // terminate fields.
 fields[f] = null
 
-fieldSize[ustar] = 6
-fieldSize[ustarver] = 2
-fieldSize[uname] = 32
-fieldSize[gname] = 32
-fieldSize[devmaj] = 8
-fieldSize[devmin] = 8
-fieldSize[prefix] = 155
-fieldSize[fill] = 12
+fieldSize[ustar] = 6 // 257-263
+fieldSize[ustarver] = 2 // 263-265
+fieldSize[uname] = 32 // 265-297
+fieldSize[gname] = 32 // 297-329
+fieldSize[devmaj] = 8 // 329-337
+fieldSize[devmin] = 8 // 337-345
+fieldSize[prefix] = 155 // 345-500
+fieldSize[fill] = 12 // 500-512
 
 // nb: prefix field may in fact be 130 bytes of prefix,
 // a null char, 12 bytes for atime, 12 bytes for ctime.
