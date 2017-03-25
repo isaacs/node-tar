@@ -170,4 +170,4 @@ exports.knownExtended = knownExtended
 
 exports.Pack = require("./lib/pack.js")
 exports.Parse = require("./lib/parse.js")
-exports.Extract = require("./lib/extract.js")
+exports.extract = require("./lib/extract.js")
