@@ -15,7 +15,8 @@
     "block-stream": "*",
     "fstream": "^1.0.2",
     "inherits": "2",
-    "minipass": "^1.0.2"
+    "minipass": "^1.1.6",
+    "minizlib": "^1.0.2"
   },
   "devDependencies": {
     "graceful-fs": "^4.1.2",
