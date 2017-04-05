@@ -9,7 +9,7 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "tap test/*.js"
+    "test": "tap test/*.js --cov"
   },
   "dependencies": {
     "block-stream": "*",
@@ -20,9 +20,9 @@
   },
   "devDependencies": {
     "graceful-fs": "^4.1.2",
+    "mkdirp": "^0.5.0",
     "rimraf": "1.x",
-    "tap": "0.x",
-    "mkdirp": "^0.5.0"
+    "tap": "^10.3.1"
   },
   "license": "ISC"
 }
