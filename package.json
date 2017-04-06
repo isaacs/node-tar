@@ -9,7 +9,7 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "tap test/*.js --100"
+    "test": "tap test/*.js --100 -J"
   },
   "dependencies": {
     "block-stream": "*",
