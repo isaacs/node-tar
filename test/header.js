@@ -1,3 +1,4 @@
+'use strict'
 const t = require('tap')
 const Header = require('../lib/header.js')
 

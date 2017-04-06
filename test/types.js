@@ -1,3 +1,4 @@
+'use strict'
 // not much to test here, just 2 maps.
 const t = require('tap')
 const types = require('../lib/types.js')

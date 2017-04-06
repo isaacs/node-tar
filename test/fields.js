@@ -1,3 +1,4 @@
+'use strict'
 const Field = require('../lib/field.js')
 const t = require('tap')
 
