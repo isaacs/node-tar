@@ -482,6 +482,7 @@ t.test('prefix handling', t => {
       '0000000000000000000000000000000000000000000000000000000000000000' +
       '0000000000000000000000000000000000000000000000000000000000000000',
       'hex')
+
     const h = new Header({
       path: (new Array(30).join('long-dirname-')) + 'long-dirname/' +
         (new Array(20).join('long-file-')) + 'long-file.txt',
@@ -514,10 +515,45 @@ t.test('prefix handling', t => {
 
     t.end()
   })
-
 })
 
 t.test('throwers', t => {
+  t.throws(_ => new Header({ path: null }),
+           new Error('path is required'))
+
+  // create an otherwise-valid header that doesn't have a path
+  const h = new Header({
+    path: 'x',
+    mode: 0o755,
+    uid: 24561,
+    gid: 20,
+    size: 100,
+    mtime: new Date('2016-04-01T22:00Z'),
+    ctime: null,
+    atime: undefined,
+    type: '0',
+    uname: 'isaacs',
+    gname: 'staff'
+  })
+  h.block[0] = 0
+  Header.writeSum(h)
+  t.throws(_ => new Header(h.block),
+           new Error('path is required'))
+  t.throws(_ => new Header(h.block, { preservePaths: true }),
+           new Error('path is required'))
+
+  h.block.write(h.path = '../foo')
+  Header.writeSum(h)
+  t.throws(_ => new Header(h.block),
+           new Error('".." not allowed in paths: ../foo'))
+  new Header(h.block, { preservePaths: true })
+
+  h.block.write(h.path = '/foo')
+  Header.writeSum(h)
+  t.throws(_ => new Header(h.block),
+           new Error('absolute path not allowed: /foo'))
+  new Header(h.block, { preservePaths: true })
+
   t.throws(_ => new Header({ fieldset: 'nope' }),
            new Error('unknown fieldset: nope'))
 
@@ -536,5 +572,21 @@ t.test('throwers', t => {
   t.throws(_ => new Header({ type: 'Link' }),
            new Error('linkpath required for type Link'))
 
+  t.throws(_ => new Header({
+    path: 'x',
+    type: 'SymbolicLink',
+    linkpath: '../y'
+  }), new Error('".." not allowed in paths: ../y'))
+  t.throws(_ => new Header({
+    path: 'x',
+    type: 'Link',
+    linkpath: '/y'
+  }), new Error('absolute path not allowed: /y'))
+  new Header({
+    path: 'x',
+    type: 'SymbolicLink',
+    linkpath: '../y',
+    preservePaths: true
+  })
   t.end()
 })
