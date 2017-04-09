@@ -17,8 +17,11 @@ t.test('create read entry', t => {
     uname: 'isaacs',
     gname: 'staff'
   })
+  h.encode()
 
   const entry = new ReadEntry(h, { x: 'y' }, { z: 0, a: null, b: undefined })
+
+  t.ok(entry.header.cksumValid, 'header checksum should be valid')
 
   t.match(entry, {
     extended: { x: 'y' },
@@ -132,10 +135,8 @@ t.test('unknown entry type', t => {
     uname: 'isaacs',
     gname: 'staff'
   })
-  h.fieldset.typeKey.write('9', h.block)
-  h.typeKey = '9'
   h.encode()
-  h.type = 'something weird'
+  h.fieldset.type.write('9', h.block)
 
   const body = Buffer.alloc(512)
   body.write('not that long, actually')
@@ -143,7 +144,7 @@ t.test('unknown entry type', t => {
   const expect = ''
   let actual = ''
 
-  const entry = new ReadEntry(h)
+  const entry = new ReadEntry(new Header(h.block))
 
   entry.on('data', c => actual += c)
 

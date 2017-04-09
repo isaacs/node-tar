@@ -37,7 +37,7 @@ t.test('basic fieldset', t => {
     uname: 'isaacs',
     gname: 'staff'
   })
-
+  h.encode()
   t.equal(h.block.toString('hex'), buf.toString('hex'))
 
   const h2 = new Header(buf)
@@ -87,7 +87,7 @@ t.test('ustar format', t => {
     fieldset: 'ustar'
   })
   const slab = Buffer.alloc(1024)
-  h.encode({
+  h.set({
     mode: 0o755,
     uid: 24561,
     gid: 20,
@@ -98,7 +98,8 @@ t.test('ustar format', t => {
     type: 'File',
     uname: 'isaacs',
     gname: 'staff'
-  }, slab)
+  })
+  h.encode(slab)
 
   t.equal(h.block.length, 512)
   t.equal(h.block.toString('hex'), buf.toString('hex'))
@@ -156,7 +157,7 @@ t.test('xstar format', t => {
   })
 
   const slab = Buffer.alloc(512)
-  h.encode({
+  h.set({
     mode: 0o755,
     uid: 24561,
     gid: 20,
@@ -167,7 +168,8 @@ t.test('xstar format', t => {
     type: 'File',
     uname: 'isaacs',
     gname: 'staff'
-  }, slab)
+  })
+  h.encode(slab)
 
   t.equal(h.block, slab)
   t.equal(h.block.toString('hex'), buf.slice(0, 512).toString('hex'))
@@ -233,6 +235,7 @@ t.test('prefix handling', t => {
       uname: 'isaacs',
       gname: 'staff'
     })
+    h.encode()
 
     t.equal(h.block.toString('hex'), buf.toString('hex'))
 
@@ -299,7 +302,7 @@ t.test('prefix handling', t => {
     h.mtime = new Date('2016-04-01T22:00Z')
     h.ctime = new Date('2016-04-01T22:00Z')
     h.atime = new Date('2016-04-01T22:00Z')
-    h.type = '0'
+    h.type = 'File'
     h.uname = 'isaacs'
     h.gname = 'staff'
     h.encode()
@@ -373,7 +376,8 @@ t.test('prefix handling', t => {
     h.type = '0'
     h.uname = 'isaacs'
     h.gname = 'staff'
-    h.encode({ fieldset: 'basic' })
+    h.set({ fieldset: 'basic' })
+    h.encode()
 
     t.ok(h.needPax, 'need pax, because no prefix on basic')
 
@@ -442,6 +446,7 @@ t.test('prefix handling', t => {
       uname: 'isaacs',
       gname: 'staff'
     })
+    h.encode()
 
     t.equal(h.block.toString('hex'), buf.toString('hex'))
     t.ok(h.needPax, 'need pax because long filename')
@@ -497,6 +502,7 @@ t.test('prefix handling', t => {
       uname: 'isaacs',
       gname: 'staff'
     })
+    h.encode()
 
     t.equal(h.block.toString('hex'), buf.toString('hex'))
     t.equal(h.cksum, 14469)
@@ -518,75 +524,16 @@ t.test('prefix handling', t => {
 })
 
 t.test('throwers', t => {
-  t.throws(_ => new Header({ path: null }),
-           new Error('path is required'))
-
-  // create an otherwise-valid header that doesn't have a path
-  const h = new Header({
-    path: 'x',
-    mode: 0o755,
-    uid: 24561,
-    gid: 20,
-    size: 100,
-    mtime: new Date('2016-04-01T22:00Z'),
-    ctime: null,
-    atime: undefined,
-    type: '0',
-    uname: 'isaacs',
-    gname: 'staff'
-  })
-  h.block[0] = 0
-  Header.writeSum(h)
-  t.throws(_ => new Header(h.block),
-           new Error('path is required'))
-  t.throws(_ => new Header(h.block, { preservePaths: true }),
-           new Error('path is required'))
-
-  h.block.write(h.path = '../foo')
-  Header.writeSum(h)
-  t.throws(_ => new Header(h.block),
-           new Error('".." not allowed in paths: ../foo'))
-  new Header(h.block, { preservePaths: true })
-
-  h.block.write(h.path = '/foo')
-  Header.writeSum(h)
-  t.throws(_ => new Header(h.block),
-           new Error('absolute path not allowed: /foo'))
-  new Header(h.block, { preservePaths: true })
-
   t.throws(_ => new Header({ fieldset: 'nope' }),
            new Error('unknown fieldset: nope'))
 
   t.throws(_ => new Header(Buffer.alloc(100)),
            new Error('need 512 bytes for header, got 100'))
 
-  t.throws(_ => new Header().encode({}, Buffer.alloc(100)),
+  t.throws(_ => new Header({}).encode(Buffer.alloc(100)),
            new Error('need 512 bytes for header, got 100'))
 
   t.throws(_ => new Header({ type: 'XYZ' }),
            new Error('unknown type: XYZ'))
-
-  t.throws(_ => new Header({ type: 'File', linkpath: 'xyz' }),
-           new Error('linkpath not allowed for type File'))
-
-  t.throws(_ => new Header({ type: 'Link' }),
-           new Error('linkpath required for type Link'))
-
-  t.throws(_ => new Header({
-    path: 'x',
-    type: 'SymbolicLink',
-    linkpath: '../y'
-  }), new Error('".." not allowed in paths: ../y'))
-  t.throws(_ => new Header({
-    path: 'x',
-    type: 'Link',
-    linkpath: '/y'
-  }), new Error('absolute path not allowed: /y'))
-  new Header({
-    path: 'x',
-    type: 'SymbolicLink',
-    linkpath: '../y',
-    preservePaths: true
-  })
   t.end()
 })
