@@ -1,4 +1,5 @@
 // just load all the files so we can't cheat coverage by avoiding something
+require('../')
 const fs = require('fs')
 const path = require('path')
 const lib = path.resolve(__dirname, '../lib')
