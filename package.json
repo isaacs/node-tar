@@ -9,15 +9,16 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "tap test/*.js --100 -J"
+    "test": "tap test/*.js --100 -J",
+    "genparse": "node scripts/generate-parse-fixtures.js"
   },
   "dependencies": {
-    "minipass": "^1.1.6",
+    "minipass": "^1.1.8",
     "minizlib": "^1.0.2",
     "mkdirp": "^0.5.0"
   },
   "devDependencies": {
-    "events-to-array": "^1.0.2",
+    "events-to-array": "^1.1.2",
     "rimraf": "1.x",
     "tap": "^10.3.1"
   },
