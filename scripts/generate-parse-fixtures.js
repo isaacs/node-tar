@@ -6,13 +6,20 @@ const parsedir = path.resolve(__dirname, '../test/fixtures/parse')
 const etoa = require('events-to-array')
 const maxMetaOpt = [50, 1024, null]
 const filterOpt = [ true, false ]
+const strictOpt = [ true, false ]
 
-const makeTest = (tarfile, tardata, maxMeta, filter) => {
-  const eventsfile = parsedir + '/' + path.basename(tarfile, '.tar') + '-' +
-    '-meta-' + maxMeta + '-filter-' + filter + '.json'
+const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
+  const o =
+    (maxMeta ? '-meta-' + maxMeta : '') +
+    (filter ? '-filter' : '') +
+    (strict ? '-strict' : '')
+  const tail = (o ? '-' + o : '') + '.json'
+  const eventsfile = parsedir + '/' + path.basename(tarfile, '.tar') + tail
+
   const p = new Parse({
     maxMetaEntrySize: maxMeta,
-    filter: filter ? entry => entry.size % 2 === 0 : null
+    filter: filter ? entry => entry.size % 2 !== 0 : null,
+    strict: strict
   })
   const events = []
 
@@ -20,8 +27,6 @@ const makeTest = (tarfile, tardata, maxMeta, filter) => {
     events.push([type, {
       extended: entry.extended,
       globalExtended: entry.globalExtended,
-      blockRemain: entry.blockRemain,
-      remain: entry.remain,
       type: entry.type,
       meta: entry.meta,
       ignore: entry.ignore,
@@ -66,8 +71,9 @@ const makeTest = (tarfile, tardata, maxMeta, filter) => {
   p.on('entry', pushEntry('entry'))
   p.on('ignoredEntry', pushEntry('ignoredEntry'))
   p.on('warn', (message, data) => events.push(['warn', message]))
+  p.on('error', er => events.push(['error', { message: er.message }]))
   p.on('end', _ => events.push(['end']))
-  p.on('nullblock', _ => events.push(['nullblock']))
+  p.on('nullBlock', _ => events.push(['nullBlock']))
   p.on('meta', meta => events.push(['meta', meta]))
 
   p.end(tardata)
@@ -80,9 +86,8 @@ fs.readdirSync(tardir)
 .forEach(tar => {
   const tarfile = tardir + '/' + tar
   const tardata = fs.readFileSync(tarfile)
-  maxMetaOpt.forEach(maxMeta => {
-    filterOpt.forEach(filter => {
-      makeTest(tarfile, tardata, maxMeta, filter)
-    })
-  })
+  maxMetaOpt.forEach(maxMeta =>
+    filterOpt.forEach(filter =>
+      strictOpt.forEach(strict =>
+        makeTest(tarfile, tardata, maxMeta, filter, strict))))
 })
