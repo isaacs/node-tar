@@ -21,44 +21,30 @@ t.test('fixture tests', t => {
   const trackEvents = (t, expect, p, slow) => {
     let ok = true
     let cursor = 0
-    const skipNull = slow ? _ => {
-      while (expect[cursor] && expect[cursor][0] === 'nullBlock') {
-        cursor++
-      }
-    } : _ => _
-
     p.on('entry', entry => {
-      skipNull()
       ok = ok && t.match(['entry', entry], expect[cursor++], entry.path)
       if (slow)
-        setTimeout(_ => entry.resume(), 100)
+        setTimeout(_ => entry.resume())
       else
         entry.resume()
     })
     p.on('ignoredEntry', entry => {
-      skipNull()
       ok = ok && t.match(['ignoredEntry', entry], expect[cursor++],
                          'ignored: ' + entry.path)
     })
     p.on('warn', (message, data) => {
-      skipNull()
       ok = ok && t.match(['warn', message], expect[cursor++], 'warn')
     })
     p.on('nullBlock', _ => {
-      if (slow)
-        return
       ok = ok && t.match(['nullBlock'], expect[cursor++], 'null')
     })
     p.on('error', er => {
-      skipNull()
       ok = ok && t.match(['error', er], expect[cursor++], 'error')
     })
     p.on('meta', meta => {
-      skipNull()
       ok = ok && t.match(['meta', meta], expect[cursor++], 'meta')
     })
     p.on('end', _ => {
-      skipNull()
       ok = ok && t.match(['end'], expect[cursor++], 'end')
       t.end()
     })
@@ -68,7 +54,7 @@ t.test('fixture tests', t => {
   const tardir = path.resolve(__dirname, 'fixtures/tars')
   const parsedir = path.resolve(__dirname, 'fixtures/parse')
   const files = fs.readdirSync(tardir)
-  const maxMetaOpt = [50, 1024, null]
+  const maxMetaOpt = [50, null]
   const filterOpt = [ true, false ]
   const strictOpt = [ true, false ]
   const runTest = (file, maxMeta, filter, strict) => {
@@ -131,6 +117,17 @@ t.test('fixture tests', t => {
         trackEvents(t, expect, bp)
         bs.pipe(bp)
         bs.end(zlib.gzipSync(tardata))
+      })
+
+      t.test('async chunks', t => {
+        const p = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? entry => entry.size % 2 !== 0 : null,
+          strict: strict
+        })
+        trackEvents(t, expect, p, true)
+        p.write(tardata.slice(0, Math.floor(tardata.length/2)))
+        process.nextTick(_ => p.end(tardata.slice(Math.floor(tardata.length/2))))
       })
 
       t.end()
