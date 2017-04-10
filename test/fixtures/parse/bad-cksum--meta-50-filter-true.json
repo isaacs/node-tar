@@ -1,0 +1,59 @@
+[
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "blockRemain": 512,
+      "remain": 1,
+      "type": "File",
+      "meta": false,
+      "ignore": true,
+      "path": "one-byte.txt",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": "isaacs",
+      "gname": "staff",
+      "size": 1,
+      "mtime": "2017-04-10T16:58:20.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "one-byte.txt",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 1,
+        "mtime": "2017-04-10T16:58:20.000Z",
+        "cksum": 6121,
+        "linkpath": "",
+        "ustar": "ustar",
+        "ustarver": "00",
+        "uname": "isaacs",
+        "gname": "staff",
+        "devmaj": 0,
+        "devmin": 0,
+        "ustarPrefix": "",
+        "xstarPrefix": null,
+        "prefixTerminator": null,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "warn",
+    "invalid entry"
+  ],
+  [
+    "warn",
+    "invalid entry"
+  ],
+  [
+    "end"
+  ]
+]
