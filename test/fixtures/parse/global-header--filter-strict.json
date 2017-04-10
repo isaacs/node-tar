@@ -1,0 +1,76 @@
+[
+  [
+    "meta",
+    "11 path=ab\n"
+  ],
+  [
+    "entry",
+    {
+      "extended": null,
+      "globalExtended": {
+        "atime": null,
+        "charset": null,
+        "comment": null,
+        "ctime": null,
+        "gid": null,
+        "gname": null,
+        "linkpath": null,
+        "mtime": null,
+        "path": "ab",
+        "size": null,
+        "uid": null,
+        "uname": null,
+        "dev": null,
+        "ino": null,
+        "nlink": null,
+        "global": true
+      },
+      "type": "File",
+      "meta": false,
+      "ignore": false,
+      "path": "ab",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": "isaacs",
+      "gname": "staff",
+      "size": 1,
+      "mtime": "2017-04-10T16:58:20.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "one-byte.txt",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 1,
+        "mtime": "2017-04-10T16:58:20.000Z",
+        "cksum": 6121,
+        "linkpath": "",
+        "ustar": "ustar",
+        "ustarver": "00",
+        "uname": "isaacs",
+        "gname": "staff",
+        "devmaj": 0,
+        "devmin": 0,
+        "ustarPrefix": "",
+        "xstarPrefix": null,
+        "prefixTerminator": null,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]
