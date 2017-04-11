@@ -391,30 +391,58 @@ t.test('absolute path', t => {
     })
   })
 
+  t.test('preservePaths=true', t => {
+    t.plan(2)
+    // with preservePaths, strictness doens't matter
+    ;[true, false].forEach(strict => {
+
+      t.test('strict=' + strict, t => {
+        const warnings = []
+        const ws = new WriteEntry(f, {
+          cwd: files,
+          strict: strict,
+          preservePaths: true,
+          onwarn: (m, p) => warnings.push([m, p])
+        })
+        let out = []
+        ws.on('data', c => out.push(c))
+        ws.on('end', _ => {
+          out = Buffer.concat(out)
+          t.equal(warnings.length, 0)
+
+          t.match(ws.header, {
+            cksumValid: true,
+            needPax: false,
+            path: f,
+            mode: 33188,
+            size: 512,
+            linkpath: null,
+            ustar: null,
+            ustarver: null,
+            gname: null,
+            devmaj: null,
+            devmin: null,
+            ustarPrefix: null,
+            xstarPrefix: null,
+            prefixTerminator: null
+          })
+          t.end()
+        })
+      })
+    })
+  })
+
   t.test('preservePaths=false strict=true', t => {
     t.throws(_ => {
       new WriteEntry(f, {
         strict: true,
-        cwd: files,
-        onwarn: (m, p) => warnings.push([m, p])
+        cwd: files
       })
     }, { message: /stripping .* from absolute path/, data: f })
     t.end()
   })
 
-  return t.end()
-
-
-  const preservePathOpt = [true, false]
-  const strictOpt = [true, false]
-
-  const runTest = (preservePaths, strict, t) => {
-    
-  }
-
-  preservePathOpt.forEach(preservePaths =>
-    strictOpt.forEach(strict =>
-      t.test('preservePath=' + preservePaths + ' strict=' + strict, t =>
-        runTest(preservePaths, strict, t))))
   t.end()
 })
+
+t.throws(_ => new WriteEntry(null), new TypeError('path is required'))
