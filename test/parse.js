@@ -1,4 +1,6 @@
+'use strict'
 const t = require('tap')
+t.jobs = 4
 const Parse = require('../lib/parse.js')
 
 const fs = require('fs')

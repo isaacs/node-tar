@@ -1,3 +1,4 @@
+'use strict'
 const t = require('tap')
 const WriteEntry = require('../lib/write-entry.js')
 const fs = require('fs')
