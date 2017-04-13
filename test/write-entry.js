@@ -5,6 +5,8 @@ const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
 const Header = require('../lib/header.js')
+const mutateFS = require('./lib/fs.js')
+process.env.USER = 'isaacs'
 
 t.test('100 byte filename', t => {
   // do this one twice, so we have it with and without cache
@@ -32,6 +34,7 @@ t.test('100 byte filename', t => {
           mode: 0o100644,
           size: 100,
           linkpath: null,
+          uname: 'isaacs',
           ustar: null,
           ustarver: null,
           gname: null,
@@ -64,6 +67,7 @@ t.test('100 byte filename', t => {
         mode: 0o100644,
         size: 100,
         linkpath: '',
+        uname: 'isaacs',
         ustar: 'ustar',
         ustarver: '00',
         gname: '',
@@ -116,6 +120,7 @@ t.test('directory', t => {
       mode: 0o40755,
       size: 0,
       linkpath: null,
+      uname: 'isaacs',
       ustar: null,
       ustarver: null,
       gname: null,
@@ -137,6 +142,7 @@ t.test('directory', t => {
       size: 0,
       linkpath: null,
       ustar: null,
+      uname: 'isaacs',
       ustarver: null,
       gname: null,
       devmaj: null,
@@ -165,6 +171,7 @@ t.test('empty path for cwd', t => {
       size: 0,
       linkpath: null,
       ustar: null,
+      uname: 'isaacs',
       ustarver: null,
       gname: null,
       devmaj: null,
@@ -189,6 +196,7 @@ t.test('symlink', t => {
     size: 0,
     linkpath: 'hardlink-2',
     ustar: null,
+    uname: 'isaacs',
     ustarver: null,
     gname: null,
     devmaj: null,
@@ -225,6 +233,7 @@ t.test('zero-byte file', t => {
       size: 0,
       linkpath: null,
       ustar: null,
+      uname: 'isaacs',
       ustarver: null,
       gname: null,
       devmaj: null,
@@ -265,6 +274,7 @@ t.test('hardlinks', t => {
       size: 0,
       linkpath: 'files/hardlink-1',
       ustar: null,
+      uname: 'isaacs',
       ustarver: null,
       gname: null,
       devmaj: null,
@@ -301,6 +311,7 @@ t.test('hardlinks far away', t => {
       size: 26,
       linkpath: null,
       ustar: null,
+      uname: 'isaacs',
       ustarver: null,
       gname: null,
       devmaj: null,
@@ -329,6 +340,7 @@ t.test('really deep path', t => {
       size: 100,
       linkpath: null,
       ustar: null,
+      uname: 'isaacs',
       ustarver: null,
       gname: null,
       devmaj: null,
@@ -367,6 +379,7 @@ t.test('absolute path', t => {
     ws.on('data', c => out.push(c))
     ws.on('end', _ => {
       out = Buffer.concat(out)
+      t.equal(out.length, 1024)
       t.match(warnings, [[
         /stripping .* from absolute path/, f
       ]])
@@ -379,6 +392,7 @@ t.test('absolute path', t => {
         size: 512,
         linkpath: null,
         ustar: null,
+        uname: 'isaacs',
         ustarver: null,
         gname: null,
         devmaj: null,
@@ -418,6 +432,7 @@ t.test('absolute path', t => {
             size: 512,
             linkpath: null,
             ustar: null,
+            uname: 'isaacs',
             ustarver: null,
             gname: null,
             devmaj: null,
@@ -446,3 +461,157 @@ t.test('absolute path', t => {
 })
 
 t.throws(_ => new WriteEntry(null), new TypeError('path is required'))
+
+t.test('no user environ, sets uname to empty string', t => {
+  delete process.env.USER
+  const ws = new WriteEntry('512-bytes.txt', { cwd: files })
+  let out = []
+  ws.on('data', c => out.push(c))
+  ws.on('end', _ => {
+    out = Buffer.concat(out)
+    t.equal(out.length, 1024)
+    t.match(ws.header, {
+      cksumValid: true,
+      needPax: false,
+      path: '512-bytes.txt',
+      mode: 33188,
+      size: 512,
+      uname: '',
+      linkpath: null,
+      ustar: null,
+      uname: '',
+      ustarver: null,
+      gname: null,
+      devmaj: null,
+      devmin: null,
+      ustarPrefix: null,
+      xstarPrefix: null,
+      prefixTerminator: null
+    })
+    t.end()
+  })
+})
+
+t.test('an unsuppored type', {
+  skip: process.platform === 'win32' && '/dev/random on windows'
+}, t => {
+  const ws = new WriteEntry('/dev/random', { preservePaths: true })
+  ws.on('data', c => { throw new Error('should not get data from random') })
+  ws.on('stat', stat => {
+    t.match(stat, {
+      dev: Number,
+      mode: 0o020666,
+      nlink: 1,
+      uid: 0,
+      gid: 0,
+      rdev: Number,
+      blksize: Number,
+      ino: Number,
+      size: 0,
+      blocks: 0
+    })
+    t.ok(stat.isCharacterDevice(), 'random is a character device')
+  })
+  ws.on('end', _ => {
+    t.match(ws, { type: 'Unsupported', path: '/dev/random' })
+    t.end()
+  })
+})
+
+t.test('readlink fail', t => {
+  const expect = {
+    message: 'EINVAL: invalid argument, readlink \'' + __filename + '\'',
+    code: 'EINVAL',
+    syscall: 'readlink',
+    path: __filename
+  }
+  // pretend everything is a symbolic link, then read something that isn't
+  t.tearDown(mutateFS.statType('SymbolicLink'))
+  t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
+           expect)
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
+    t.match(er, expect)
+    t.end()
+  })
+})
+
+t.test('open fail', t => {
+  t.tearDown(mutateFS.fail('open', new Error('pwn')))
+  t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
+           { message: 'pwn' })
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
+    t.match(er, { message: 'pwn' })
+    t.end()
+  })
+})
+
+t.test('read fail', t => {
+  const expect = {
+    message: 'EISDIR: illegal operation on a directory, read',
+    code: 'EISDIR',
+    syscall: 'read'
+  }
+  // pretend everything is a symbolic link, then read something that isn't
+  t.tearDown(mutateFS.statType('File'))
+  t.throws(_ => new WriteEntry.Sync('fixtures', { cwd: __dirname }),
+           expect)
+  new WriteEntry('fixtures', { cwd: __dirname }).on('error', er => {
+    t.match(er, expect)
+    t.end()
+  })
+})
+
+t.test('read invalid EOF', t => {
+  t.tearDown(mutateFS.mutate('read', (er, br) => [er, 0]))
+  const expect = {
+    message: 'unexpected EOF',
+    path: __filename,
+    syscall: 'read',
+    code: 'EOF'
+  }
+  t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
+           expect)
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
+    t.match(er, expect)
+    t.end()
+  })
+})
+
+t.test('short reads', t => {
+  t.tearDown(mutateFS.xenoRead())
+  const cases = {
+    '1024-bytes.txt': new Array(1024).join('x') + '\n',
+    '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': new Array(101).join('c')
+  }
+
+  const maxReadSize = [ null, 1024, 100, 111 ]
+
+
+  Object.keys(cases).forEach(filename => {
+    t.test(filename.split('byte').shift() + 'byte', t => {
+      const contents = cases[filename]
+      maxReadSize.forEach(mRS => {
+        t.test('maxReadSize=' + mRS, t => {
+          let out = []
+          const ws = new WriteEntry(filename, {
+            maxReadSize: mRS,
+            cwd: files
+          })
+          ws.on('data', c => out.push(c))
+          ws.on('end', _ => {
+            out = Buffer.concat(out)
+            t.equal(out.length, 512 * Math.ceil(1 + contents.length / 512))
+            t.equal(out.slice(512).toString().replace(/\0.*$/, ''), contents)
+            const wss = new WriteEntry.Sync(filename, { cwd: files })
+            const syncOut = wss.read()
+            t.equal(syncOut.length, out.length)
+            t.equal(syncOut.slice(512).toString(), out.slice(512).toString())
+            t.end()
+          })
+        })
+      })
+      t.end()
+    })
+  })
+  t.end()
+})
