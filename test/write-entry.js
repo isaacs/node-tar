@@ -1,4 +1,5 @@
 'use strict'
+process.umask(0o22)
 const t = require('tap')
 const WriteEntry = require('../lib/write-entry.js')
 const fs = require('fs')
