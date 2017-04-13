@@ -11,8 +11,10 @@ const mutateFS = require('./lib/fs.js')
 process.env.USER = 'isaacs'
 const chmodr = require('chmodr')
 
-t.test('chmod to set up', t => {
+t.test('set up', t => {
   chmodr.sync(files, 0o644)
+  fs.unlinkSync(files + '/hardlink-2')
+  fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   t.end()
 })
 
