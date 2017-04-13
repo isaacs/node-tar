@@ -15,7 +15,8 @@
   "dependencies": {
     "minipass": "^1.1.8",
     "minizlib": "^1.0.2",
-    "mkdirp": "^0.5.0"
+    "mkdirp": "^0.5.0",
+    "yallist": "^3.0.1"
   },
   "devDependencies": {
     "events-to-array": "^1.1.2",
