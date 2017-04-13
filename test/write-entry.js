@@ -200,7 +200,6 @@ t.test('symlink', t => {
     cksumValid: true,
     needPax: false,
     path: 'symlink',
-    mode: 0o120755,
     size: 0,
     linkpath: 'hardlink-2',
     ustar: null,
