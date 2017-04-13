@@ -7,7 +7,7 @@ const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
 const Header = require('../lib/header.js')
-const mutateFS = require('./lib/fs.js')
+const mutateFS = require('mutate-fs')
 process.env.USER = 'isaacs'
 const chmodr = require('chmodr')
 
