@@ -19,6 +19,7 @@
     "yallist": "^3.0.1"
   },
   "devDependencies": {
+    "chmodr": "^1.0.2",
     "events-to-array": "^1.1.2",
     "rimraf": "1.x",
     "tap": "^10.3.1"

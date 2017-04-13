@@ -9,6 +9,12 @@ const files = path.resolve(fixtures, 'files')
 const Header = require('../lib/header.js')
 const mutateFS = require('./lib/fs.js')
 process.env.USER = 'isaacs'
+const chmodr = require('chmodr')
+
+t.test('chmod to set up', t => {
+  chmodr.sync(files, 0o644)
+  t.end()
+})
 
 t.test('100 byte filename', t => {
   // do this one twice, so we have it with and without cache
@@ -504,8 +510,6 @@ t.test('an unsuppored type', {
       dev: Number,
       mode: 0o020666,
       nlink: 1,
-      uid: 0,
-      gid: 0,
       rdev: Number,
       blksize: Number,
       ino: Number,
