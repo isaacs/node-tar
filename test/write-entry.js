@@ -625,3 +625,12 @@ t.test('short reads', t => {
   })
   t.end()
 })
+
+t.test('win32 path conversion', { skip: process.platform === 'win32' }, t => {
+  const ws = new WriteEntry('long-path\\r', {
+    cwd: files,
+    win32: true
+  })
+  t.equal(ws.path, 'long-path/r')
+  t.end()
+})
