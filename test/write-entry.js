@@ -1,5 +1,4 @@
 'use strict'
-process.umask(0o22)
 const t = require('tap')
 const WriteEntry = require('../lib/write-entry.js')
 const fs = require('fs')
@@ -12,9 +11,13 @@ process.env.USER = 'isaacs'
 const chmodr = require('chmodr')
 
 t.test('set up', t => {
+  const one = fs.statSync(files + '/hardlink-1')
+  const two = fs.statSync(files + '/hardlink-2')
+  if (one.dev !== two.dev || one.ino !== two.ino) {
+    fs.unlinkSync(files + '/hardlink-2')
+    fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
+  }
   chmodr.sync(files, 0o644)
-  fs.unlinkSync(files + '/hardlink-2')
-  fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   t.end()
 })
 
@@ -585,7 +588,7 @@ t.test('read invalid EOF', t => {
 })
 
 t.test('short reads', t => {
-  t.tearDown(mutateFS.xenoRead())
+  t.tearDown(mutateFS.zenoRead())
   const cases = {
     '1024-bytes.txt': new Array(1024).join('x') + '\n',
     '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': new Array(101).join('c')
