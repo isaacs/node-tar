@@ -69,6 +69,49 @@ t.test('pack a file', t => {
     })
 })
 
+t.test('pack a file with a prefix', t => {
+  const out = []
+  new Pack({ cwd: files, prefix: 'package/' })
+    .end('one-byte.txt')
+    .on('data', c => out.push(c))
+    .on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(data.slice(512).toString(), /^a\0{511}\0{1024}$/)
+      const h = new Header(data)
+      const expect = {
+        cksumValid: true,
+        needPax: false,
+        path: 'package/one-byte.txt',
+        mode: 0o644,
+        size: 1,
+        mtime: Date,
+        cksum: Number,
+        linkpath: '',
+        ustar: 'ustar',
+        ustarver: '00',
+        uname: 'isaacs',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        ustarPrefix: null,
+        xstarPrefix: '',
+        prefixTerminator: '',
+        atime: Date,
+        ctime: Date,
+        nullBlock: false,
+        type: 'File'
+      }
+      t.match(h, expect)
+      const sync = new PackSync({ cwd: files, prefix: 'package' })
+        .add('one-byte.txt').end().read()
+      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      const hs = new Header(sync)
+      t.match(hs, expect)
+      t.end()
+    })
+})
+
 t.test('pack a dir', t => {
   const out = []
 
