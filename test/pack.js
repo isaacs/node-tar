@@ -1,3 +1,4 @@
+'use strict'
 const t = require('tap')
 const Pack = require('../lib/pack.js')
 const PackSync = Pack.Sync

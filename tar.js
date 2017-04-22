@@ -12,8 +12,8 @@ exports.Unpack = require('./lib/unpack.js')
 exports.WriteEntry = require('./lib/write-entry.js')
 
 // high-level commands
-exports.x = exports.extract = require('./lib/extract.js')
 exports.c = exports.create = require('./lib/create.js')
+exports.r = exports.replace = require('./lib/replace.js')
 exports.t = exports.list = require('./lib/list.js')
 exports.u = exports.update = require('./lib/update.js')
-exports.r = exports.replace = require('./lib/replace.js')
+exports.x = exports.extract = require('./lib/extract.js')

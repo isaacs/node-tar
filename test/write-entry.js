@@ -634,3 +634,15 @@ t.test('win32 path conversion', { skip: process.platform === 'win32' }, t => {
   t.equal(ws.path, 'long-path/r')
   t.end()
 })
+
+t.test('uid doesnt match, dont set uname', t => {
+  t.tearDown(mutateFS.statMutate((er, st) => {
+    if (st)
+      st.uid -= 1
+  }))
+  const ws = new WriteEntry('long-path/r', {
+    cwd: files
+  })
+  t.notOk(ws.uname)
+  t.end()
+})
