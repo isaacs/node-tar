@@ -646,3 +646,31 @@ t.test('uid doesnt match, dont set uname', t => {
   t.notOk(ws.uname)
   t.end()
 })
+
+t.test('override absolute to some other file', t => {
+  const ws = new WriteEntry('blerg', {
+    absolute: files + '/one-byte.txt'
+  })
+  const out = []
+  ws.on('data', c => out.push(c))
+  ws.on('end', _ => {
+    const data = Buffer.concat(out)
+    t.equal(data.length, 1024)
+    t.match(data.slice(512).toString(), /^a\0{511}$/)
+    t.match(ws, {
+      path: 'blerg',
+      header: { size: 1 }
+    })
+    const wss = new WriteEntry.Sync('blerg', {
+      absolute: files + '/one-byte.txt'
+    })
+    const sdata = wss.read()
+    t.equal(sdata.length, 1024)
+    t.match(sdata.slice(512).toString(), /^a\0{511}$/)
+    t.match(wss, {
+      path: 'blerg',
+      header: { size: 1 }
+    })
+    t.end()
+  })
+})
