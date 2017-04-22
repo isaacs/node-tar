@@ -5,9 +5,13 @@ const fs = require('fs')
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
+const parse = path.resolve(fixtures, 'parse')
 const chmodr = require('chmodr')
 const Header = require('../lib/header.js')
 const zlib = require('zlib')
+const miniz = require('minizlib')
+const mutateFS = require('mutate-fs')
+const MiniPass = require('minipass')
 process.env.USER = 'isaacs'
 
 t.test('set up', t => {
@@ -388,9 +392,9 @@ t.test('gzip, also a very deep path', t => {
         [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/' ],
         [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/' ],
         [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n' ],
-        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
+        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111' ],
         [ 'ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
-        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
+        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222' ],
         [ 'ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc' ],
         [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
         [ 'ExtendedHeader', 'PaxHeader/Ω.txt' ],
@@ -401,7 +405,10 @@ t.test('gzip, also a very deep path', t => {
 
       let ok = true
       entries.forEach((entry, i) => {
-        ok = ok && t.match(entry, expect[i])
+        ok = ok &&
+          t.equal(entry[0], expect[i][0]) &&
+          t.equal(entry[1], expect[i][1]) &&
+          (!entry[2] || t.equal(entry[2], expect[i][2]))
       })
 
       // t.match(entries, expect)
@@ -418,7 +425,13 @@ t.test('very deep gzip path, sync', t => {
   }).add('dir')
     .add('long-path')
     .end()
+
+  // these do nothing!
+  pack.pause()
+  pack.resume()
+
   const zipped = pack.read()
+  t.isa(zipped, Buffer)
   const data = zlib.unzipSync(zipped)
   const entries = []
   for (var i = 0; i < data.length; i += 512) {
@@ -460,9 +473,9 @@ t.test('very deep gzip path, sync', t => {
     [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/' ],
     [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/' ],
     [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n' ],
-    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
+    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111' ],
     [ 'ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
-    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
+    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222' ],
     [ 'ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc' ],
     [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
     [ 'ExtendedHeader', 'PaxHeader/Ω.txt' ],
@@ -473,7 +486,10 @@ t.test('very deep gzip path, sync', t => {
 
   let ok = true
   entries.forEach((entry, i) => {
-    ok = ok && t.match(entry, expect[i])
+    ok = ok &&
+      t.equal(entry[0], expect[i][0]) &&
+      t.equal(entry[1], expect[i][1]) &&
+      (!entry[2] || t.equal(entry[2], expect[i][2]))
   })
 
   // t.match(entries, expect)
@@ -484,5 +500,197 @@ t.test('write after end', t => {
   const p = new Pack()
   p.end()
   t.throws(_ => p.add('nope'), new Error('write after end'))
+  t.end()
+})
+
+t.test('emit error when stat fail', t => {
+  t.tearDown(mutateFS.statFail(new Error('xyz')))
+  t.throws(_ => new PackSync({ cwd: files }).add('one-byte.txt'),
+           new Error('xyz'))
+
+  const p = new Pack({ cwd: files }).add('one-byte.txt').on('error', e => {
+    t.match(e, { message: 'xyz' })
+    t.end()
+  })
+})
+
+t.test('readdir fail', t => {
+  t.tearDown(mutateFS.fail('readdir', new Error('xyz')))
+  t.throws(_ => new PackSync({ cwd: files }).add('dir'), new Error('xyz'))
+
+  const p = new Pack({ cwd: files }).add('dir').on('error', e => {
+    t.match(e, { message: 'xyz' })
+    t.end()
+  })
+})
+
+t.test('pipe into a slow reader', t => {
+  const out = []
+  const mp = new MiniPass()
+  const mp2 = new MiniPass()
+  const p = new Pack({ cwd: files }).add('long-path').end()
+  p.pipe(mp).pipe(mp2)
+  // p.pipe(mp2)
+  // p.on('data', c => out.push(c))
+  setTimeout(_ => mp2.on('data', c => out.push(c)), 100)
+  mp.on('end', _ => {
+    const data = Buffer.concat(out)
+    const h = new Header(data)
+    const expect = {
+      type: 'Directory',
+      cksumValid: true,
+      needPax: false,
+      path: 'long-path/',
+      mode: 0o040755,
+      size: 0,
+      mtime: Date,
+      cksum: Number,
+      linkpath: '',
+      ustar: 'ustar',
+      ustarver: '00',
+      uname: 'isaacs',
+      gname: '',
+      devmaj: 0,
+      devmin: 0,
+      ustarPrefix: null,
+      xstarPrefix: '',
+      prefixTerminator: '',
+      atime: Date,
+      ctime: Date,
+      nullBlock: false
+    }
+    t.match(h, expect)
+    t.equal(data.length, 21504)
+    t.match(data.slice(data.length - 1024).toString(), /^\0{1024}$/)
+    t.end()
+  })
+})
+
+t.test('pipe into a slow gzip reader', { bail: true }, t => {
+  const out = []
+  const mp2 = new miniz.Unzip()
+  const p = new Pack({ cwd: files, gzip: true }).add('long-path').end()
+  p.pause()
+
+  setTimeout(_ => {
+    p.pipe(mp2)
+    setTimeout(_ => mp2.on('data', c => out.push(c)), 100)
+  }, 100)
+
+  mp2.on('end', _ => {
+    const data = Buffer.concat(out)
+    // dir/, dir/x, and the nulls
+    // neither the dir or the file have any body bits
+    const h = new Header(data)
+    const expect = {
+      type: 'Directory',
+      cksumValid: true,
+      needPax: false,
+      path: 'long-path/',
+      mode: 0o040755,
+      size: 0,
+      mtime: Date,
+      cksum: Number,
+      linkpath: '',
+      ustar: 'ustar',
+      ustarver: '00',
+      uname: 'isaacs',
+      gname: '',
+      devmaj: 0,
+      devmin: 0,
+      ustarPrefix: null,
+      xstarPrefix: '',
+      prefixTerminator: '',
+      atime: Date,
+      ctime: Date,
+      nullBlock: false
+    }
+    t.match(h, expect)
+    t.equal(data.length, 21504)
+    t.match(data.slice(data.length - 1024).toString(), /^\0{1024}$/)
+    t.end()
+  })
+})
+
+t.test('ignore everything', t => {
+  // lets also make stat take a bit longer, so we
+  // end up ignoring something that isn't the current job,
+  // and exercise the queue management logic
+  t.tearDown(mutateFS.delay('lstat', 1))
+  const p = new Pack({
+    cwd: parse,
+    filter: (p, st) => !/\.json/.test(p)
+  }).add('').end()
+  const out = []
+  p.on('data', c => out.push(c))
+  p.on('end', _ => {
+    const data = Buffer.concat(out)
+    t.equal(data.length, 1536)
+    t.equal(data.slice(0, 3).toString(), './\0')
+    t.end()
+  })
+})
+
+t.test('warnings', t => {
+  const f = path.resolve(files, '512-bytes.txt')
+  t.test('preservePaths=false strict=false', t => {
+    const warnings = []
+    const p = new Pack({
+      cwd: files,
+      onwarn: (m, p) => warnings.push([m, p])
+    }).end(f).on('data', c => out.push(c))
+
+    const out = []
+    p.on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(warnings, [[
+        /stripping .* from absolute path/, f
+      ]])
+
+      t.match(new Header(data), {
+        path: f.replace(/^(\/|[a-z]:\\\\)/, '')
+      })
+      t.end()
+    })
+  })
+
+  t.test('preservePaths=true', t => {
+    t.plan(2)
+    // with preservePaths, strictness doens't matter
+    ;[true, false].forEach(strict => {
+
+      t.test('strict=' + strict, t => {
+        const warnings = []
+        const out = []
+        const p = new Pack({
+          cwd: files,
+          strict: strict,
+          preservePaths: true,
+          onwarn: (m, p) => warnings.push([m, p])
+        }).end(f).on('data', c => out.push(c))
+        p.on('end', _ => {
+          const data = Buffer.concat(out)
+          t.equal(warnings.length, 0)
+
+          t.match(new Header(data), {
+            path: f
+          })
+          t.end()
+        })
+      })
+    })
+  })
+
+  t.test('preservePaths=false strict=true', t => {
+    new Pack({
+      strict: true,
+      cwd: files
+    }).end(f).on('error', e => {
+      t.match(e, { message: /stripping .* from absolute path/, data: f })
+      t.end()
+    })
+  })
+
   t.end()
 })
