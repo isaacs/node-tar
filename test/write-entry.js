@@ -9,6 +9,7 @@ const Header = require('../lib/header.js')
 const mutateFS = require('mutate-fs')
 process.env.USER = 'isaacs'
 const chmodr = require('chmodr')
+const Parser = require('../lib/parse.js')
 
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
@@ -671,6 +672,62 @@ t.test('override absolute to some other file', t => {
       path: 'blerg',
       header: { size: 1 }
     })
+    t.end()
+  })
+})
+
+t.test('portable entries, nothing platform-specific', t => {
+  const om = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+  const ws = new WriteEntry(om, {
+    cwd: files,
+    portable: true
+  })
+
+  const pexpect = {
+    atime: null,
+    charset: null,
+    comment: null,
+    ctime: null,
+    gid: null,
+    gname: null,
+    linkpath: null,
+    mtime: null,
+    path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+    size: null,
+    uid: null,
+    uname: null,
+    dev: null,
+    ino: null,
+    nlink: null
+  }
+
+  const hexpect = {
+    size: 2,
+    mtime: null,
+    ctime: null,
+    atime: null,
+    uid: null,
+    uname: '',
+    gid: null,
+    gname: ''
+  }
+
+  const ps = new Parser()
+  const wss = new WriteEntry.Sync(om, {
+    cwd: files,
+    portable: true
+  })
+  ps.on('entry', entry => {
+    t.match(entry.extended, pexpect)
+    t.match(entry.header, hexpect)
+  })
+  ps.end(wss.read())
+
+  const p = new Parser()
+  ws.pipe(p)
+  p.on('entry', entry => {
+    t.match(entry.extended, pexpect)
+    t.match(entry.header, hexpect)
     t.end()
   })
 })
