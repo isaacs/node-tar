@@ -4,6 +4,7 @@ const Unpack = require('../lib/unpack.js')
 const UnpackSync = Unpack.Sync
 const t = require('tap')
 
+const Header = require('../lib/header.js')
 const z = require('minizlib')
 const fs = require('fs')
 const path = require('path')
@@ -14,7 +15,7 @@ const unpackdir = path.resolve(fixtures, 'unpack')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 
-// t.teardown(_ => rimraf.sync(unpackdir))
+t.teardown(_ => rimraf.sync(unpackdir))
 
 t.test('setup', t => {
   rimraf.sync(unpackdir)
@@ -231,8 +232,8 @@ t.test('links without cleanup (exercise clobbering code)', t => {
 })
 
 t.test('nested dir dupe', t => {
-  const dir = path.resolve(unpackdir, 'nested-dir/d/e/e/p')
-  mkdirp.sync(dir)
+  const dir = path.resolve(unpackdir, 'nested-dir')
+  mkdirp.sync(dir + '/d/e/e/p')
   t.teardown(_ => rimraf.sync(dir))
   const expect = {
     'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt': 'short\n',
@@ -260,4 +261,106 @@ t.test('nested dir dupe', t => {
   zip.pipe(unpack)
   unpack.on('close', _ => check(t))
   zip.end(data)
+})
+
+t.test('junk in dir path', t => {
+  const dir = path.resolve(unpackdir, 'weird-junk')
+
+  t.teardown(_ => rimraf.sync(dir))
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'd/i/r/dir',
+      type: 'Directory',
+      mode: 0o751
+    }),
+    new Header({
+      path: 'd/i/r/file',
+      type: 'File',
+      size: 1
+    }),
+    'a',
+    new Header({
+      path: 'd/i/r/link',
+      type: 'Link',
+      linkpath: 'd/i/r/file'
+    }),
+    new Header({
+      path: 'd/i/r/symlink',
+      type: 'SymbolicLink',
+      linkpath: './dir'
+    }),
+    new Header({
+      path: 'd/i/r/symlink/x',
+      type: 'File',
+      size: 0
+    }),
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  t.test('no clobbering', t => {
+    const warnings = []
+    const u = new Unpack({ cwd: dir, onwarn: (w,d) => warnings.push([w,d]) })
+    u.on('close', _ => {
+      t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+      t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+      t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+      t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+      t.equal(warnings.length, 1)
+      t.equal(warnings[0][0], 'Cannot extract through symbolic link')
+      t.match(warnings[0][1], {
+        name: 'SylinkError',
+        path: dir + '/d/i/r/symlink/',
+        symlink: dir + '/d/i/r/symlink'
+      })
+      t.end()
+    })
+    u.end(data)
+  })
+
+  t.test('clobber dirs', t => {
+    mkdirp.sync(dir + '/d/i/r/dir')
+    mkdirp.sync(dir + '/d/i/r/file')
+    mkdirp.sync(dir + '/d/i/r/link')
+    mkdirp.sync(dir + '/d/i/r/symlink')
+    const warnings = []
+    const u = new Unpack({
+      cwd: dir,
+      onwarn: (w, d) => {
+        warnings.push([w,d])
+      }
+    })
+    u.on('close', _ => {
+      t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+      t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+      t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+      t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+      t.equal(warnings.length, 1)
+      t.equal(warnings[0][0], 'Cannot extract through symbolic link')
+      t.match(warnings[0][1], {
+        name: 'SylinkError',
+        path: dir + '/d/i/r/symlink/',
+        symlink: dir + '/d/i/r/symlink'
+      })
+      t.end()
+    })
+    u.end(data)
+  })
+
+  t.end()
 })
