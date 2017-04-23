@@ -23,7 +23,7 @@ t.test('setup', t => {
 
 t.test('basic file unpack tests', t => {
   const basedir = path.resolve(unpackdir, 'basic')
-  // t.teardown(_ => rimraf.sync(basedir))
+  t.teardown(_ => rimraf.sync(basedir))
 
   const cases = {
     'emptypax.tar': {
@@ -71,7 +71,7 @@ t.test('basic file unpack tests', t => {
       const tf = path.resolve(tars, tarfile)
       const dir = path.resolve(basedir, tarfile)
       t.beforeEach(cb => {
-        // rimraf.sync(dir)
+        rimraf.sync(dir)
         mkdirp.sync(dir)
         cb()
       })
@@ -92,13 +92,12 @@ t.test('basic file unpack tests', t => {
         t.test('strict', t => {
           const unpack = new Unpack({ cwd: dir, strict: true })
           fs.createReadStream(tf).pipe(unpack)
-          unpack.on('end', _ => setTimeout(_ => check(t), 500))
+          unpack.on('close', _ => check(t))
         })
         t.test('loose', t => {
           const unpack = new Unpack({ cwd: dir })
           fs.createReadStream(tf).pipe(unpack)
-          // unpack.on('end', _ => check(t))
-          unpack.on('end', _ => setTimeout(_ => check(t), 500))
+          unpack.on('close', _ => check(t))
         })
       })
 
@@ -126,4 +125,96 @@ t.test('cwd default to process cwd', t => {
   t.equal(u.cwd, cwd)
   t.equal(us.cwd, cwd)
   t.end()
+})
+
+t.test('links!', t => {
+  const dir = path.resolve(unpackdir, 'links')
+  const data = fs.readFileSync(tars + '/links.tar')
+
+  t.plan(2)
+  t.beforeEach(cb => mkdirp(dir, cb))
+  t.afterEach(cb => rimraf(dir, cb))
+
+  const check = t => {
+    const hl1 = fs.lstatSync(dir + '/hardlink-1')
+    const hl2 = fs.lstatSync(dir + '/hardlink-2')
+    t.equal(hl1.dev, hl2.dev)
+    t.equal(hl1.ino, hl2.ino)
+    t.equal(hl1.nlink, 2)
+    t.equal(hl2.nlink, 2)
+    const sym = fs.lstatSync(dir + '/symlink')
+    t.ok(sym.isSymbolicLink())
+    t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    t.end()
+  }
+
+  t.test('async', t => {
+    const unpack = new Unpack({ cwd: dir })
+    unpack.on('close', _ => check(t))
+    unpack.end(data)
+  })
+
+  t.test('sync', t => {
+    const unpack = new UnpackSync({ cwd: dir })
+    unpack.end(data)
+    check(t)
+  })
+})
+
+t.test('links without cleanup (exercise clobbering code)', t => {
+  const dir = path.resolve(unpackdir, 'links')
+  const data = fs.readFileSync(tars + '/links.tar')
+
+  t.plan(6)
+  mkdirp.sync(dir)
+  t.teardown(_ => rimraf.sync(dir))
+
+  const check = t => {
+    const hl1 = fs.lstatSync(dir + '/hardlink-1')
+    const hl2 = fs.lstatSync(dir + '/hardlink-2')
+    t.equal(hl1.dev, hl2.dev)
+    t.equal(hl1.ino, hl2.ino)
+    t.equal(hl1.nlink, 2)
+    t.equal(hl2.nlink, 2)
+    const sym = fs.lstatSync(dir + '/symlink')
+    t.ok(sym.isSymbolicLink())
+    t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    t.end()
+  }
+
+  t.test('async', t => {
+    const unpack = new Unpack({ cwd: dir })
+    unpack.on('close', _ => check(t))
+    unpack.end(data)
+  })
+
+  t.test('sync', t => {
+    const unpack = new UnpackSync({ cwd: dir })
+    unpack.end(data)
+    check(t)
+  })
+
+  t.test('async again', t => {
+    const unpack = new Unpack({ cwd: dir })
+    unpack.on('close', _ => check(t))
+    unpack.end(data)
+  })
+
+  t.test('sync again', t => {
+    const unpack = new UnpackSync({ cwd: dir })
+    unpack.end(data)
+    check(t)
+  })
+
+  t.test('async unlink', t => {
+    const unpack = new Unpack({ cwd: dir, unlink: true })
+    unpack.on('close', _ => check(t))
+    unpack.end(data)
+  })
+
+  t.test('sync unlink', t => {
+    const unpack = new UnpackSync({ cwd: dir, unlink: true })
+    unpack.end(data)
+    check(t)
+  })
 })
