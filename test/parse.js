@@ -1,6 +1,5 @@
 'use strict'
 const t = require('tap')
-t.jobs = 4
 const Parse = require('../lib/parse.js')
 
 const fs = require('fs')
@@ -52,6 +51,7 @@ t.test('fixture tests', t => {
     })
   }
 
+  t.jobs = 4
   const path = require('path')
   const tardir = path.resolve(__dirname, 'fixtures/tars')
   const parsedir = path.resolve(__dirname, 'fixtures/parse')
@@ -143,4 +143,14 @@ t.test('fixture tests', t => {
         filterOpt.forEach(filter =>
           runTest(file, maxMeta, filter, strict)))))
   t.end()
+})
+
+t.test('strict warn with an error emits that error', t => {
+  const p = new Parse({ strict: true })
+  const er = new Error('yolo')
+  p.on('error', emitted => {
+    t.equal(emitted, er)
+    t.end()
+  })
+  p.warn(er.message, er)
 })
