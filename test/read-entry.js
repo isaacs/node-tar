@@ -31,12 +31,11 @@ t.test('create read entry', t => {
       cksumValid: true,
       needPax: false,
       path: 'foo.txt',
-      mode: 493,
+      mode: 0o755,
       uid: 24561,
       gid: 20,
       size: 100,
       mtime: new Date('2016-04-01T22:00:00.000Z'),
-      cksum: 6745,
       typeKey: '0',
       type: 'File',
       linkpath: null,
@@ -58,7 +57,7 @@ t.test('create read entry', t => {
     meta: false,
     ignore: false,
     path: 'foo.txt',
-    mode: 493,
+    mode: 0o755,
     uid: 24561,
     gid: 20,
     uname: 'isaacs',
@@ -156,5 +155,84 @@ t.test('unknown entry type', t => {
 
   t.equal(actual, expect)
   t.like(entry, { ignore: true })
+  t.end()
+})
+
+t.test('entry without mode', t => {
+  const h = new Header({
+    fieldset: 'xstar',
+    path: 'foo.txt',
+    uid: 24561,
+    gid: 20,
+    size: 100,
+    mtime: new Date('2016-04-01T22:00Z'),
+    ctime: new Date('2016-04-01T22:00Z'),
+    atime: new Date('2016-04-01T22:00Z'),
+    type: 'File',
+    uname: 'isaacs',
+    gname: 'staff'
+  })
+  h.encode()
+
+  const entry = new ReadEntry(h)
+
+  t.ok(entry.header.cksumValid, 'header checksum should be valid')
+
+  t.match(entry, {
+    header: {
+      cksumValid: true,
+      needPax: false,
+      path: 'foo.txt',
+      mode: null,
+      uid: 24561,
+      gid: 20,
+      size: 100,
+      mtime: new Date('2016-04-01T22:00:00.000Z'),
+      typeKey: '0',
+      type: 'File',
+      linkpath: null,
+      ustar: null,
+      ustarver: null,
+      uname: 'isaacs',
+      gname: 'staff',
+      devmaj: null,
+      devmin: null,
+      ustarPrefix: null,
+      xstarPrefix: null,
+      prefixTerminator: null,
+      atime: new Date('2016-04-01T22:00:00.000Z'),
+      ctime: new Date('2016-04-01T22:00:00.000Z')
+    },
+    blockRemain: 512,
+    remain: 100,
+    type: 'File',
+    meta: false,
+    ignore: false,
+    path: 'foo.txt',
+    mode: null,
+    uid: 24561,
+    gid: 20,
+    uname: 'isaacs',
+    gname: 'staff',
+    size: 100,
+    mtime: new Date('2016-04-01T22:00:00.000Z'),
+    atime: new Date('2016-04-01T22:00:00.000Z'),
+    ctime: new Date('2016-04-01T22:00:00.000Z'),
+    linkpath: null
+  })
+
+  let data = ''
+  let ended = false
+  entry.on('data', c => data += c)
+  entry.on('end', _ => ended = true)
+
+  const body = Buffer.alloc(512)
+  body.write(new Array(101).join('z'), 0)
+  entry.write(body)
+  entry.end()
+
+  t.equal(data, new Array(101).join('z'))
+  t.ok(ended, 'saw end event')
+
   t.end()
 })

@@ -28,7 +28,7 @@
       "type": "File",
       "meta": false,
       "ignore": false,
-      "path": "ab",
+      "path": "one-byte.txt",
       "mode": 420,
       "uid": 501,
       "gid": 20,
