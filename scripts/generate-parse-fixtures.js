@@ -1,3 +1,4 @@
+'use strict'
 const Parse = require('../lib/parse.js')
 const fs = require('fs')
 const path = require('path')
