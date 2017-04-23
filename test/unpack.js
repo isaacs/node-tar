@@ -4,6 +4,7 @@ const Unpack = require('../lib/unpack.js')
 const UnpackSync = Unpack.Sync
 const t = require('tap')
 
+const z = require('minizlib')
 const fs = require('fs')
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
@@ -169,6 +170,16 @@ t.test('links without cleanup (exercise clobbering code)', t => {
   mkdirp.sync(dir)
   t.teardown(_ => rimraf.sync(dir))
 
+  t.beforeEach(cb => {
+    // clobber this junk
+    try {
+      mkdirp.sync(dir + '/hardlink-1')
+      mkdirp.sync(dir + '/hardlink-2')
+      fs.writeFileSync(dir + '/symlink', 'not a symlink')
+    } catch (er) {}
+    cb()
+  })
+
   const check = t => {
     const hl1 = fs.lstatSync(dir + '/hardlink-1')
     const hl2 = fs.lstatSync(dir + '/hardlink-2')
@@ -217,4 +228,36 @@ t.test('links without cleanup (exercise clobbering code)', t => {
     unpack.end(data)
     check(t)
   })
+})
+
+t.test('nested dir dupe', t => {
+  const dir = path.resolve(unpackdir, 'nested-dir/d/e/e/p')
+  mkdirp.sync(dir)
+  t.teardown(_ => rimraf.sync(dir))
+  const expect = {
+    'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt': 'short\n',
+    'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω'
+  }
+
+  const check = t => {
+    const entries = fs.readdirSync(dir)
+    t.equal(entries.length, 1)
+    t.equal(entries[0], 'd')
+    Object.keys(expect).forEach(f => {
+      const file = dir + '/' + f
+      t.equal(fs.readFileSync(file, 'utf8'), expect[f])
+    })
+    t.end()
+  }
+
+  const unpack = new Unpack({ cwd: dir, strip: 8 })
+  const data = fs.readFileSync(tars + '/long-paths.tar')
+  // while we're at it, why not use gzip too?
+  const zip = new z.Gzip()
+  zip.pipe(unpack)
+  unpack.on('close', _ => check(t))
+  zip.end(data)
 })
