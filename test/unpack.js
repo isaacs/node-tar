@@ -277,28 +277,43 @@ t.test('junk in dir path', t => {
     new Header({
       path: 'd/i/r/dir',
       type: 'Directory',
-      mode: 0o751
+      mode: 0o751,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
     }),
     new Header({
       path: 'd/i/r/file',
       type: 'File',
-      size: 1
+      size: 1,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
     }),
     'a',
     new Header({
       path: 'd/i/r/link',
       type: 'Link',
-      linkpath: 'd/i/r/file'
+      linkpath: 'd/i/r/file',
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
     }),
     new Header({
       path: 'd/i/r/symlink',
       type: 'SymbolicLink',
-      linkpath: './dir'
+      linkpath: './dir',
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
     }),
     new Header({
       path: 'd/i/r/symlink/x',
       type: 'File',
-      size: 0
+      size: 0,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
     }),
     '',
     ''
@@ -333,6 +348,83 @@ t.test('junk in dir path', t => {
     u.end(data)
   })
 
+  t.test('no clobbering, sync', t => {
+    const warnings = []
+    const u = new UnpackSync({
+      cwd: dir,
+      onwarn: (w,d) => warnings.push([w,d])
+    })
+    u.end(data)
+    t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+    t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+    t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+    t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+    t.equal(warnings.length, 1)
+    t.equal(warnings[0][0], 'Cannot extract through symbolic link')
+    t.match(warnings[0][1], {
+      name: 'SylinkError',
+      path: dir + '/d/i/r/symlink/',
+      symlink: dir + '/d/i/r/symlink'
+    })
+    t.end()
+  })
+
+  t.test('extract through symlink', t => {
+    const warnings = []
+    const u = new Unpack({
+      cwd: dir,
+      onwarn: (w,d) => warnings.push([w,d]),
+      preservePaths: true
+    })
+    u.on('close', _ => {
+      t.same(warnings, [])
+      t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+      t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+      t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+      t.ok(fs.lstatSync(dir + '/d/i/r/dir/x').isFile(), 'x thru link')
+      t.ok(fs.lstatSync(dir + '/d/i/r/symlink/x').isFile(), 'x thru link')
+      t.end()
+    })
+    u.end(data)
+  })
+
+  t.test('extract through symlink sync', t => {
+    const warnings = []
+    const u = new UnpackSync({
+      cwd: dir,
+      onwarn: (w,d) => warnings.push([w,d]),
+      preservePaths: true
+    })
+    u.end(data)
+    t.same(warnings, [])
+    t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+    t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+    t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+    t.ok(fs.lstatSync(dir + '/d/i/r/dir/x').isFile(), 'x thru link')
+    t.ok(fs.lstatSync(dir + '/d/i/r/symlink/x').isFile(), 'x thru link')
+    t.end()
+  })
+
+  t.test('no clobbering, sync', t => {
+    const warnings = []
+    const u = new UnpackSync({
+      cwd: dir,
+      onwarn: (w,d) => warnings.push([w,d])
+    })
+    u.end(data)
+    t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+    t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+    t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+    t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+    t.equal(warnings.length, 1)
+    t.equal(warnings[0][0], 'Cannot extract through symbolic link')
+    t.match(warnings[0][1], {
+      name: 'SylinkError',
+      path: dir + '/d/i/r/symlink/',
+      symlink: dir + '/d/i/r/symlink'
+    })
+    t.end()
+  })
   t.test('clobber dirs', t => {
     mkdirp.sync(dir + '/d/i/r/dir')
     mkdirp.sync(dir + '/d/i/r/file')
@@ -362,5 +454,150 @@ t.test('junk in dir path', t => {
     u.end(data)
   })
 
+  t.test('clobber dirs sync', t => {
+    mkdirp.sync(dir + '/d/i/r/dir')
+    mkdirp.sync(dir + '/d/i/r/file')
+    mkdirp.sync(dir + '/d/i/r/link')
+    mkdirp.sync(dir + '/d/i/r/symlink')
+    const warnings = []
+    const u = new UnpackSync({
+      cwd: dir,
+      onwarn: (w, d) => {
+        warnings.push([w,d])
+      }
+    })
+    u.end(data)
+    t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+    t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+    t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+    t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+    t.equal(warnings.length, 1)
+    t.equal(warnings[0][0], 'Cannot extract through symbolic link')
+    t.match(warnings[0][1], {
+      name: 'SylinkError',
+      path: dir + '/d/i/r/symlink/',
+      symlink: dir + '/d/i/r/symlink'
+    })
+    t.end()
+  })
+
   t.end()
+})
+
+t.test('unsupported entries', t => {
+  const dir = path.resolve(unpackdir, 'unsupported-entries')
+  mkdirp.sync(dir)
+  t.teardown(_ => rimraf.sync(dir))
+  const unknown = new Header({ path: 'qux', type: 'File', size: 4 })
+  unknown.type = 'Z'
+  unknown.encode()
+  const data = Buffer.concat([
+    new Header({
+      path: 'dev/random',
+      type: 'CharacterDevice'
+    }),
+    new Header({
+      path: 'dev/hd0',
+      type: 'BlockDevice'
+    }),
+    new Header({
+      path: 'dev/fifo0',
+      type: 'FIFO'
+    }),
+    unknown,
+    'asdf',
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  t.test('basic, warns', t => {
+    const warnings = []
+    const u = new Unpack({ cwd: dir, onwarn: (w,d) => warnings.push([w,d]) })
+    const expect = [
+      ['unsupported entry type: CharacterDevice', { path: 'dev/random' }],
+      ['unsupported entry type: BlockDevice', { path: 'dev/hd0' }],
+      ['unsupported entry type: FIFO', { path: 'dev/fifo0' }]
+    ]
+    u.on('close', _ => {
+      t.equal(fs.readdirSync(dir).length, 0)
+      t.match(warnings, expect)
+      t.end()
+    })
+    u.end(data)
+  })
+
+  t.test('strict, throws', t => {
+    const warnings = []
+    const errors = []
+    const u = new Unpack({
+      cwd: dir,
+      strict: true,
+      onwarn: (w,d) => warnings.push([w,d])
+    })
+    u.on('error', e => errors.push(e))
+    u.on('close', _ => {
+      t.equal(fs.readdirSync(dir).length, 0)
+      t.same(warnings, [])
+      t.match(errors, [
+        {
+          message: 'unsupported entry type: CharacterDevice',
+          data: { path: 'dev/random' }
+        },
+        {
+          message: 'unsupported entry type: BlockDevice',
+          data: { path: 'dev/hd0' }
+        },
+        {
+          message: 'unsupported entry type: FIFO',
+          data: { path: 'dev/fifo0' }
+        }
+      ])
+      t.end()
+    })
+    u.end(data)
+  })
+
+  t.end()
+})
+
+t.test('set umask option', t => {
+  const dir = path.resolve(unpackdir, 'umask')
+  mkdirp.sync(dir)
+  t.tearDown(_ => rimraf.sync(dir))
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'd/i/r/dir',
+      type: 'Directory',
+      mode: 0o751
+    }),
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+  new Unpack({
+    umask: 0o027,
+    cwd: dir
+  }).on('close', _ => {
+    t.equal(fs.statSync(dir + '/d/i/r').mode & 0o7777, 0o750)
+    t.equal(fs.statSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+    t.end()
+  }).end(data)
 })
