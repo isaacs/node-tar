@@ -263,8 +263,8 @@ t.test('nested dir dupe', t => {
   zip.end(data)
 })
 
-t.test('junk in dir path', t => {
-  const dir = path.resolve(unpackdir, 'weird-junk')
+t.test('symlink in dir path', t => {
+  const dir = path.resolve(unpackdir, 'symlink-junk')
 
   t.teardown(_ => rimraf.sync(dir))
   t.beforeEach(cb => {
@@ -274,6 +274,13 @@ t.test('junk in dir path', t => {
   })
 
   const data = Buffer.concat([
+    new Header({
+      path: 'd/i',
+      type: 'Directory',
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
     new Header({
       path: 'd/i/r/dir',
       type: 'Directory',
@@ -332,6 +339,7 @@ t.test('junk in dir path', t => {
     const warnings = []
     const u = new Unpack({ cwd: dir, onwarn: (w,d) => warnings.push([w,d]) })
     u.on('close', _ => {
+      t.equal(fs.lstatSync(dir + '/d/i').mode & 0o7777, 0o755)
       t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
       t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
       t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
@@ -405,26 +413,41 @@ t.test('junk in dir path', t => {
     t.end()
   })
 
-  t.test('no clobbering, sync', t => {
+  t.test('clobber through symlink', t => {
+    const warnings = []
+    const u = new Unpack({
+      cwd: dir,
+      onwarn: (w,d) => warnings.push([w,d]),
+      unlink: true
+    })
+    u.on('close', _ => {
+      t.same(warnings, [])
+      t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+      t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
+      t.notok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'no link')
+      t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isDirectory(), 'sym is dir')
+      t.ok(fs.lstatSync(dir + '/d/i/r/symlink/x').isFile(), 'x thru link')
+      t.end()
+    })
+    u.end(data)
+  })
+
+  t.test('clobber through symlink sync', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (w,d) => warnings.push([w,d])
+      onwarn: (w,d) => warnings.push([w,d]),
+      unlink: true
     })
     u.end(data)
     t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
     t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
-    t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
-    t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
-    t.equal(warnings.length, 1)
-    t.equal(warnings[0][0], 'Cannot extract through symbolic link')
-    t.match(warnings[0][1], {
-      name: 'SylinkError',
-      path: dir + '/d/i/r/symlink/',
-      symlink: dir + '/d/i/r/symlink'
-    })
+    t.notok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'no link')
+    t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isDirectory(), 'sym is dir')
+    t.ok(fs.lstatSync(dir + '/d/i/r/symlink/x').isFile(), 'x thru link')
     t.end()
   })
+
   t.test('clobber dirs', t => {
     mkdirp.sync(dir + '/d/i/r/dir')
     mkdirp.sync(dir + '/d/i/r/file')
@@ -564,6 +587,90 @@ t.test('unsupported entries', t => {
       t.end()
     })
     u.end(data)
+  })
+
+  t.end()
+})
+
+
+t.test('file in dir path', t => {
+  const dir = path.resolve(unpackdir, 'file-junk')
+
+  t.teardown(_ => rimraf.sync(dir))
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'd/i/r/file',
+      type: 'File',
+      size: 1,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    'a',
+    new Header({
+      path: 'd/i/r/file/a/b/c',
+      type: 'File',
+      size: 1,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    'b',
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  t.test('fail because of file', t => {
+    const check = t => {
+      t.equal(fs.readFileSync(dir + '/d/i/r/file', 'utf8'), 'a')
+      t.throws(_ => fs.statSync(dir + '/d/i/r/file/a/b/c'))
+      t.end()
+    }
+
+    t.plan(2)
+
+    t.test('async', t => {
+      new Unpack({ cwd: dir }).on('close', _ => check(t)).end(data)
+    })
+
+    t.test('sync', t => {
+      new UnpackSync({ cwd: dir }).end(data)
+      check(t)
+    })
+  })
+
+  t.test('clobber on through', t => {
+    const check = t => {
+      t.ok(fs.statSync(dir + '/d/i/r/file').isDirectory())
+      t.equal(fs.readFileSync(dir + '/d/i/r/file/a/b/c', 'utf8'), 'b')
+      t.end()
+    }
+
+    t.plan(2)
+
+    t.test('async', t => {
+      new Unpack({ cwd: dir, unlink: true }).on('close', _ => check(t)).end(data)
+    })
+
+    t.test('sync', t => {
+      new UnpackSync({ cwd: dir, unlink: true }).end(data)
+      check(t)
+    })
   })
 
   t.end()
