@@ -822,6 +822,7 @@ t.test('.. paths', t => {
     cb()
   })
 
+  const fmode = 0o755
   const dotted = 'a/b/c/../d'
   const resolved = path.resolve(dir, dotted)
 
@@ -863,6 +864,7 @@ t.test('.. paths', t => {
     t.test('async', t => {
       warnings.length = 0
       new Unpack({
+        fmode: fmode,
         cwd: dir,
         onwarn: (w, d) => warnings.push([w, d])
       }).on('close', _=> check(t)).end(data)
@@ -871,6 +873,7 @@ t.test('.. paths', t => {
     t.test('sync', t => {
       warnings.length = 0
       new UnpackSync({
+        fmode: fmode,
         cwd: dir,
         onwarn: (w, d) => warnings.push([w, d])
       }).end(data)
@@ -884,6 +887,7 @@ t.test('.. paths', t => {
     const check = t => {
       t.same(warnings, [])
       t.ok(fs.lstatSync(resolved).isFile(), 'is file')
+      t.equal(fs.lstatSync(resolved).mode & 0o777, fmode, 'mode is 0755')
       t.end()
     }
 
@@ -892,6 +896,7 @@ t.test('.. paths', t => {
     t.test('async', t => {
       warnings.length = 0
       new Unpack({
+        fmode: fmode,
         preservePaths: true,
         cwd: dir,
         onwarn: (w, d) => warnings.push([w, d])
@@ -901,6 +906,7 @@ t.test('.. paths', t => {
     t.test('sync', t => {
       warnings.length = 0
       new UnpackSync({
+        fmode: fmode,
         preservePaths: true,
         cwd: dir,
         onwarn: (w, d) => warnings.push([w, d])
