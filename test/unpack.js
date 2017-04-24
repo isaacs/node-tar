@@ -708,3 +708,208 @@ t.test('set umask option', t => {
     t.end()
   }).end(data)
 })
+
+t.test('absolute paths', t => {
+  const dir = path.join(unpackdir, 'absolute-paths')
+  t.teardown(_ => rimraf.sync(dir))
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const absolute = path.resolve(dir, 'd/i/r/absolute')
+  t.ok(path.isAbsolute(absolute))
+  const parsed = path.parse(absolute)
+  const relative = absolute.substr(parsed.root.length)
+  t.notOk(path.isAbsolute(relative))
+
+  const data = Buffer.concat([
+    new Header({
+      path: absolute,
+      type: 'File',
+      size: 1,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    'a',
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  t.test('warn and correct', t => {
+    const check = t => {
+      t.same(warnings, [[
+        'stripping / from absolute path',
+        absolute
+      ]])
+      t.ok(fs.lstatSync(path.resolve(dir, relative)).isFile(), 'is file')
+      t.end()
+    }
+
+    const warnings = []
+
+    t.test('async', t => {
+      warnings.length = 0
+      new Unpack({
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).on('close', _=> check(t)).end(data)
+    })
+
+    t.test('sync', t => {
+      warnings.length = 0
+      new UnpackSync({
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).end(data)
+      check(t)
+    })
+
+    t.end()
+  })
+
+  t.test('preserve absolute path', t => {
+    const check = t => {
+      t.same(warnings, [])
+      t.ok(fs.lstatSync(absolute).isFile(), 'is file')
+      t.end()
+    }
+
+    const warnings = []
+
+    t.test('async', t => {
+      warnings.length = 0
+      new Unpack({
+        preservePaths: true,
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).on('close', _=> check(t)).end(data)
+    })
+
+    t.test('sync', t => {
+      warnings.length = 0
+      new UnpackSync({
+        preservePaths: true,
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).end(data)
+      check(t)
+    })
+
+    t.end()
+  })
+
+  t.end()
+})
+
+t.test('.. paths', t => {
+  const dir = path.join(unpackdir, 'dotted-paths')
+  t.teardown(_ => rimraf.sync(dir))
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const dotted = 'a/b/c/../d'
+  const resolved = path.resolve(dir, dotted)
+
+  const data = Buffer.concat([
+    new Header({
+      path: dotted,
+      type: 'File',
+      size: 1,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    'd',
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  t.test('warn and skip', t => {
+    const check = t => {
+      t.same(warnings, [[
+        'path contains \'..\'',
+        dotted
+      ]])
+      t.throws(_=>fs.lstatSync(resolved))
+      t.end()
+    }
+
+    const warnings = []
+
+    t.test('async', t => {
+      warnings.length = 0
+      new Unpack({
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).on('close', _=> check(t)).end(data)
+    })
+
+    t.test('sync', t => {
+      warnings.length = 0
+      new UnpackSync({
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).end(data)
+      check(t)
+    })
+
+    t.end()
+  })
+
+  t.test('preserve dotted path', t => {
+    const check = t => {
+      t.same(warnings, [])
+      t.ok(fs.lstatSync(resolved).isFile(), 'is file')
+      t.end()
+    }
+
+    const warnings = []
+
+    t.test('async', t => {
+      warnings.length = 0
+      new Unpack({
+        preservePaths: true,
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).on('close', _=> check(t)).end(data)
+    })
+
+    t.test('sync', t => {
+      warnings.length = 0
+      new UnpackSync({
+        preservePaths: true,
+        cwd: dir,
+        onwarn: (w, d) => warnings.push([w, d])
+      }).end(data)
+      check(t)
+    })
+
+    t.end()
+  })
+
+  t.end()
+})
