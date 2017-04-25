@@ -942,15 +942,19 @@ t.test('.. paths', t => {
 t.test('fail all stats', t => {
   const poop = new Error('poop')
   poop.code = 'EPOOP'
-  const unmutate = mutateFS.statFail(poop)
+  let unmutate
   const dir = path.join(unpackdir, 'stat-fail')
-  t.teardown(_ => (unmutate(), rimraf.sync(dir)))
 
   const warnings = []
   t.beforeEach(cb => {
     warnings.length = 0
-    rimraf.sync(dir)
     mkdirp.sync(dir)
+    unmutate = mutateFS.statFail(poop)
+    cb()
+  })
+  t.afterEach(cb => {
+    unmutate()
+    rimraf.sync(dir)
     cb()
   })
 
