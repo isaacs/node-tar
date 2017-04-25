@@ -433,6 +433,22 @@ t.test('symlink in dir path', t => {
     u.end(data)
   })
 
+  t.test('clobber through symlink with busted unlink', t => {
+    const poop = new Error('poop')
+    t.teardown(mutateFS.fail('unlink', poop))
+    const warnings = []
+    const u = new Unpack({
+      cwd: dir,
+      onwarn: (w,d) => warnings.push([w,d]),
+      unlink: true
+    })
+    u.on('close', _ => {
+      t.same(warnings, [[ 'poop', poop ]])
+      t.end()
+    })
+    u.end(data)
+  })
+
   t.test('clobber through symlink sync', t => {
     const warnings = []
     const u = new UnpackSync({
@@ -1031,6 +1047,288 @@ t.test('fail all stats', t => {
       onwarn: (w, d) => warnings.push([w, d])
     }).end(data)
     check(t, expect)
+  })
+
+  t.end()
+})
+
+t.test('fail symlink', t => {
+  const poop = new Error('poop')
+  poop.code = 'EPOOP'
+  const unmutate = mutateFS.fail('symlink', poop)
+  const dir = path.join(unpackdir, 'symlink-fail')
+  t.teardown(_ => (unmutate(), rimraf.sync(dir)))
+
+  const warnings = []
+  t.beforeEach(cb => {
+    warnings.length = 0
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'd/i/r/dir/',
+      type: 'Directory',
+      mode: 0o751,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    new Header({
+      path: 'd/i/r/symlink',
+      type: 'SymbolicLink',
+      linkpath: './dir',
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  const check = (t, expect) => {
+    t.match(warnings, expect)
+    warnings.forEach(w => t.equal(w[0], w[1].message))
+    t.end()
+  }
+
+  t.test('async', t => {
+    const expect = [['poop', poop]]
+    new Unpack({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).on('close', _ => check(t, expect)).end(data)
+  })
+
+  t.test('sync', t => {
+    const expect = [['poop', poop]]
+    new UnpackSync({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).end(data)
+    check(t, expect)
+  })
+
+  t.end()
+})
+
+t.test('fail chmod', t => {
+  const poop = new Error('poop')
+  poop.code = 'EPOOP'
+  const unmutate = mutateFS.fail('chmod', poop)
+  const dir = path.join(unpackdir, 'chmod-fail')
+  t.teardown(_ => (unmutate(), rimraf.sync(dir)))
+
+  const warnings = []
+  t.beforeEach(cb => {
+    warnings.length = 0
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'd/i/r/dir/',
+      type: 'Directory',
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    new Header({
+      path: 'd/i/r/dir/',
+      type: 'Directory',
+      mode: 0o751,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  const check = (t, expect) => {
+    t.match(warnings, expect)
+    warnings.forEach(w => t.equal(w[0], w[1].message))
+    t.end()
+  }
+
+  t.test('async', t => {
+    const expect = [['poop', poop]]
+    new Unpack({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).on('close', _ => check(t, expect)).end(data)
+  })
+
+  t.test('sync', t => {
+    const expect = [['poop', poop]]
+    new UnpackSync({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).end(data)
+    check(t, expect)
+  })
+
+  t.end()
+})
+
+t.test('fail mkdir', t => {
+  const poop = new Error('poop')
+  poop.code = 'EPOOP'
+  let unmutate
+  const dir = path.join(unpackdir, 'mkdir-fail')
+  t.teardown(_ => rimraf.sync(dir))
+
+  const warnings = []
+  t.beforeEach(cb => {
+    warnings.length = 0
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    unmutate = mutateFS.fail('mkdir', poop)
+    cb()
+  })
+  t.afterEach(cb => {
+    unmutate()
+    cb()
+  })
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'dir/',
+      type: 'Directory',
+      mode: 0o751,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  const expect = [ [
+    'ENOENT: no such file or directory, lstat \'' +
+    path.resolve(dir, 'dir') + '\'',
+    {
+      code: 'ENOENT',
+      syscall: 'lstat',
+      path: path.resolve(dir, 'dir')
+    }
+  ] ]
+
+  const check = t => {
+    t.match(warnings, expect)
+    warnings.forEach(w => t.equal(w[0], w[1].message))
+    t.end()
+  }
+
+  t.test('async', t => {
+    new Unpack({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).on('close', _ => check(t)).end(data)
+  })
+
+  t.test('sync', t => {
+    new UnpackSync({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).end(data)
+    check(t)
+  })
+
+  t.end()
+})
+
+t.test('fail close', t => {
+  const poop = new Error('poop')
+  poop.code = 'EPOOP'
+  const unmutate = mutateFS.fail('close', poop)
+  const dir = path.join(unpackdir, 'close-fail')
+  t.teardown(_ => (unmutate(), rimraf.sync(dir)))
+
+  const warnings = []
+  t.beforeEach(cb => {
+    warnings.length = 0
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'x',
+      type: 'File',
+      size: 1,
+      mode: 0o751,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    }),
+    'x',
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  const expect = [ [ 'poop', poop ] ]
+
+  const check = t => {
+    t.match(warnings, expect)
+    warnings.forEach(w => t.equal(w[0], w[1].message))
+    t.end()
+  }
+
+  t.test('async', t => {
+    new Unpack({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).on('close', _ => check(t)).end(data)
+  })
+
+  t.test('sync', t => {
+    new UnpackSync({
+      cwd: dir,
+      onwarn: (w, d) => warnings.push([w, d])
+    }).end(data)
+    check(t)
   })
 
   t.end()
