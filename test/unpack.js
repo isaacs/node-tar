@@ -1,5 +1,7 @@
 'use strict'
 
+process.umask(0o022)
+
 const Unpack = require('../lib/unpack.js')
 const UnpackSync = Unpack.Sync
 const t = require('tap')

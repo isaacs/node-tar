@@ -181,7 +181,7 @@ t.test('empty path for cwd', t => {
       cksumValid: true,
       needPax: false,
       path: './',
-      mode: 0o755,
+      mode: fs.statSync('./').mode & 0o7777,
       size: 0,
       linkpath: null,
       ustar: null,
