@@ -7,6 +7,7 @@ const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
 const parse = path.resolve(fixtures, 'parse')
+const tars = path.resolve(fixtures, 'tars')
 const chmodr = require('chmodr')
 const Header = require('../lib/header.js')
 const zlib = require('zlib')
@@ -656,23 +657,35 @@ t.test('pipe into a slow gzip reader', { bail: true }, t => {
   })
 })
 
-t.test('ignore everything', t => {
-  // lets also make stat take a bit longer, so we
-  // end up ignoring something that isn't the current job,
-  // and exercise the queue management logic
-  t.tearDown(mutateFS.delay('lstat', 50))
+t.test('ignores mid-queue', t => {
+  // we let the first one through, and then ignore all the others
+  // so that we trigger the case where an ignored entry is not the
+  // head of the queue.
+  let didFirst = false
   const p = new Pack({
-    cwd: parse,
-    filter: (p, st) => !/\.json/.test(p)
-  }).add('').end()
+    cwd: tars,
+    filter: (p, st) => {
+      if (p === './')
+        return true
+      if (!didFirst)
+        return didFirst = true
+      return false
+    }
+  })
+
   const out = []
+  const files = fs.readdirSync(tars)
+
   p.on('data', c => out.push(c))
   p.on('end', _ => {
     const data = Buffer.concat(out)
-    t.equal(data.length, 1536)
-    t.equal(data.slice(0, 3).toString(), './\0')
+    t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), './')
+    t.equal(data.slice(512, 612).toString().replace(/\0.*$/, ''), files[0])
     t.end()
   })
+
+  p.add('')
+  p.end()
 })
 
 t.test('warnings', t => {
