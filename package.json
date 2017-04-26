@@ -9,7 +9,7 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "tap test/*.js --100 -J",
+    "test": "tap test/*.js --100 -J --coverage-report=text",
     "genparse": "node scripts/generate-parse-fixtures.js"
   },
   "dependencies": {
