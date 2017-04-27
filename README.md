@@ -58,7 +58,7 @@ is immediately available by calling `stream.read()`.  For writable
 streams, it will be acted upon as soon as it is provided, but this can
 be at any time.
 
-### tar.c(options, fileList, callback) alias: tar.create
+### tar.c(options, fileList, callback) [alias: tar.create]
 
 Create a tarball archive.
 
@@ -107,7 +107,7 @@ advanced use cases, such as re-using caches between runs.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 1 MB.
 
-### tar.x(options, fileList, callback) alias: tar.extract
+### tar.x(options, fileList, callback) [alias: tar.extract]
 
 Extract a tarball archive.
 
@@ -155,7 +155,7 @@ advanced use cases, such as re-using caches between runs.
 - `maxMetaEntrySize` The maximum size of meta entries that is
   supported.  Defaults to 1 MB.
 
-### tar.t(options, fileList, callback) alias: tar.list
+### tar.t(options, fileList, callback) [alias: tar.list]
 
 List the contents of a tarball archive.
 
@@ -184,7 +184,7 @@ The following options are supported:
   entry being listed.  Return `true` to emit the entry from the
   archive, or `false` to skip it.
 
-### tar.u(options, fileList, callback) alias: tar.update
+### tar.u(options, fileList, callback) [alias: tar.update]
 
 Add files to an archive if they are newer than the entry already in
 the tarball archive.
@@ -217,7 +217,7 @@ The following options are supported:
   default, `/` is stripped from absolute paths, `..` paths are not
   added to the archive.
 
-### tar.r(options, fileList, callback) alias: tar.replace
+### tar.r(options, fileList, callback) [alias: tar.replace]
 
 Add files to an existing archive.  Because later entries override
 earlier entries, this effectively replaces any existing entries.
