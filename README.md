@@ -71,7 +71,7 @@ The following options are supported:
   is specified, then the callback will be fired when the file has been
   written, and a promise will be returned that resolves when the file
   is written.  If a filename is not specified, then a Readable Stream
-  will be returned which will emit the file data.
+  will be returned which will emit the file data. [Alias: `f`]
 - `sync` Act synchronously.  If this is set, then any provided file
   will be fully written after the call to `tar.c`.  If this is set,
   and a file is not provided, then the resulting stream will already
@@ -83,7 +83,7 @@ The following options are supported:
 - `cwd` The current working directory for creating the archive.
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
-  object with settings for `zlib.Gzip()`
+  object with settings for `zlib.Gzip()` [Alias: `z`]
 - `filter` A function that gets called with `(path, stat)` for each
   entry being added.  Return `true` to add the entry to the archive,
   or `false` to omit it.
@@ -93,7 +93,7 @@ The following options are supported:
   time-based operations.
 - `preservePaths` Allow absolute paths and paths containing `..`.  By
   default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive.
+  added to the archive. [Alias: `P`]
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -119,10 +119,10 @@ If the archive is gzipped, then tar will detect this and unzip it.
 The following options are supported:
 
 - `cwd` Extract files relative to the specified directory.  Defaults
-  to `process.cwd()`.
+  to `process.cwd()`. [Alias: `C`]
 - `file` The archive file to extract.  If not specified, then a
   Writable stream is returned where the archive data should be
-  written.
+  written. [Alias: `f`]
 - `sync` Create files and directories synchronously.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `filter` A function that gets called with `(path, entry)` for each
@@ -134,14 +134,16 @@ The following options are supported:
   extracting through symbolic links.  By default, `/` is stripped from
   absolute paths, `..` paths are not extracted, and any file whose
   location would be modified by a symbolic link is not extracted.
+  [Alias: `P`]
 - `unlink` Unlink files before creating them.  Without this option,
   tar overwrites existing files, which preserves existing hardlinks.
   With this option, existing hardlinks will be broken, as will any
-  symlink that would affect the location of an extracted file
+  symlink that would affect the location of an extracted file. [Alias:
+  `U`]
 - `strip` Remove the specified number of leading path elements.
   Pathnames with fewer elements will be silently skipped.  Note that
   the pathname is edited after applying the filter, but before
-  security checks.
+  security checks. [Alias: `strip-components`, `stripComponents`]
 - `onwarn` A function that will get called with `(message, data)` for
   any warnings encountered.
 
@@ -172,10 +174,10 @@ events.  (If you want to get actual readable entries, use the
 The following options are supported:
 
 - `cwd` Extract files relative to the specified directory.  Defaults
-  to `process.cwd()`.
+  to `process.cwd()`. [Alias: `C`]
 - `file` The archive file to list.  If not specified, then a
   Writable stream is returned where the archive data should be
-  written.
+  written. [Alias: `f`]
 - `sync` Read the specified file synchronously.  (This has no effect
   when a file option isn't specified, because entries are emitted as
   fast as they are parsed from the stream anyway.)
@@ -195,17 +197,17 @@ directory also adds its children recursively.
 The following options are supported:
 
 - `file` Required. Write the tarball archive to the specified
-  filename.
+  filename. [Alias: `f`]
 - `sync` Act synchronously.  If this is set, then any provided file
   will be fully written after the call to `tar.c`.
 - `onwarn` A function that will get called with `(message, data)` for
   any warnings encountered.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `cwd` The current working directory for adding entries to the
-  archive.
+  archive. [Alias: `C`]
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
-  object with settings for `zlib.Gzip()`
+  object with settings for `zlib.Gzip()` [Alias: `z`]
 - `filter` A function that gets called with `(path, stat)` for each
   entry being added.  Return `true` to add the entry to the archive,
   or `false` to omit it.
@@ -215,7 +217,7 @@ The following options are supported:
   time-based operations.
 - `preservePaths` Allow absolute paths and paths containing `..`.  By
   default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive.
+  added to the archive. [Alias: `P`]
 
 ### tar.r(options, fileList, callback) [alias: tar.replace]
 
@@ -228,17 +230,17 @@ directory also adds its children recursively.
 The following options are supported:
 
 - `file` Required. Write the tarball archive to the specified
-  filename.
+  filename. [Alias: `f`]
 - `sync` Act synchronously.  If this is set, then any provided file
   will be fully written after the call to `tar.c`.
 - `onwarn` A function that will get called with `(message, data)` for
   any warnings encountered.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `cwd` The current working directory for adding entries to the
-  archive.
+  archive. [Alias: `C`]
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
-  object with settings for `zlib.Gzip()`
+  object with settings for `zlib.Gzip()` [Alias: `z`]
 - `filter` A function that gets called with `(path, stat)` for each
   entry being added.  Return `true` to add the entry to the archive,
   or `false` to omit it.
@@ -248,7 +250,7 @@ The following options are supported:
   time-based operations.
 - `preservePaths` Allow absolute paths and paths containing `..`.  By
   default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive.
+  added to the archive. [Alias: `P`]
 
 ## Low-Level API
 
@@ -331,7 +333,7 @@ All the normal writable stream stuff is supported.  `write()` and
 - `unlink` Unlink files before creating them.  Without this option,
   tar overwrites existing files, which preserves existing hardlinks.
   With this option, existing hardlinks will be broken, as will any
-  symlink that would affect the location of an extracted file
+  symlink that would affect the location of an extracted file.
 - `strip` Remove the specified number of leading path elements.
   Pathnames with fewer elements will be silently skipped.  Note that
   the pathname is edited after applying the filter, but before
