@@ -279,17 +279,12 @@ t.test('symlink in dir path', t => {
   const data = Buffer.concat([
     new Header({
       path: 'd/i',
-      type: 'Directory',
-      atime: new Date('1979-07-01T19:10:00.000Z'),
-      ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      type: 'Directory'
     }),
     new Header({
       path: 'd/i/r/dir',
       type: 'Directory',
       mode: 0o751,
-      atime: new Date('1979-07-01T19:10:00.000Z'),
-      ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
     }),
     new Header({
@@ -297,8 +292,7 @@ t.test('symlink in dir path', t => {
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
-      ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      ctime: new Date('2011-03-27T22:16:31.000Z')
     }),
     'a',
     new Header({
@@ -1296,8 +1290,6 @@ t.test('fail close', t => {
       type: 'File',
       size: 1,
       mode: 0o751,
-      atime: new Date('1979-07-01T19:10:00.000Z'),
-      ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
     }),
     'x',

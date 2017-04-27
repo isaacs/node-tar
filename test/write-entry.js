@@ -691,7 +691,6 @@ t.test('portable entries, nothing platform-specific', t => {
     gid: null,
     gname: null,
     linkpath: null,
-    mtime: null,
     path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
     size: null,
     uid: null,
@@ -703,7 +702,6 @@ t.test('portable entries, nothing platform-specific', t => {
 
   const hexpect = {
     size: 2,
-    mtime: null,
     ctime: null,
     atime: null,
     uid: null,
