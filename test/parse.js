@@ -154,3 +154,9 @@ t.test('strict warn with an error emits that error', t => {
   })
   p.warn(er.message, er)
 })
+
+t.test('onwarn gets added to the warn event', t => {
+  t.plan(1)
+  const p = new Parse({ onwarn: message => t.equal(message, 'this is fine') })
+  p.warn('this is fine')
+})
