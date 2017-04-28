@@ -3,6 +3,8 @@
 const t = require('tap')
 const hlo = require('../lib/high-level-opt.js')
 
+t.same(hlo(), {})
+
 t.same(hlo({
   C: 'dir',
   f: 'file',
