@@ -27,10 +27,11 @@ t.test('setup', t => {
   t.end()
 })
 
-t.test('no cb on sync functions', t => {
+t.test('no cb if sync or without file', t => {
   t.throws(_ => c({ sync: true }, ['asdf'], function () {}))
   t.throws(_ => c(function () {}))
   t.throws(_ => c({}, function () {}))
+  t.throws(_ => c({}, ['asdf'], function () {}))
   t.end()
 })
 
