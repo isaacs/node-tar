@@ -36,27 +36,30 @@ of which are optional and may be omitted.
 1. `options` - An optional object specifying various options
 2. `paths` - An array of paths to add or extract
 3. `callback` - Called when the command is completed, if async.  (If
-   sync, providing a callback throws a `TypeError`.)
+   sync or no file specified, providing a callback throws a
+   `TypeError`.)
 
 If the command is sync (ie, if `options.sync=true`), then the
-callback is not allowed, and the action will be completed immediately.
+callback is not allowed, since the action will be completed immediately.
 
 If a `file` argument is specified, and the command is async, then a
-`Promise` is returned.
+`Promise` is returned.  In this case, if async, a callback may be
+provided which is called when the command is completed.
 
 If a `file` option is not specified, then a stream is returned.  For
 `create`, this is a readable stream of the generated archive.  For
 `list` and `extract` this is a writable stream that an archive should
-be written into.
+be written into.  If a file is not specified, then a callback is not
+allowed, because you're already getting a stream to work with.
 
-(`replace` and `update` only work on existing archives, and so require
-a `file` argument.)
+`replace` and `update` only work on existing archives, and so require
+a `file` argument.
 
-Sync commands return a stream that acts on its input immediately in
-the same tick.  For readable streams, this means that all of the data
-is immediately available by calling `stream.read()`.  For writable
-streams, it will be acted upon as soon as it is provided, but this can
-be at any time.
+Sync commands without a file argument return a stream that acts on its
+input immediately in the same tick.  For readable streams, this means
+that all of the data is immediately available by calling
+`stream.read()`.  For writable streams, it will be acted upon as soon
+as it is provided, but this can be at any time.
 
 ### tar.c(options, fileList, callback) [alias: tar.create]
 
@@ -151,6 +154,8 @@ The following options are supported:
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
 
+- `maxReadSize` The maximum buffer size for `fs.read()` operations.
+  Defaults to 16 MB.
 - `umask` Filter the modes of entries like `process.umask()`.
 - `dmode` Default mode for directories
 - `fmode` Default mode for files
@@ -186,6 +191,11 @@ The following options are supported:
 - `filter` A function that gets called with `(path, entry)` for each
   entry being listed.  Return `true` to emit the entry from the
   archive, or `false` to skip it.
+- `onentry` A function that gets called with `(entry)` for each entry
+  that passes the filter.  This is important for when both `file` and
+  `sync` are set, because it will be called synchronously.
+- `maxReadSize` The maximum buffer size for `fs.read()` operations.
+  Defaults to 16 MB.
 
 ### tar.u(options, fileList, callback) [alias: tar.update]
 
@@ -219,6 +229,8 @@ The following options are supported:
 - `preservePaths` Allow absolute paths and paths containing `..`.  By
   default, `/` is stripped from absolute paths, `..` paths are not
   added to the archive. [Alias: `P`]
+- `maxReadSize` The maximum buffer size for `fs.read()` operations.
+  Defaults to 16 MB.
 
 ### tar.r(options, fileList, callback) [alias: tar.replace]
 
@@ -252,6 +264,8 @@ The following options are supported:
 - `preservePaths` Allow absolute paths and paths containing `..`.  By
   default, `/` is stripped from absolute paths, `..` paths are not
   added to the archive. [Alias: `P`]
+- `maxReadSize` The maximum buffer size for `fs.read()` operations.
+  Defaults to 16 MB.
 
 ## Low-Level API
 
@@ -290,8 +304,7 @@ The following options are supported:
 - `jobs` A number specifying how many concurrent jobs to run.
   Defaults to 4.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
-  Defaults to 1 MB.
-
+  Defaults to 16 MB.
 
 #### add(path) -> this
 
@@ -380,6 +393,8 @@ The following options are supported:
 - `filter` A function that gets called with `(path, entry)` for each
   entry being listed.  Return `true` to emit the entry from the
   archive, or `false` to skip it.
+- `onentry` A function that gets called with `(entry)` for each entry
+  that passes the filter.
 
 ### class tar.ReadEntry extends [MiniPass](http://npm.im/minipass)
 
