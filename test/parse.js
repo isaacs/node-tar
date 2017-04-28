@@ -160,3 +160,11 @@ t.test('onwarn gets added to the warn event', t => {
   const p = new Parse({ onwarn: message => t.equal(message, 'this is fine') })
   p.warn('this is fine')
 })
+
+t.test('onentry gets added to entry event', t => {
+  t.plan(1)
+  const p = new Parse({
+    onentry: entry => t.equal(entry, 'yes hello this is dog')
+  })
+  p.emit('entry', 'yes hello this is dog')
+})
