@@ -27,7 +27,7 @@ The other flags and options modify how this top level function works.
 ## High-Level API
 
 These 5 functions are the high-level API.  All of them have a
-single-character name (for unix nerds familiar with `tar(1)` as well
+single-character name (for unix nerds familiar with `tar(1)`) as well
 as a long name (for everyone else).
 
 All the high-level functions take the following arguments, all three
