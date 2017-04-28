@@ -580,10 +580,12 @@ t.test('pipe into a slow reader', t => {
   const mp = new MiniPass()
   const mp2 = new MiniPass()
   const p = new Pack({ cwd: files }).add('long-path').end()
+  p.pause()
   p.pipe(mp).pipe(mp2)
-  // p.pipe(mp2)
-  // p.on('data', c => out.push(c))
-  setTimeout(_ => mp2.on('data', c => out.push(c)), 100)
+  setTimeout(_ => {
+    mp2.on('data', c => out.push(c))
+    setTimeout(_ => p.resume(), 100)
+  }, 100)
   mp.on('end', _ => {
     const data = Buffer.concat(out)
     const h = new Header(data)
@@ -621,11 +623,13 @@ t.test('pipe into a slow gzip reader', t => {
   const out = []
   const mp2 = new miniz.Unzip()
   const p = new Pack({ cwd: files, gzip: true }).add('long-path').end()
+  p.pause()
 
   setTimeout(_ => {
     p.pipe(mp2)
     setTimeout(_ => {
       mp2.on('data', c => out.push(c))
+      setTimeout(_ => p.resume(), 100)
     }, 100)
   }, 100)
 
