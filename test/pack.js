@@ -61,8 +61,14 @@ t.test('pack a file', t => {
         type: 'File'
       }
       t.match(h, expect)
-      const sync = new PackSync({ cwd: files })
-        .add('one-byte.txt').end().read()
+      const ps = new PackSync({ cwd: files })
+      const sout = []
+      ps.on('data', chunk => sout.push(chunk))
+      ps.add('one-byte.txt').end()
+      const sync = Buffer.concat(sout)
+      if (sync.length === 0)
+        throw new Error('no data!')
+
       t.equal(sync.slice(512).toString(), data.slice(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
@@ -611,18 +617,20 @@ t.test('pipe into a slow reader', t => {
   })
 })
 
-t.test('pipe into a slow gzip reader', { bail: true }, t => {
+t.test('pipe into a slow gzip reader', t => {
   const out = []
   const mp2 = new miniz.Unzip()
   const p = new Pack({ cwd: files, gzip: true }).add('long-path').end()
-  p.pause()
 
   setTimeout(_ => {
     p.pipe(mp2)
-    setTimeout(_ => mp2.on('data', c => out.push(c)), 100)
+    setTimeout(_ => {
+      mp2.on('data', c => out.push(c))
+    }, 100)
   }, 100)
 
   mp2.on('end', _ => {
+    t.pass('mp2 end')
     const data = Buffer.concat(out)
     // dir/, dir/x, and the nulls
     // neither the dir or the file have any body bits
@@ -680,7 +688,8 @@ t.test('ignores mid-queue', t => {
   p.on('end', _ => {
     const data = Buffer.concat(out)
     t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), './')
-    t.equal(data.slice(512, 612).toString().replace(/\0.*$/, ''), files[0])
+    const file = data.slice(512, 612).toString().replace(/\0.*$/, '')
+    t.notequal(files.indexOf(file), -1)
     t.end()
   })
 
