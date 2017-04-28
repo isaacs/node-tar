@@ -19,7 +19,7 @@ const readtar = (file, cb) => {
     cb(code, signal, Buffer.concat(out).toString()))
 }
 
-// t.teardown(_ => rimraf.sync(dir))
+t.teardown(_ => rimraf.sync(dir))
 
 t.test('setup', t => {
   rimraf.sync(dir)
@@ -28,10 +28,10 @@ t.test('setup', t => {
 })
 
 t.test('no cb if sync or without file', t => {
-  t.throws(_ => c({ sync: true }, ['asdf'], function () {}))
-  t.throws(_ => c(function () {}))
-  t.throws(_ => c({}, function () {}))
-  t.throws(_ => c({}, ['asdf'], function () {}))
+  t.throws(_ => c({ sync: true }, ['asdf'], _=>_))
+  t.throws(_ => c(_=>_))
+  t.throws(_ => c({}, _=>_))
+  t.throws(_ => c({}, ['asdf'], _=>_))
   t.end()
 })
 
