@@ -94,6 +94,7 @@ The following options are supported:
 - `preservePaths` Allow absolute paths and paths containing `..`.  By
   default, `/` is stripped from absolute paths, `..` paths are not
   added to the archive. [Alias: `P`]
+- `mode` The mode to set on the created file archive
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -292,7 +293,7 @@ The following options are supported:
   Defaults to 1 MB.
 
 
-#### addEntry(path) -> this
+#### add(path) -> this
 
 Adds an entry to the archive.  Returns the Pack stream.
 
