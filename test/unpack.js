@@ -13,6 +13,7 @@ const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
 const tars = path.resolve(fixtures, 'tars')
+const parses = path.resolve(fixtures, 'parse')
 const unpackdir = path.resolve(fixtures, 'unpack')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
@@ -1392,4 +1393,29 @@ t.test('skip newer', t => {
   })
 
   t.end()
+})
+
+t.test('unpack big enough to pause/drain', t => {
+  const dir = path.resolve(unpackdir, 'drain-clog')
+  mkdirp.sync(dir)
+  t.tearDown(_ => rimraf.sync(dir))
+  const stream = fs.createReadStream(tars + '/parses.tar')
+  const u = new Unpack({
+    cwd: dir,
+    strip: 3,
+    strict: true
+  })
+
+  u.on('ignoredEntry', entry =>
+    t.fail('should not get ignored entry: ' + entry.path))
+
+  u.on('close', _ => {
+    t.pass('extraction finished')
+    const actual = fs.readdirSync(dir)
+    const expected = fs.readdirSync(parses)
+    t.same(actual, expected)
+    t.end()
+  })
+
+  stream.pipe(u)
 })
