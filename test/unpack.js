@@ -1399,7 +1399,7 @@ t.test('unpack big enough to pause/drain', t => {
   const dir = path.resolve(unpackdir, 'drain-clog')
   mkdirp.sync(dir)
   t.tearDown(_ => rimraf.sync(dir))
-  const stream = fs.createReadStream(tars + '/parses.tar')
+  const stream = fs.createReadStream(fixtures + '/parses.tar')
   const u = new Unpack({
     cwd: dir,
     strip: 3,
