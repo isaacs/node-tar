@@ -373,3 +373,89 @@ t.test('drain event timings', t => {
   })
   go()
 })
+
+t.test('consume while consuming', t => {
+  const data = Buffer.concat([
+    new Header({
+      path: 'one',
+      size: 0,
+      type: 'File'
+    }),
+    new Header({
+      path: 'zero',
+      size: 0,
+      type: 'File'
+    }),
+    new Header({
+      path: 'two',
+      size: 513,
+      type: 'File'
+    }),
+    new Array(513).join('2'),
+    '2',
+    new Header({
+      path: 'three',
+      size: 1024,
+      type: 'File'
+    }),
+    new Array(513).join('3'),
+    new Array(513).join('3'),
+    new Header({
+      path: 'zero',
+      size: 0,
+      type: 'File'
+    }),
+    new Header({
+      path: 'zero',
+      size: 0,
+      type: 'File'
+    }),
+    new Header({
+      path: 'four',
+      size: 1024,
+      type: 'File'
+    }),
+    new Array(513).join('4'),
+    new Array(513).join('4'),
+    new Header({
+      path: 'zero',
+      size: 0,
+      type: 'File'
+    }),
+    new Header({
+      path: 'zero',
+      size: 0,
+      type: 'File'
+    }),
+  ].map(chunk => {
+    if (chunk instanceof Header) {
+      chunk.encode()
+      return chunk.block
+    }
+    const buf = Buffer.alloc(512)
+    buf.write(chunk)
+    return buf
+  }))
+
+
+  const runTest = (t, size) => {
+    const p = new Parse()
+    const first = data.slice(0, size)
+    const rest = data.slice(size)
+    p.once('entry', entry => {
+      for (let pos = 0; pos < rest.length; pos += size) {
+        p.write(rest.slice(pos, pos + size))
+      }
+      p.end()
+    })
+    .on('entry', entry => entry.resume())
+    .on('end', _ => t.end())
+    .write(first)
+  }
+
+  // one that aligns, and another that doesn't, so that we
+  // get some cases where there's leftover chunk and a buffer
+  t.test('size=1000', t => runTest(t, 1000))
+  t.test('size=1024', t => runTest(t, 4096))
+  t.end()
+})
