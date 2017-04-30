@@ -7,9 +7,11 @@ const path = require('path')
 const tardir = path.resolve(__dirname, 'fixtures/tars')
 const etoa = require('events-to-array')
 const zlib = require('zlib')
+const MiniPass = require('minipass')
+const Header = require('../lib/header.js')
+const EE = require('events').EventEmitter
 
 t.test('fixture tests', t => {
-  const MiniPass = require('minipass')
   class ByteStream extends MiniPass {
     write (chunk) {
       for (let i = 0; i < chunk.length - 1; i++) {
@@ -167,4 +169,207 @@ t.test('onentry gets added to entry event', t => {
     onentry: entry => t.equal(entry, 'yes hello this is dog')
   })
   p.emit('entry', 'yes hello this is dog')
+})
+
+t.test('drain event timings', t => {
+  // write 1 header and body, write 2 header, verify false return
+  // wait for drain event before continuing.
+  // write 2 body, 3 header and body, 4 header, verify false return
+  // wait for drain event
+  // write 4 body and null blocks
+
+  const data = [
+    [
+      new Header({
+        path: 'one',
+        size: 513,
+        type: 'File'
+      }),
+      new Array(513).join('1'),
+      '1',
+      new Header({
+        path: 'two',
+        size: 513,
+        type: 'File'
+      }),
+      new Array(513).join('2'),
+      '2',
+      new Header({
+        path: 'three',
+        size: 1024,
+        type: 'File'
+      })
+    ],
+    [
+      new Array(513).join('3'),
+      new Array(513).join('3'),
+      new Header({
+        path: 'four',
+        size: 513,
+        type: 'File'
+      })
+    ],
+    [
+      new Array(513).join('4'),
+      '4',
+      new Header({
+        path: 'five',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('5'),
+      new Array(513).join('5'),
+      new Header({
+        path: 'six',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('6'),
+      new Array(513).join('6'),
+      new Header({
+        path: 'seven',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('7'),
+      new Array(513).join('7'),
+      new Header({
+        path: 'eight',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('8'),
+      new Array(513).join('8'),
+      new Header({
+        path: 'four',
+        size: 513,
+        type: 'File'
+      }),
+      new Array(513).join('4'),
+      '4',
+      new Header({
+        path: 'five',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('5'),
+      new Array(513).join('5'),
+      new Header({
+        path: 'six',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('6'),
+      new Array(513).join('6'),
+      new Header({
+        path: 'seven',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('7'),
+      new Array(513).join('7'),
+      new Header({
+        path: 'eight',
+        size: 1024,
+        type: 'File'
+      }),
+      new Array(513).join('8')
+    ],
+    [
+      new Array(513).join('8'),
+      new Header({
+        path: 'nine',
+        size: 1537,
+        type: 'File'
+      }),
+      new Array(513).join('9')
+    ],
+    [ new Array(513).join('9') ],
+    [ new Array(513).join('9') ],
+    [ '9' ]
+  ].map(chunks => Buffer.concat(chunks.map(chunk => {
+    if (chunk instanceof Header) {
+      chunk.encode()
+      return chunk.block
+    }
+    const buf = Buffer.alloc(512)
+    buf.write(chunk)
+    return buf
+  }), chunks.length * 512))
+
+  const expect = [
+    'one', 'two', 'three',
+    'four', 'five', 'six', 'seven', 'eight',
+    'four', 'five', 'six', 'seven', 'eight',
+    'nine',
+    'one', 'two', 'three',
+    'four', 'five', 'six', 'seven', 'eight',
+    'four', 'five', 'six', 'seven', 'eight',
+    'nine'
+  ]
+
+  class SlowStream extends EE {
+    write () {
+      setTimeout(_ => this.emit('drain'))
+      return false
+    }
+    end () { return this.write() }
+  }
+
+  let currentEntry
+  let autoPipe = true
+  const p = new Parse({
+    onentry: entry => {
+      t.equal(entry.path, expect.shift())
+      currentEntry = entry
+      if (autoPipe)
+        setTimeout(_=> entry.pipe(new SlowStream()))
+    }
+  })
+
+  data.forEach(d => {
+    if (!t.equal(p.write(d), false, 'write should return false: ' + d))
+      return t.end()
+  })
+
+  let interval
+  const go = _ => {
+    const d = data.shift()
+    if (d === undefined)
+      return p.end()
+
+    let paused
+    if (currentEntry) {
+      currentEntry.pause()
+      paused = true
+    }
+
+    const hunklen = Math.floor(d.length / 2)
+    const hunks = [
+      d.slice(0, hunklen),
+      d.slice(hunklen)
+    ]
+    p.write(hunks[0])
+
+    if (currentEntry && !paused) {
+      console.error('has current entry')
+      currentEntry.pause()
+      paused = true
+    }
+
+    if (!t.equal(p.write(hunks[1]), false, 'write should return false: ' + d))
+      return t.end()
+
+    p.once('drain', go)
+
+    if (paused)
+      currentEntry.resume()
+  }
+
+  p.once('drain', go)
+  p.on('end', _ => {
+    clearInterval(interval)
+    t.end()
+  })
+  go()
 })
