@@ -13,7 +13,7 @@
     "genparse": "node scripts/generate-parse-fixtures.js"
   },
   "dependencies": {
-    "minipass": "^1.1.10",
+    "minipass": "^1.1.11",
     "minizlib": "^1.0.2",
     "mkdirp": "^0.5.0",
     "yallist": "^3.0.2"
