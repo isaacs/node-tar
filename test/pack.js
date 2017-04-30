@@ -15,6 +15,7 @@ const miniz = require('minizlib')
 const mutateFS = require('mutate-fs')
 const MiniPass = require('minipass')
 process.env.USER = 'isaacs'
+const EE = require('events').EventEmitter
 
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
@@ -625,14 +626,27 @@ t.test('pipe into a slow gzip reader', t => {
   const p = new Pack({ cwd: files, gzip: true }).add('long-path').end()
   p.pause()
 
-  setTimeout(_ => {
-    p.pipe(mp2)
-    setTimeout(_ => {
-      mp2.on('data', c => out.push(c))
-      setTimeout(_ => p.resume(), 100)
-    }, 100)
-  }, 100)
+  class SlowStream extends EE {
+    write (chunk) {
+      mp2.write(chunk)
+      setTimeout(_ => {
+        this.emit('drain')
+        p.resume()
+      })
+      return false
+    }
+    end (chunk) {
+      return mp2.end(chunk)
+    }
+  }
+  const ss = new SlowStream()
 
+  setTimeout(_=> {
+    p.pipe(ss)
+    p.resume()
+  })
+
+  mp2.on('data', c => out.push(c))
   mp2.on('end', _ => {
     t.pass('mp2 end')
     const data = Buffer.concat(out)
