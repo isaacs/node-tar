@@ -208,8 +208,8 @@ t.test('other throws', t => {
 t.test('broken open', t => {
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('open', poop))
-  t.throws(_ => u({ sync: true, file:'x' }, ['x']), poop)
-  u({ file: 'x' }, ['x'], er => {
+  t.throws(_ => u({ sync: true, file: file }, ['README.md']), poop)
+  u({ file: file }, ['README.md'], er => {
     t.match(er, poop)
     t.end()
   })
@@ -218,8 +218,8 @@ t.test('broken open', t => {
 t.test('broken fstat', t => {
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('fstat', poop))
-  t.throws(_ => u({ sync: true, file:'x' }, ['x']), poop)
-  u({ file: 'x' }, ['x'], er => {
+  t.throws(_ => u({ sync: true, file: file }, ['README.md']), poop)
+  u({ file: file }, ['README.md'], er => {
     t.match(er, poop)
     t.end()
   })
@@ -228,8 +228,8 @@ t.test('broken fstat', t => {
 t.test('broken read', t => {
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('read', poop))
-  t.throws(_ => u({ sync: true, file:'x' }, ['x']), poop)
-  u({ file: 'x' }, ['x'], er => {
+  t.throws(_ => u({ sync: true, file: file }, ['README.md']), poop)
+  u({ file: file }, ['README.md'], er => {
     t.match(er, poop)
     t.end()
   })
