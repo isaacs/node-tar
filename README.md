@@ -133,7 +133,7 @@ The following options are supported:
   entry being unpacked.  Return `true` to unpack the entry from the
   archive, or `false` to skip it.
 - `newer` Set to true to keep the existing file on disk if it's newer
-  than the file in the archive.
+  than the file in the archive. [Alias: `keep-newer-files`]
 - `preservePaths` Allow absolute paths, paths containing `..`, and
   extracting through symbolic links.  By default, `/` is stripped from
   absolute paths, `..` paths are not extracted, and any file whose
