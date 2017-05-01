@@ -127,8 +127,8 @@ t.test('create file', t => {
 })
 
 t.test('create', t => {
-  t.isa(c({ sync: true }, ['create.js']), Pack.Sync)
-  t.isa(c(['create.js']), Pack)
+  t.isa(c({ sync: true }, ['README.md']), Pack.Sync)
+  t.isa(c(['README.md']), Pack)
   t.end()
 })
 
