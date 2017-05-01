@@ -1,3 +1,4 @@
+'use strict'
 const t = require('tap')
 const u = require('../lib/update.js')
 const path = require('path')

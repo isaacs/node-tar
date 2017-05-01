@@ -1,3 +1,4 @@
+'use strict'
 const t = require('tap')
 const list = require('../lib/list.js')
 const path = require('path')
