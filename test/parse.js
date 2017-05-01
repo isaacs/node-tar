@@ -81,7 +81,7 @@ t.test('fixture tests', t => {
         const bs = new ByteStream
         const opt = (maxMeta || filter || strict) ? {
           maxMetaEntrySize: maxMeta,
-          filter: filter ? entry => entry.size % 2 !== 0 : null,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict
         } : null
         const bp = new Parse(opt)
@@ -93,7 +93,7 @@ t.test('fixture tests', t => {
       t.test('all at once', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,
-          filter: filter ? entry => entry.size % 2 !== 0 : null,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict
         })
         trackEvents(t, expect, p)
@@ -103,7 +103,7 @@ t.test('fixture tests', t => {
       t.test('gzipped all at once', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,
-          filter: filter ? entry => entry.size % 2 !== 0 : null,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict
         })
         trackEvents(t, expect, p)
@@ -115,7 +115,7 @@ t.test('fixture tests', t => {
         const gz = new zlib.Gzip()
         const bp = new Parse({
           maxMetaEntrySize: maxMeta,
-          filter: filter ? entry => entry.size % 2 !== 0 : null,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict
         })
         trackEvents(t, expect, bp)
@@ -126,7 +126,7 @@ t.test('fixture tests', t => {
       t.test('async chunks', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,
-          filter: filter ? entry => entry.size % 2 !== 0 : null,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict
         })
         trackEvents(t, expect, p, true)

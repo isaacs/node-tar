@@ -74,7 +74,7 @@ t.test('file list and filter', t => {
     t.end()
   }
 
-  const filter = entry => entry.path === 'Ω.txt'
+  const filter = path => path === 'Ω.txt'
 
   t.test('sync', t => {
     x({ filter: filter, file: file, sync: true, C: dir }, [ '🌟.txt', 'Ω.txt' ])
