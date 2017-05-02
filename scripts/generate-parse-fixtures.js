@@ -4,7 +4,6 @@ const fs = require('fs')
 const path = require('path')
 const tardir = path.resolve(__dirname, '../test/fixtures/tars')
 const parsedir = path.resolve(__dirname, '../test/fixtures/parse')
-const etoa = require('events-to-array')
 const maxMetaOpt = [50, null]
 const filterOpt = [ true, false ]
 const strictOpt = [ true, false ]
