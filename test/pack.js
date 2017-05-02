@@ -16,6 +16,8 @@ const mutateFS = require('mutate-fs')
 const MiniPass = require('minipass')
 process.env.USER = 'isaacs'
 const EE = require('events').EventEmitter
+const rimraf = require('rimraf')
+const mkdirp = require('mkdirp')
 
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
@@ -774,6 +776,52 @@ t.test('warnings', t => {
       t.match(e, { message: /stripping .* from absolute path/, data: f })
       t.end()
     })
+  })
+
+  t.end()
+})
+
+t.test('no dir recurse', t => {
+  const dir = path.resolve(fixtures, 'pack-no-dir-recurse')
+  t.teardown(_ => rimraf.sync(dir))
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir + '/x')
+    fs.writeFileSync(dir + '/x/y', 'y')
+    cb()
+  })
+
+  const check = (t, data) => {
+    t.equal(data.length, 512 + 1024)
+    t.equal(data.slice(512).toString(), new Array(1025).join('\0'))
+    t.match(new Header(data), {
+      type: 'Directory',
+      path: 'x/',
+      size: 0
+    })
+    t.end()
+  }
+
+  t.test('async', t => {
+    const p = new Pack({
+      cwd: dir,
+      noDirRecurse: true
+    })
+
+    const out = []
+    p.end('x')
+      .on('data', c => out.push(c))
+      .on('close', _ => check(t, Buffer.concat(out)))
+  })
+
+  t.test('sync', t => {
+    const p = new Pack.Sync({
+      cwd: dir,
+      noDirRecurse: true
+    })
+
+    p.end('x')
+    check(t, p.read())
   })
 
   t.end()

@@ -98,6 +98,8 @@ The following options are supported:
   default, `/` is stripped from absolute paths, `..` paths are not
   added to the archive. [Alias: `P`]
 - `mode` The mode to set on the created file archive
+- `noDirRecurse` Do not recursively archive the contents of
+  directories. [Alias: `n`]
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -234,6 +236,8 @@ The following options are supported:
   added to the archive. [Alias: `P`]
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
+- `noDirRecurse` Do not recursively archive the contents of
+  directories. [Alias: `n`]
 
 ### tar.r(options, fileList, callback) [alias: tar.replace]
 
@@ -269,6 +273,8 @@ The following options are supported:
   added to the archive. [Alias: `P`]
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
+- `noDirRecurse` Do not recursively archive the contents of
+  directories. [Alias: `n`]
 
 ## Low-Level API
 
@@ -308,6 +314,8 @@ The following options are supported:
   Defaults to 4.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
+- `noDirRecurse` Do not recursively archive the contents of
+  directories.
 
 #### add(path) -> this
 
