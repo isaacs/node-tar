@@ -61,6 +61,101 @@ that all of the data is immediately available by calling
 `stream.read()`.  For writable streams, it will be acted upon as soon
 as it is provided, but this can be at any time.
 
+### Examples
+
+The API mimics the `tar(1)` command line functionality, with aliases
+for more human-readable option and function names.  The goal is that
+if you know how to use `tar(1)` in Unix, then you know how to use
+`require('tar')` in JavaScript.
+
+To replicate `tar czf my-tarball.tgz files and folders`, you'd do:
+
+```js
+tar.c(
+  {
+    gzip: <true|gzip options>,
+    file: 'my-tarball.tgz'
+  },
+  ['some', 'files', 'and', 'folders']
+).then(_ => { .. tarball has been created .. })
+```
+
+To replicate `tar cz files and folders > my-tarball.tgz`, you'd do:
+
+```js
+tar.c( // or tar.create
+  {
+    gzip: <true|gzip options>
+  },
+  ['some', 'files', 'and', 'folders']
+).pipe(fs.createWriteStream('my-tarball.tgz')
+```
+
+To replicate `tar xf my-tarball.tgz` you'd do:
+
+```js
+tar.x(  // or tar.extract(
+  {
+    file: 'my-tarball.tgz'
+  }
+).then(_=> { .. tarball has been dumped in cwd .. })
+```
+
+To replicate `cat my-tarball.tgz | tar x -C some-dir --strip=1`:
+
+```js
+fs.createReadStream('my-tarball.tgz').pipe(
+  tar.x({
+    strip: 1,
+    C: 'some-dir' // alias for cwd:'some-dir', also ok
+  })
+)
+```
+
+To replicate `tar tf my-tarball.tgz`, do this:
+
+```js
+tar.t({ file: 'my-tarball.tgz' })
+  .on('entry', entry => { .. do whatever with it .. })
+```
+
+To replicate `cat my-tarball.tgz | tar t` do:
+
+```js
+fs.createReadStream('my-tarball.tgz')
+  .pipe(tar.t())
+  .on('entry', entry => { .. do whatever with it .. })
+```
+
+To do anything synchronous, add `sync: true` to the options.  Note
+that sync functions don't take a callback and don't return a promise.
+When the function returns, it's already done.  Sync methods without a
+file argument return a sync stream, which flushes immediately.  But,
+of course, it still won't be done until you `.end()` it.
+
+To filter entries, add `filter: <function>` to the options.
+Tar-creating methods call the filter with `filter(path, stat)`.
+Tar-reading methods (including extraction) call the filter with
+`filter(path, entry)`.  The filter is called in the `this`-context of
+the `Pack` or `Unpack` stream object.
+
+The arguments list to `tar t` and `tar x` specify a list of filenames
+to extract or list, so they're equivalent to a filter that tests if
+the file is in the list.
+
+For those who _aren't_ fans of tar's single-character command names:
+
+```
+tar.c === tar.create
+tar.r === tar.replace (appends to archive, file is required)
+tar.u === tar.update (appends if newer, file is required)
+tar.x === tar.extract
+tar.t === tar.list
+```
+
+Keep reading for all the command descriptions and options, as well as
+the low-level API that they are built on.
+
 ### tar.c(options, fileList, callback) [alias: tar.create]
 
 Create a tarball archive.
