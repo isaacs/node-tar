@@ -1333,6 +1333,68 @@ t.test('fail close', t => {
   t.end()
 })
 
+t.test('skip existing', t => {
+  const dir = path.join(unpackdir, 'skip-newer')
+  t.teardown(_ => rimraf.sync(dir))
+
+  const date = new Date('2011-03-27T22:16:31.000Z')
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    fs.writeFileSync(dir + '/x', 'y')
+    fs.utimesSync(dir + '/x', date, date)
+    cb()
+  })
+
+  const data = Buffer.concat([
+    new Header({
+      path: 'x',
+      type: 'File',
+      size: 1,
+      mode: 0o751,
+      mtime: new Date('2013-12-19T17:00:00.000Z')
+    }),
+    'x',
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  const check = t => {
+    const st = fs.lstatSync(dir + '/x')
+    t.equal(st.atime.toISOString(), date.toISOString())
+    t.equal(st.mtime.toISOString(), date.toISOString())
+    const data = fs.readFileSync(dir + '/x', 'utf8')
+    t.equal(data, 'y')
+    t.end()
+  }
+
+  t.test('async', t => {
+    new Unpack({
+      cwd: dir,
+      keep: true
+    }).on('close', _ => check(t)).end(data)
+  })
+
+  t.test('sync', t => {
+    new UnpackSync({
+      cwd: dir,
+      keep: true
+    }).end(data)
+    check(t)
+  })
+
+  t.end()
+})
+
 t.test('skip newer', t => {
   const dir = path.join(unpackdir, 'skip-newer')
   t.teardown(_ => rimraf.sync(dir))

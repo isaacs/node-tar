@@ -133,7 +133,10 @@ The following options are supported:
   entry being unpacked.  Return `true` to unpack the entry from the
   archive, or `false` to skip it.
 - `newer` Set to true to keep the existing file on disk if it's newer
-  than the file in the archive. [Alias: `keep-newer-files`]
+  than the file in the archive. [Alias: `keep-newer`, `keep-newer-files`]
+- `keep` Do not overwrite existing files.  In particular, if a file
+  appears more than once in an archive, later copies will not
+  overwrite earlier copies. [Alias: `k`, `keep-existing`]
 - `preservePaths` Allow absolute paths, paths containing `..`, and
   extracting through symbolic links.  By default, `/` is stripped from
   absolute paths, `..` paths are not extracted, and any file whose
@@ -340,6 +343,9 @@ All the normal writable stream stuff is supported.  `write()` and
   archive, or `false` to skip it.
 - `newer` Set to true to keep the existing file on disk if it's newer
   than the file in the archive.
+- `keep` Do not overwrite existing files.  In particular, if a file
+  appears more than once in an archive, later copies will not
+  overwrite earlier copies.
 - `preservePaths` Allow absolute paths, paths containing `..`, and
   extracting through symbolic links.  By default, `/` is stripped from
   absolute paths, `..` paths are not extracted, and any file whose
