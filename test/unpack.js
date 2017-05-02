@@ -1457,6 +1457,80 @@ t.test('skip newer', t => {
   t.end()
 })
 
+t.test('no mtime', t => {
+  const dir = path.join(unpackdir, 'skip-newer')
+  t.teardown(_ => rimraf.sync(dir))
+
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const date = new Date('2011-03-27T22:16:31.000Z')
+  const data = Buffer.concat([
+    new Header({
+      path: 'x/',
+      type: 'Directory',
+      size: 0,
+      atime: date,
+      ctime: date,
+      mtime: date
+    }),
+    new Header({
+      path: 'x/y',
+      type: 'File',
+      size: 1,
+      mode: 0o751,
+      atime: date,
+      ctime: date,
+      mtime: date
+    }),
+    'x',
+    '',
+    ''
+  ].map(c => {
+    if (typeof c === 'string') {
+      const b = Buffer.alloc(512)
+      b.write(c)
+      return b
+    } else {
+      c.encode()
+      return c.block
+    }
+  }))
+
+  const check = t => {
+    // this may fail if it's run on March 27, 2011
+    const stx = fs.lstatSync(dir + '/x')
+    t.notEqual(stx.atime.toISOString(), date.toISOString())
+    t.notEqual(stx.mtime.toISOString(), date.toISOString())
+    const sty = fs.lstatSync(dir + '/x/y')
+    t.notEqual(sty.atime.toISOString(), date.toISOString())
+    t.notEqual(sty.mtime.toISOString(), date.toISOString())
+    const data = fs.readFileSync(dir + '/x/y', 'utf8')
+    t.equal(data, 'x')
+    t.end()
+  }
+
+  t.test('async', t => {
+    new Unpack({
+      cwd: dir,
+      noMtime: true
+    }).on('close', _ => check(t)).end(data)
+  })
+
+  t.test('sync', t => {
+    new UnpackSync({
+      cwd: dir,
+      noMtime: true
+    }).end(data)
+    check(t)
+  })
+
+  t.end()
+})
+
 t.test('unpack big enough to pause/drain', t => {
   const dir = path.resolve(unpackdir, 'drain-clog')
   mkdirp.sync(dir)
