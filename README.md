@@ -619,18 +619,11 @@ It has the following fields:
 - `nullBlock` True if decoding a block which is entirely composed of
   `0x00` null bytes.  (Useful because tar files are terminated by
   at least 2 null blocks.)
-- `fieldset` Getter/setter for the set of fields used in encoding and
-  decoding this header.  As a setter, accepts one of the following
-  values: `'xstar'`, `'ustar'`, `'basic'`.  As a getter, returns the
-  actual set of fields in use.
-- `block` The 512-byte block which is the encoded tar Header.
 - `cksumValid` True if the checksum in the header is valid, false
   otherwise.
 - `needPax` True if the values, as encoded, will require a Pax
   extended header.
-- `path` Joined with a `/` character to the `ustarPrefix` or
-  `xstarPrefix` if using the `ustar` or `xstar` formats, respectively.
-  The path of the entry.
+- `path` The path of the entry.
 - `mode` The 4 lowest-order octal digits of the file mode.  That is,
   read/write/execute permissions for world, group, and owner, and the
   setuid, setgid, and sticky bits.
@@ -646,36 +639,25 @@ It has the following fields:
 - `typeKey` The alphanumeric key for the type of entry this header
   represents.
 - `linkpath` The target of Link and SymbolicLink entries.
-- `ustar` Set to the string `'ustar'` for ustar and xstar fieldsets.
-- `ustarver` Set to the string `'00'` for ustar and xstar fieldsets.
 - `uname` Human-readable user name of the file owner
 - `gname` Human-readable group name of the file owner
 - `devmaj` The major portion of the device number.  Always `0` for
   files, directories, and links.
 - `devmin` The minor portion of the device number.  Always `0` for
   files, directories, and links.
-- `ustarPrefix` If using the `ustar` format, then this is 155
-  characters that are joined with the `path` portion with a `/`
-  character to extend the limit of paths it can hold.
-- `xstarPrefix` Just like `ustarPrefix`, but only 130 characters, used
-  with the `xstar` format.
-- `prefixTerminator` A null `\0` value when using the `xstar` format
-- `atime` File access time.  Only available in the `xstar` format
-- `ctime` File change time.  Only available in the `xstar` format
+- `atime` File access time.
+- `ctime` File change time.
 
-#### constructor(data)
+#### constructor(data, [offset=0])
 
-`data` is optional.  It is either a 512-byte Buffer that should be
-interpreted as a tar Header, or a data object of keys and values to
-set on the header object, and eventually encode as a tar Header.
+`data` is optional.  It is either a Buffer that should be interpreted
+as a tar Header starting at the specified offset and continuing for
+512 bytes, or a data object of keys and values to set on the header
+object, and eventually encode as a tar Header.
 
-When decoding a block, the fieldset will be automatically detected.
-When encoding, if not explicitly chosen, it will be selected based on
-the needs of the data being encoded.
+#### decode(block, offset)
 
-#### decode(block)
-
-Decode the provided buffer.
+Decode the provided buffer starting at the specified offset.
 
 Buffer length must be greater than 512 bytes.
 
@@ -683,11 +665,9 @@ Buffer length must be greater than 512 bytes.
 
 Set the fields in the data object.
 
-#### encode(block)
+#### encode(buffer, offset)
 
-Encode the header fields using the appropriate fieldset.
-
-If block is unset, then create a new 512-byte buffer.
+Encode the header fields into the buffer at the specified offset.
 
 Returns `this.needPax` to indicate whether a Pax Extended Header is
 required to properly encode the specified data.
@@ -746,38 +726,6 @@ provided.
 If the `extended` object is set, then also add the fields from that
 object.  (This is necessary because multiple metadata entries can
 occur in sequence.)
-
-### class tar.Field
-
-A representation of a field definition that occurs in a tar header.
-
-It has the following fields:
-
-- `offset` The offset from the start of the header
-- `size` The number of bytes for this field
-- `end` The end of the field (that is, `offset` plus `size`)
-- `type` Either `'string'`, `'date'`, or `'number'` as appropriate
-
-#### constructor(offset, size, type)
-
-Sets the specified values.  (`end` is inferred.)
-
-#### readRaw(buffer)
-
-Get the raw bytes for this field as a Buffer slice.
-
-#### read(buffer)
-
-Read the value out of the provided buffer.  Coerces to the appropriate
-type.
-
-#### write(value, buffer)
-
-Write the specified value into the provided buffer at the appropriate
-offset.
-
-Returns `true` if the value could not be completely encoded and thus a
-Pax extended header should be used.
 
 ### tar.types
 

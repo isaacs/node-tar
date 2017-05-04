@@ -2,73 +2,13 @@
 const t = require('tap')
 const Header = require('../lib/header.js')
 
-t.test('basic fieldset', t => {
-  // note: basic fieldset doens't support uname, gname, atime, ctime
-  const buf = new Buffer(
-    '666f6f2e74787400000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000030303037353520003035373736312000303030303234200030303030' +
-    '3030303134342000313236373735363735343000303036303736200030000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000000000000000000000000000000000000000000000000000000000000',
-    'hex')
-
-  const h = new Header({
-    fieldset: 'basic',
-    path: 'foo.txt',
-    mode: 0o755,
-    uid: 24561,
-    gid: 20,
-    size: 100,
-    mtime: new Date('2016-04-01T22:00Z'),
-    ctime: new Date('2016-04-01T22:00Z'),
-    atime: new Date('2016-04-01T22:00Z'),
-    type: 'File',
-    uname: 'isaacs',
-    gname: 'staff'
-  })
-  h.encode()
-  t.equal(h.block.toString('hex'), buf.toString('hex'))
-
-  const h2 = new Header(buf)
-
-  t.match(h2, {
-    fieldset: h.fieldset,
-    path: 'foo.txt',
-    mode: 0o755,
-    uid: 24561,
-    gid: 20,
-    size: 100,
-    mtime: new Date('2016-04-01T22:00Z'),
-    type: 'File',
-    atime: null,
-    ctime: null,
-    uname: null,
-    gname: null,
-    cksumValid: true,
-    cksum: 3134
-  })
-
-  t.end()
-})
-
 t.test('ustar format', t => {
   const buf = new Buffer(
     '666f6f2e74787400000000000000000000000000000000000000000000000000' +
     '0000000000000000000000000000000000000000000000000000000000000000' +
     '0000000000000000000000000000000000000000000000000000000000000000' +
-    '0000000030303037353520003035373736312000303030303234200030303030' +
-    '3030303134342000313236373735363735343000303132373235200030000000' +
+    '0000000030303037353520003035373736312000303030303234200037373737' +
+    '3737373737373700313236373735363735343000303133303531200030000000' +
     '0000000000000000000000000000000000000000000000000000000000000000' +
     '0000000000000000000000000000000000000000000000000000000000000000' +
     '0000000000000000000000000000000000000000000000000000000000000000' +
@@ -83,47 +23,39 @@ t.test('ustar format', t => {
     'hex')
 
   const h = new Header({
-    path: 'foo.txt',
-    fieldset: 'ustar'
+    path: 'foo.txt'
   })
   const slab = Buffer.alloc(1024)
   h.set({
     mode: 0o755,
     uid: 24561,
     gid: 20,
-    size: 100,
+    size: 0o77777777777,
     mtime: new Date('2016-04-01T22:00Z'),
-    ctime: new Date('2016-04-01T22:00Z'),
-    atime: new Date('2016-04-01T22:00Z'),
     type: 'File',
     uname: 'isaacs',
     gname: 'staff'
   })
-  h.encode(slab)
+  h.encode(slab, 0)
 
-  t.equal(h.block.length, 512)
-  t.equal(h.block.toString('hex'), buf.toString('hex'))
-  t.equal(slab.toString('hex'), h.block.toString('hex') +
+  t.equal(slab.slice(0, 512).toString('hex'), buf.toString('hex'))
+  t.equal(slab.toString('hex'), buf.toString('hex') +
           (new Array(1025).join('0')))
 
   const h2 = new Header(buf)
 
   t.match(h2, {
-    fieldset: h.fieldset,
     path: 'foo.txt',
     mode: 0o755,
     uid: 24561,
     gid: 20,
-    size: 100,
-    mtime: new Date('2016-04-01T22:00Z'),
+    size: 0o77777777777,
     ctime: null,
     atime: null,
-    type: 'File',
     uname: 'isaacs',
     gname: 'staff',
     cksumValid: true,
-    cksum: 5589,
-    ustar: 'ustar'
+    cksum: 5673
   })
 
   t.end()
@@ -152,7 +84,6 @@ t.test('xstar format', t => {
     'hex')
 
   const h = new Header({
-    fieldset: 'xstar',
     path: 'foo.txt'
   })
 
@@ -169,15 +100,13 @@ t.test('xstar format', t => {
     uname: 'isaacs',
     gname: 'staff'
   })
-  h.encode(slab)
+  h.encode(slab, 0)
 
-  t.equal(h.block, slab)
-  t.equal(h.block.toString('hex'), buf.slice(0, 512).toString('hex'))
+  t.equal(slab.toString('hex'), buf.slice(0, 512).toString('hex'))
 
   const h2 = new Header(buf)
 
   t.match(h2, {
-    fieldset: h.fieldset,
     path: 'foo.txt',
     mode: 0o755,
     uid: 24561,
@@ -190,15 +119,14 @@ t.test('xstar format', t => {
     uname: 'isaacs',
     gname: 'staff',
     cksumValid: true,
-    cksum: 6745,
-    ustar: 'ustar'
+    cksum: 6745
   })
 
   t.end()
 })
 
 t.test('prefix handling', t => {
-  t.plan(5)
+  t.plan(4)
 
   t.test('no times', t => {
     const buf = new Buffer(
@@ -221,7 +149,7 @@ t.test('prefix handling', t => {
       'hex')
 
     const h = new Header({
-      path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' + 
+      path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-' +
         '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/foo.txt',
       mode: 0o755,
@@ -235,14 +163,16 @@ t.test('prefix handling', t => {
       uname: 'isaacs',
       gname: 'staff'
     })
-    h.encode()
+    const b2 = Buffer.alloc(512)
+    h.encode(b2, 0)
 
-    t.equal(h.block.toString('hex'), buf.toString('hex'))
+    t.equal(b2.toString().replace(/\0+/g, ' '),
+            buf.toString().replace(/\0+/g, ' '))
+    t.equal(b2.toString('hex'), buf.toString('hex'))
 
     const h2 = new Header(buf)
 
     t.match(h2, {
-      fieldset: h.fieldset,
       path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' + 
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-' +
         '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/foo.txt',
@@ -258,12 +188,11 @@ t.test('prefix handling', t => {
       gname: 'staff',
       cksumValid: true,
       cksum: 16060,
-      ustar: 'ustar',
       needPax: false
     })
 
-    t.equal(h2.fieldset.path.read(h2.block), 'foo.txt')
-    t.equal(h2.fieldset.ustarPrefix.read(h2.block), 'r/e/a/l/l/y/-' +
+    t.equal(b2.toString().replace(/\0.*$/, ''), 'foo.txt')
+    t.equal(b2.slice(345).toString().replace(/\0.*$/, ''), 'r/e/a/l/l/y/-' +
             '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-' +
             '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-' +
             '/d/e/e/p/-/p/a/t/h')
@@ -271,7 +200,7 @@ t.test('prefix handling', t => {
     t.end()
   })
 
-  t.test('a/c times', t => {
+  t.test('a/c times, use shorter prefix field', t => {
     const buf = new Buffer(
       '652f702f2d2f702f612f742f682f666f6f2e7478740000000000000000000000' +
       '0000000000000000000000000000000000000000000000000000000000000000' +
@@ -305,14 +234,18 @@ t.test('prefix handling', t => {
     h.type = 'File'
     h.uname = 'isaacs'
     h.gname = 'staff'
-    h.encode()
+    const b2 = Buffer.alloc(512)
+    h.encode(b2, 0)
 
-    t.equal(h.block.toString('hex'), buf.toString('hex'))
+    t.equal(b2.toString('hex'), buf.toString('hex'))
 
-    const h2 = new Header(buf)
+    const b3 = Buffer.alloc(1024)
+    h.encode(b3, 100)
+    t.equal(b2.toString('hex'), b3.slice(100, 612).toString('hex'))
+
+    const h2 = new Header(b3, 100)
 
     t.match(h2, {
-      fieldset: h.fieldset,
       path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-' +
         '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/foo.txt',
@@ -328,85 +261,13 @@ t.test('prefix handling', t => {
       gname: 'staff',
       cksumValid: true,
       cksum: 17216,
-      ustar: 'ustar',
       needPax: false
     }, 'header from buffer')
 
-    t.equal(h2.fieldset.path.read(h2.block), 'e/p/-/p/a/t/h/foo.txt')
-    t.equal(h2.fieldset.xstarPrefix.read(h2.block), 'r/e/a/l/l/y/-' +
+    t.equal(b2.toString().replace(/\0.*$/, ''), 'e/p/-/p/a/t/h/foo.txt')
+    t.equal(b2.slice(345).toString().replace(/\0.*$/, ''), 'r/e/a/l/l/y/-' +
             '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-' +
             '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e')
-
-    t.end()
-  })
-
-  t.test('force basic fieldset', t => {
-    const buf = new Buffer(
-      '722f652f612f6c2f6c2f792f2d2f722f652f612f6c2f6c2f792f2d2f722f652f' +
-      '612f6c2f6c2f792f2d2f722f652f612f6c2f6c2f792f2d2f722f652f612f6c2f' +
-      '6c2f792f2d2f722f652f612f6c2f6c2f792f2d2f722f652f612f6c2f6c2f792f' +
-      '2d2f720030303037353520003035373736312000303030303234200030303030' +
-      '3030303134342000313236373735363735343000303232373237200030000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000' +
-      '0000000000000000000000000000000000000000000000000000000000000000',
-      'hex')
-
-    const h = new Header()
-    h.path = 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
-        'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
-        'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
-        'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
-        'r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/foo.txt'
-    h.mode = 0o755
-    h.uid = 24561
-    h.gid = 20
-    h.size = 100
-    h.mtime = new Date('2016-04-01T22:00Z')
-    h.ctime = new Date('2016-04-01T22:00Z')
-    h.atime = new Date('2016-04-01T22:00Z')
-    h.type = '0'
-    h.uname = 'isaacs'
-    h.gname = 'staff'
-    h.set({ fieldset: 'basic' })
-    h.encode()
-
-    t.ok(h.needPax, 'need pax, because no prefix on basic')
-
-    t.equal(h.block.toString('hex'), buf.toString('hex'))
-
-    const h2 = new Header(buf)
-
-    t.match(h2, {
-      path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
-            'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r',
-      mode: 0o755,
-      uid: 24561,
-      gid: 20,
-      size: 100,
-      mtime: new Date('2016-04-01T22:00Z'),
-      ctime: null,
-      atime: null,
-      type: 'File',
-      uname: null,
-      gname: null,
-      cksumValid: true,
-      cksum: 9687,
-      ustar: null,
-      needPax: false
-    }, 'header from buffer')
-
-    t.equal(h2.fieldset.path.read(h2.block),
-            'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
-            'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r')
 
     t.end()
   })
@@ -446,15 +307,15 @@ t.test('prefix handling', t => {
       uname: 'isaacs',
       gname: 'staff'
     })
-    h.encode()
+    const b2 = Buffer.alloc(513)
+    h.encode(b2, 1)
 
-    t.equal(h.block.toString('hex'), buf.toString('hex'))
+    t.equal(b2.toString('hex'), '00' + buf.toString('hex'))
     t.ok(h.needPax, 'need pax because long filename')
 
-    const h2 = new Header(buf)
+    const h2 = new Header(b2, 1)
 
     t.match(h2, {
-      fieldset: h.fieldset,
       cksumValid: true,
       cksum: 24673,
       path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
@@ -502,24 +363,24 @@ t.test('prefix handling', t => {
       uname: 'isaacs',
       gname: 'staff'
     })
-    h.encode()
+    const b2 = Buffer.alloc(512)
+    h.encode(b2, 0)
 
     t.equal(h.type, 'File')
     t.equal(h.typeKey, '0')
 
-    t.equal(h.block.toString('hex'), buf.toString('hex'))
+    t.equal(b2.toString('hex'), buf.toString('hex'))
     t.equal(h.cksum, 14469)
     t.ok(h.needPax, 'need pax because long filename')
 
-    const h2 = new Header(buf)
+    const h2 = new Header(b2)
 
     t.match(h2, {
       path: 'long-dirname-long-dirname-long-dirname-long-dirname-' +
         'long-dirname-long-dirname-long-dirname-long-dir',
       cksum: 14469,
       cksumValid: true,
-      needPax: false,
-      ustarPrefix: ''
+      needPax: false
     })
 
     t.end()
@@ -527,17 +388,12 @@ t.test('prefix handling', t => {
 })
 
 t.test('throwers', t => {
-  t.throws(_ => new Header({ fieldset: 'nope' }),
-           new Error('unknown fieldset: nope'))
-
   t.throws(_ => new Header(Buffer.alloc(100)),
-           new Error('need 512 bytes for header, got 100'))
+           new Error('need 512 bytes for header'))
 
   t.throws(_ => new Header({}).encode(Buffer.alloc(100)),
-           new Error('need 512 bytes for header, got 100'))
+           new Error('need 512 bytes for header'))
 
-  t.throws(_ => new Header({ type: 'XYZ' }),
-           new Error('unknown type: XYZ'))
   t.end()
 })
 
@@ -547,6 +403,7 @@ t.test('null block', t => {
     cksumValid: false,
     needPax: false,
     path: '',
+    type: 'File',
     mode: null,
     uid: null,
     gid: null,
@@ -554,15 +411,10 @@ t.test('null block', t => {
     mtime: null,
     cksum: null,
     linkpath: '',
-    ustar: null,
-    ustarver: null,
     uname: null,
     gname: null,
-    devmaj: null,
-    devmin: null,
-    ustarPrefix: null,
-    xstarPrefix: null,
-    prefixTerminator: null,
+    devmaj: 0,
+    devmin: 0,
     atime: null,
     ctime: null,
     nullBlock: true
@@ -592,5 +444,90 @@ t.test('unknown type', t => {
 
   t.equal(h.type, 'Z')
   t.equal(h.typeKey, 'Z')
+  t.end()
+})
+
+t.test('dir as file with trailing /', t => {
+  const b = new Buffer(
+    '782f792f00000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000030303030' +
+    '3030303030302000000000000000000000000000303034363136200030000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0075737461720030300000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000003030303030302000303030303030200000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000',
+    'hex')
+  const h = new Header(b)
+  t.equal(h.type, 'Directory')
+  b[156] = '0'.charCodeAt(0)
+  const h2 = new Header(b)
+  t.equal(h2.type, 'Directory')
+  t.end()
+})
+
+t.test('null numeric values do not get written', t => {
+  const b = Buffer.alloc(512)
+  const h = new Header()
+  h.encode(b, 0)
+  t.equal(
+    b.toString('hex'),
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000303033303737200030000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0075737461720030300000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000003030303030302000303030303030200000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000' +
+    '0000000000000000000000000000000000000000000000000000000000000000')
+  const h2 = new Header(b)
+  t.match(h2, {
+    type: 'File',
+    cksumValid: true,
+    needPax: false,
+    nullBlock: false,
+    path: '',
+    mode: null,
+    uid: null,
+    gid: null,
+    size: null,
+    mtime: null,
+    cksum: 1599,
+    linkpath: '',
+    uname: '',
+    gname: '',
+    devmaj: 0,
+    devmin: 0,
+    atime: null,
+    ctime: null
+  })
+  t.end()
+})
+
+t.test('big numbers', t => {
+  const b = Buffer.alloc(512)
+  const h = new Header({
+    path: 'bignum',
+    size: 0o77777777777 + 1
+  })
+  h.encode(b, 0)
+  const h2 = new Header(b)
+  t.equal(h2.size, 0o77777777777 + 1)
   t.end()
 })
