@@ -5,7 +5,6 @@ const Header = require('../lib/header.js')
 
 t.test('create read entry', t => {
   const h = new Header({
-    fieldset: 'xstar',
     path: 'foo.txt',
     mode: 0o755,
     uid: 24561,
@@ -39,15 +38,10 @@ t.test('create read entry', t => {
       typeKey: '0',
       type: 'File',
       linkpath: null,
-      ustar: null,
-      ustarver: null,
       uname: 'isaacs',
       gname: 'staff',
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null,
+      devmaj: 0,
+      devmin: 0,
       atime: new Date('2016-04-01T22:00:00.000Z'),
       ctime: new Date('2016-04-01T22:00:00.000Z')
     },
@@ -89,7 +83,6 @@ t.test('create read entry', t => {
 
 t.test('meta entry', t => {
   const h = new Header({
-    fieldset: 'xstar',
     path: 'PaxHeader/foo.txt',
     mode: 0o755,
     uid: 24561,
@@ -123,7 +116,6 @@ t.test('meta entry', t => {
 
 t.test('unknown entry type', t => {
   const h = new Header({
-    fieldset: 'xstar',
     path: 'PaxHeader/foo.txt',
     mode: 0o755,
     uid: 24561,
@@ -136,7 +128,7 @@ t.test('unknown entry type', t => {
     gname: 'staff'
   })
   h.encode()
-  h.fieldset.type.write('9', h.block)
+  h.block.write('9', 156, 1, 'ascii')
 
   const body = Buffer.alloc(512)
   body.write('not that long, actually')
@@ -160,7 +152,6 @@ t.test('unknown entry type', t => {
 
 t.test('entry without mode', t => {
   const h = new Header({
-    fieldset: 'xstar',
     path: 'foo.txt',
     uid: 24561,
     gid: 20,
@@ -191,15 +182,10 @@ t.test('entry without mode', t => {
       typeKey: '0',
       type: 'File',
       linkpath: null,
-      ustar: null,
-      ustarver: null,
       uname: 'isaacs',
       gname: 'staff',
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null,
+      devmaj: 0,
+      devmin: 0,
       atime: new Date('2016-04-01T22:00:00.000Z'),
       ctime: new Date('2016-04-01T22:00:00.000Z')
     },

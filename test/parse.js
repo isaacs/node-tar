@@ -2,6 +2,7 @@
 const t = require('tap')
 const Parse = require('../lib/parse.js')
 
+const makeTar = require('./make-tar.js')
 const fs = require('fs')
 const path = require('path')
 const tardir = path.resolve(__dirname, 'fixtures/tars')
@@ -179,122 +180,114 @@ t.test('drain event timings', t => {
 
   const data = [
     [
-      new Header({
+      {
         path: 'one',
         size: 513,
         type: 'File'
-      }),
+      },
       new Array(513).join('1'),
       '1',
-      new Header({
+      {
         path: 'two',
         size: 513,
         type: 'File'
-      }),
+      },
       new Array(513).join('2'),
       '2',
-      new Header({
+      {
         path: 'three',
         size: 1024,
         type: 'File'
-      })
+      }
     ],
     [
       new Array(513).join('3'),
       new Array(513).join('3'),
-      new Header({
+      {
         path: 'four',
         size: 513,
         type: 'File'
-      })
+      }
     ],
     [
       new Array(513).join('4'),
       '4',
-      new Header({
+      {
         path: 'five',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('5'),
       new Array(513).join('5'),
-      new Header({
+      {
         path: 'six',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('6'),
       new Array(513).join('6'),
-      new Header({
+      {
         path: 'seven',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('7'),
       new Array(513).join('7'),
-      new Header({
+      {
         path: 'eight',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('8'),
       new Array(513).join('8'),
-      new Header({
+      {
         path: 'four',
         size: 513,
         type: 'File'
-      }),
+      },
       new Array(513).join('4'),
       '4',
-      new Header({
+      {
         path: 'five',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('5'),
       new Array(513).join('5'),
-      new Header({
+      {
         path: 'six',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('6'),
       new Array(513).join('6'),
-      new Header({
+      {
         path: 'seven',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('7'),
       new Array(513).join('7'),
-      new Header({
+      {
         path: 'eight',
         size: 1024,
         type: 'File'
-      }),
+      },
       new Array(513).join('8')
     ],
     [
       new Array(513).join('8'),
-      new Header({
+      {
         path: 'nine',
         size: 1537,
         type: 'File'
-      }),
+      },
       new Array(513).join('9')
     ],
     [ new Array(513).join('9') ],
     [ new Array(513).join('9') ],
     [ '9' ]
-  ].map(chunks => Buffer.concat(chunks.map(chunk => {
-    if (chunk instanceof Header) {
-      chunk.encode()
-      return chunk.block
-    }
-    const buf = Buffer.alloc(512)
-    buf.write(chunk)
-    return buf
-  }), chunks.length * 512))
+  ].map(chunks => makeTar(chunks))
 
   const expect = [
     'one', 'two', 'three',
@@ -374,67 +367,59 @@ t.test('drain event timings', t => {
 })
 
 t.test('consume while consuming', t => {
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'one',
       size: 0,
       type: 'File'
-    }),
-    new Header({
+    },
+    {
       path: 'zero',
       size: 0,
       type: 'File'
-    }),
-    new Header({
+    },
+    {
       path: 'two',
       size: 513,
       type: 'File'
-    }),
+    },
     new Array(513).join('2'),
     '2',
-    new Header({
+    {
       path: 'three',
       size: 1024,
       type: 'File'
-    }),
+    },
     new Array(513).join('3'),
     new Array(513).join('3'),
-    new Header({
+    {
       path: 'zero',
       size: 0,
       type: 'File'
-    }),
-    new Header({
+    },
+    {
       path: 'zero',
       size: 0,
       type: 'File'
-    }),
-    new Header({
+    },
+    {
       path: 'four',
       size: 1024,
       type: 'File'
-    }),
+    },
     new Array(513).join('4'),
     new Array(513).join('4'),
-    new Header({
+    {
       path: 'zero',
       size: 0,
       type: 'File'
-    }),
-    new Header({
+    },
+    {
       path: 'zero',
       size: 0,
       type: 'File'
-    }),
-  ].map(chunk => {
-    if (chunk instanceof Header) {
-      chunk.encode()
-      return chunk.block
-    }
-    const buf = Buffer.alloc(512)
-    buf.write(chunk)
-    return buf
-  }))
+    },
+  ])
 
 
   const runTest = (t, size) => {

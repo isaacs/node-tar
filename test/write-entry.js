@@ -49,14 +49,9 @@ t.test('100 byte filename', t => {
           size: 100,
           linkpath: null,
           uname: 'isaacs',
-          ustar: null,
-          ustarver: null,
           gname: null,
-          devmaj: null,
-          devmin: null,
-          ustarPrefix: null,
-          xstarPrefix: null,
-          prefixTerminator: null
+          devmaj: 0,
+          devmin: 0
         }
       })
 
@@ -82,14 +77,9 @@ t.test('100 byte filename', t => {
         size: 100,
         linkpath: '',
         uname: 'isaacs',
-        ustar: 'ustar',
-        ustarver: '00',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        ustarPrefix: '',
-        xstarPrefix: '',
-        prefixTerminator: ''
       })
 
       t.equal(out.slice(512).toString('hex'),
@@ -135,14 +125,9 @@ t.test('directory', t => {
       size: 0,
       linkpath: null,
       uname: 'isaacs',
-      ustar: null,
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
     t.equal(out.length, 512)
 
@@ -155,15 +140,10 @@ t.test('directory', t => {
       mode: 0o755,
       size: 0,
       linkpath: null,
-      ustar: null,
       uname: 'isaacs',
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
 
     t.end()
@@ -184,15 +164,10 @@ t.test('empty path for cwd', t => {
       mode: fs.statSync('./').mode & 0o7777,
       size: 0,
       linkpath: null,
-      ustar: null,
       uname: 'isaacs',
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
     t.end()
   })
@@ -208,15 +183,10 @@ t.test('symlink', t => {
     path: 'symlink',
     size: 0,
     linkpath: 'hardlink-2',
-    ustar: null,
     uname: 'isaacs',
-    ustarver: null,
     gname: null,
-    devmaj: null,
-    devmin: null,
-    ustarPrefix: null,
-    xstarPrefix: null,
-    prefixTerminator: null
+    devmaj: 0,
+    devmin: 0
   }
 
   const wss = new WriteEntry.Sync('symlink', { cwd: files })
@@ -245,15 +215,10 @@ t.test('zero-byte file', t => {
       mode: 0o644,
       size: 0,
       linkpath: null,
-      ustar: null,
       uname: 'isaacs',
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
     t.end()
   })
@@ -286,15 +251,10 @@ t.test('hardlinks', t => {
       mode: 0o644,
       size: 0,
       linkpath: 'files/hardlink-1',
-      ustar: null,
       uname: 'isaacs',
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
     t.end()
   })
@@ -323,15 +283,10 @@ t.test('hardlinks far away', t => {
       mode: 0o644,
       size: 26,
       linkpath: null,
-      ustar: null,
       uname: 'isaacs',
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
     t.end()
   })
@@ -352,15 +307,10 @@ t.test('really deep path', t => {
       mode: 0o644,
       size: 100,
       linkpath: null,
-      ustar: null,
       uname: 'isaacs',
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
     t.end()
   })
@@ -404,15 +354,10 @@ t.test('absolute path', t => {
         mode: 0o644,
         size: 512,
         linkpath: null,
-        ustar: null,
         uname: 'isaacs',
-        ustarver: null,
         gname: null,
-        devmaj: null,
-        devmin: null,
-        ustarPrefix: null,
-        xstarPrefix: null,
-        prefixTerminator: null
+        devmaj: 0,
+        devmin: 0
       })
       t.end()
     })
@@ -444,15 +389,10 @@ t.test('absolute path', t => {
             mode: 0o644,
             size: 512,
             linkpath: null,
-            ustar: null,
             uname: 'isaacs',
-            ustarver: null,
             gname: null,
-            devmaj: null,
-            devmin: null,
-            ustarPrefix: null,
-            xstarPrefix: null,
-            prefixTerminator: null
+            devmaj: 0,
+            devmin: 0
           })
           t.end()
         })
@@ -491,15 +431,10 @@ t.test('no user environ, sets uname to empty string', t => {
       size: 512,
       uname: '',
       linkpath: null,
-      ustar: null,
       uname: '',
-      ustarver: null,
       gname: null,
-      devmaj: null,
-      devmin: null,
-      ustarPrefix: null,
-      xstarPrefix: null,
-      prefixTerminator: null
+      devmaj: 0,
+      devmin: 0
     })
     t.end()
   })
