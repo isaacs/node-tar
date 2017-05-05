@@ -10,7 +10,8 @@
   "main": "tar.js",
   "scripts": {
     "test": "tap test/*.js --100 -J --coverage-report=text",
-    "genparse": "node scripts/generate-parse-fixtures.js"
+    "genparse": "node scripts/generate-parse-fixtures.js",
+    "bench": "for i in benchmarks/*/*.js; do echo $i; for j in {1..5}; do node $i || break; done; done"
   },
   "dependencies": {
     "minipass": "^2.0.1",

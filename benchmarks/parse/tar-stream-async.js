@@ -9,8 +9,7 @@ p.on('entry', (entry, stream, callback) => {
   stream.on('end', callback)
   stream.resume()
 })
-p.on('data', _ => _)
-process.on('exit', (code, signal) => {
+p.on('finish', _ => {
   const end = process.hrtime(start)
   console.log(end[0]*1e3 + end[1]/1e6)
 })
