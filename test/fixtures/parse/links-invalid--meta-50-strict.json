@@ -47,15 +47,10 @@
         "mtime": "2017-04-10T19:27:33.000Z",
         "cksum": 6639,
         "linkpath": "hardlink-2",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }

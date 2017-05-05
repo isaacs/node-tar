@@ -29,15 +29,10 @@
         "mtime": "2017-04-10T19:27:05.000Z",
         "cksum": 5856,
         "linkpath": "",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }
@@ -73,15 +68,10 @@
         "mtime": "2017-04-10T19:27:05.000Z",
         "cksum": 6792,
         "linkpath": "hardlink-1",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }
@@ -117,15 +107,10 @@
         "mtime": "2017-04-10T19:27:33.000Z",
         "cksum": 6639,
         "linkpath": "hardlink-2",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }

@@ -18,7 +18,7 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
 
   const p = new Parse({
     maxMetaEntrySize: maxMeta,
-    filter: filter ? entry => entry.size % 2 !== 0 : null,
+    filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
     strict: strict
   })
   const events = []

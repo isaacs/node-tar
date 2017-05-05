@@ -29,15 +29,10 @@
         "mtime": "2017-04-10T16:57:47.000Z",
         "cksum": 6109,
         "linkpath": "",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }
@@ -73,15 +68,10 @@
         "mtime": "2017-04-10T17:08:55.000Z",
         "cksum": 6064,
         "linkpath": "",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }
@@ -117,15 +107,10 @@
         "mtime": "2017-04-10T16:58:20.000Z",
         "cksum": 6121,
         "linkpath": "",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }
@@ -161,15 +146,10 @@
         "mtime": "2017-04-10T17:08:01.000Z",
         "cksum": 6246,
         "linkpath": "",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }

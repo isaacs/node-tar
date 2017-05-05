@@ -29,15 +29,10 @@
         "mtime": "2017-04-10T16:54:12.000Z",
         "cksum": 14425,
         "linkpath": "",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }
@@ -73,15 +68,10 @@
         "mtime": "2017-04-10T16:54:12.000Z",
         "cksum": 14495,
         "linkpath": "",
-        "ustar": "ustar",
-        "ustarver": "00",
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
         "devmin": 0,
-        "ustarPrefix": "",
-        "xstarPrefix": null,
-        "prefixTerminator": null,
         "atime": null,
         "ctime": null
       }
