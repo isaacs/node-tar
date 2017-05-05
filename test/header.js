@@ -36,7 +36,7 @@ t.test('ustar format', t => {
     uname: 'isaacs',
     gname: 'staff'
   })
-  h.encode(slab, 0)
+  h.encode(slab)
 
   t.equal(slab.slice(0, 512).toString('hex'), buf.toString('hex'))
   t.equal(slab.toString('hex'), buf.toString('hex') +
@@ -87,7 +87,6 @@ t.test('xstar format', t => {
     path: 'foo.txt'
   })
 
-  const slab = Buffer.alloc(512)
   h.set({
     mode: 0o755,
     uid: 24561,
@@ -100,7 +99,8 @@ t.test('xstar format', t => {
     uname: 'isaacs',
     gname: 'staff'
   })
-  h.encode(slab, 0)
+  h.encode()
+  const slab = h.block
 
   t.equal(slab.toString('hex'), buf.slice(0, 512).toString('hex'))
 
