@@ -1,9 +1,9 @@
 # node-tar
 
-Tar for Node.js.
+[Fast](./benchmarks) and full-featured Tar for Node.js
 
-Designed to mimic the behavior of `tar(1)` on unix systems.  If you
-are familiar with how tar works, most of this will hopefully be
+The API is designed to mimic the behavior of `tar(1)` on unix systems.
+If you are familiar with how tar works, most of this will hopefully be
 straightforward for you.  If not, then hopefully this module can teach
 you useful unix skills that may come in handy someday :)
 
