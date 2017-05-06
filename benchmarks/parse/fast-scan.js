@@ -11,7 +11,7 @@ const onentry = (header, stream) => {
   stream.resume()
 }
 
-const start = process.hrtime()
+const timer = require('../timer.js')()
 for (let position = 0; position < data.length; position += 512) {
   const h = new Header(data, position)
   const s = new MiniPass() // new stream.PassThrough()
@@ -24,8 +24,4 @@ for (let position = 0; position < data.length; position += 512) {
   }
   onentry(h, s)
 }
-const end = process.hrtime(start)
-const ms = Math.round(end[0]*1e6 + end[1]/1e3)/1e3
-const s = Math.round(end[0]*10 + end[1]/1e8)/10
-const ss = s <= 1 ? '' : ' (' + s + 's)'
-console.error('%d%s', ms, ss)
+timer()
