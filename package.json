@@ -28,5 +28,9 @@
     "tar-fs": "^1.15.2",
     "tar-stream": "^1.5.2"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "files": [
+    "tar.js",
+    "lib/"
+  ]
 }
