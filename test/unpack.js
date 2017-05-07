@@ -1431,3 +1431,148 @@ t.test('unpack big enough to pause/drain', t => {
 
   stream.pipe(u)
 })
+
+t.test('set owner', t => {
+  // fake it on platforms that don't have getuid
+  const getuid = process.getuid
+  process.getuid = _ => 501
+  t.teardown(_ => process.getuid = getuid)
+
+  // can't actually do this because it requires root, but we can
+  // verify that chown gets called.
+  t.test('as root, defaults to true', t => {
+    const getuid = process.getuid
+    process.getuid = _ => 0
+    const u = new Unpack()
+    t.equal(u.preserveOwner, true, 'preserveOwner enabled')
+    process.getuid = getuid
+    t.end()
+  })
+
+  t.test('as non-root, defaults to false', t => {
+    const getuid = process.getuid
+    process.getuid = _ => 501
+    const u = new Unpack()
+    t.equal(u.preserveOwner, false, 'preserveOwner disabled')
+    process.getuid = getuid
+    t.end()
+  })
+
+  const data = makeTar([
+    {
+      uid: 2456124561,
+      gid: 5108675309,
+      path: 'foo/',
+      type: 'Directory'
+    },
+    {
+      uid: 2456124561,
+      gid: 5108675309,
+      path: 'foo/bar',
+      type: 'File',
+      size: 3
+    },
+    'qux',
+    {
+      uid: 2456124561,
+      path: 'foo/nogid',
+      type: 'Directory'
+    },
+    {
+      uid: 2456124561,
+      path: 'foo/nogid/bar',
+      type: 'File',
+      size: 3
+    },
+    'qux',
+    '',
+    ''
+  ])
+
+  t.test('chown when true', t => {
+    const dir = path.resolve(unpackdir, 'chown')
+    const chown = fs.chown
+    const chownSync = fs.chownSync
+    const fchownSync = fs.fchownSync
+    let called = 0
+    fs.chown = (path, owner, group, cb) => {
+      called ++
+      cb()
+    }
+    fs.chownSync = fs.fchownSync = _ => called++
+
+    t.beforeEach(cb => mkdirp(dir, cb))
+    t.afterEach(cb => rimraf(dir, cb))
+
+    t.teardown(_ => {
+      fs.chown = chown
+      fs.chownSync = chownSync
+      fs.fchownSync = fchownSync
+    })
+
+    t.test('sync', t => {
+      called = 0
+      const u = new Unpack.Sync({ cwd: dir, preserveOwner: true })
+      u.end(data)
+      t.equal(called, 4, 'called chowns')
+      t.end()
+    })
+
+    t.test('async', t => {
+      called = 0
+      const u = new Unpack({ cwd: dir, preserveOwner: true })
+      u.end(data)
+      u.on('close', _ => {
+        t.equal(called, 4, 'called chowns')
+        t.end()
+      })
+    })
+
+    t.end()
+  })
+
+  t.test('no chown when false', t => {
+    const dir = path.resolve(unpackdir, 'nochown')
+    const poop = new Error('poop')
+    const un = mutateFS.fail('chown', poop)
+    const unf = mutateFS.fail('fchown', poop)
+    t.teardown(_ => {
+      rimraf.sync(dir)
+      un()
+      unf()
+    })
+
+    t.beforeEach(cb => mkdirp(dir, cb))
+    t.afterEach(cb => rimraf(dir, cb))
+
+    const check = t => {
+      const dirStat = fs.statSync(dir + '/foo')
+      t.notEqual(dirStat.uid, 2456124561)
+      t.notEqual(dirStat.gid, 5108675309)
+      const fileStat = fs.statSync(dir + '/foo/bar')
+      t.notEqual(fileStat.uid, 2456124561)
+      t.notEqual(fileStat.gid, 5108675309)
+      const dirStat2 = fs.statSync(dir + '/foo/nogid')
+      t.notEqual(dirStat2.uid, 2456124561)
+      const fileStat2 = fs.statSync(dir + '/foo/nogid/bar')
+      t.notEqual(fileStat2.uid, 2456124561)
+      t.end()
+    }
+
+    t.test('sync', t => {
+      const u = new Unpack.Sync({ cwd: dir, preserveOwner: false })
+      u.end(data)
+      check(t)
+    })
+
+    t.test('async', t => {
+      const u = new Unpack({ cwd: dir, preserveOwner: false })
+      u.end(data)
+      u.on('close', _ => check(t))
+    })
+
+    t.end()
+  })
+
+  t.end()
+})

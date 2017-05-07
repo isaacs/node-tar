@@ -230,7 +230,8 @@ The following options are supported:
   entry being unpacked.  Return `true` to unpack the entry from the
   archive, or `false` to skip it.
 - `newer` Set to true to keep the existing file on disk if it's newer
-  than the file in the archive. [Alias: `keep-newer`, `keep-newer-files`]
+  than the file in the archive. [Alias: `keep-newer`,
+  `keep-newer-files`]
 - `keep` Do not overwrite existing files.  In particular, if a file
   appears more than once in an archive, later copies will not
   overwrite earlier copies. [Alias: `k`, `keep-existing`]
@@ -250,6 +251,14 @@ The following options are supported:
   security checks. [Alias: `strip-components`, `stripComponents`]
 - `onwarn` A function that will get called with `(message, data)` for
   any warnings encountered.
+- `preserveOwner` If true, tar will set the `uid` and `gid` of
+  extracted entries to the `uid` and `gid` fields in the archive.
+  This defaults to true when run as root, and false otherwise.  If
+  false, then files and directories will be set with the owner and
+  group of the user running the process.  This is similar to `-p` in
+  `tar(1)`, but ACLs and other system-specific data is never unpacked
+  in this implementation, and modes are set by default already.
+  [Alias: `p`]
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -469,6 +478,13 @@ All the normal writable stream stuff is supported.  `write()` and
 - `dirCache` A Map object of which directories exist.
 - `maxMetaEntrySize` The maximum size of meta entries that is
   supported.  Defaults to 1 MB.
+- `preserveOwner` If true, tar will set the `uid` and `gid` of
+  extracted entries to the `uid` and `gid` fields in the archive.
+  This defaults to true when run as root, and false otherwise.  If
+  false, then files and directories will be set with the owner and
+  group of the user running the process.  This is similar to `-p` in
+  `tar(1)`, but ACLs and other system-specific data is never unpacked
+  in this implementation, and modes are set by default already.
 
 ### class tar.Unpack.Sync
 
