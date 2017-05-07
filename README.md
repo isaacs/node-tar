@@ -195,6 +195,8 @@ The following options are supported:
 - `mode` The mode to set on the created file archive
 - `noDirRecurse` Do not recursively archive the contents of
   directories. [Alias: `n`]
+- `follow` Set to true to pack the targets of symbolic links.  Without
+  this option, symbolic links are archived as such. [Alias: `L`, `h`]
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -342,6 +344,8 @@ The following options are supported:
   Defaults to 16 MB.
 - `noDirRecurse` Do not recursively archive the contents of
   directories. [Alias: `n`]
+- `follow` Set to true to pack the targets of symbolic links.  Without
+  this option, symbolic links are archived as such. [Alias: `L`, `h`]
 
 ### tar.r(options, fileList, callback) [alias: tar.replace]
 
@@ -379,6 +383,8 @@ The following options are supported:
   Defaults to 16 MB.
 - `noDirRecurse` Do not recursively archive the contents of
   directories. [Alias: `n`]
+- `follow` Set to true to pack the targets of symbolic links.  Without
+  this option, symbolic links are archived as such. [Alias: `L`, `h`]
 
 ## Low-Level API
 
@@ -420,6 +426,8 @@ The following options are supported:
   Defaults to 16 MB.
 - `noDirRecurse` Do not recursively archive the contents of
   directories.
+- `follow` Set to true to pack the targets of symbolic links.  Without
+  this option, symbolic links are archived as such.
 
 #### add(path) -> this
 

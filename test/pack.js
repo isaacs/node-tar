@@ -776,3 +776,38 @@ t.test('no dir recurse', t => {
 
   t.end()
 })
+
+t.test('follow', t => {
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    t.equal(data.length, 2048)
+    t.match(new Header(data, 0), {
+      type: 'File',
+      cksumValid: true,
+      needPax: false,
+      path: 'symlink',
+      mode: 0o644,
+      size: 26
+    })
+    t.match(data.slice(512).toString(), /this link is like diamond\n\0+$/)
+    t.end()
+  }
+
+  t.test('async', t => {
+    const out = []
+    const p = new Pack({ cwd: files, follow: true })
+    p.on('data', c => out.push(c))
+    p.on('end', _ => check(out, t))
+    p.end('symlink')
+  })
+
+  t.test('sync', t => {
+    const out = []
+    const p = new Pack.Sync({ cwd: files, follow: true })
+    p.on('data', c => out.push(c))
+    p.end('symlink')
+    check(out, t)
+  })
+
+  t.end()
+})
