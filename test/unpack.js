@@ -6,6 +6,7 @@ const Unpack = require('../lib/unpack.js')
 const UnpackSync = Unpack.Sync
 const t = require('tap')
 
+const makeTar = require('./make-tar.js')
 const Header = require('../lib/header.js')
 const z = require('minizlib')
 const fs = require('fs')
@@ -277,61 +278,52 @@ t.test('symlink in dir path', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'd/i',
       type: 'Directory'
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/dir',
       type: 'Directory',
       mode: 0o751,
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/file',
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'a',
-    new Header({
+    {
       path: 'd/i/r/link',
       type: 'Link',
       linkpath: 'd/i/r/file',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/symlink',
       type: 'SymbolicLink',
       linkpath: './dir',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/symlink/x',
       type: 'File',
       size: 0,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   t.test('no clobbering', t => {
     const warnings = []
@@ -528,33 +520,24 @@ t.test('unsupported entries', t => {
   const unknown = new Header({ path: 'qux', type: 'File', size: 4 })
   unknown.type = 'Z'
   unknown.encode()
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'dev/random',
       type: 'CharacterDevice'
-    }),
-    new Header({
+    },
+    {
       path: 'dev/hd0',
       type: 'BlockDevice'
-    }),
-    new Header({
+    },
+    {
       path: 'dev/fifo0',
       type: 'FIFO'
-    }),
-    unknown,
+    },
+    unknown.block,
     'asdf',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   t.test('basic, warns', t => {
     const warnings = []
@@ -617,37 +600,28 @@ t.test('file in dir path', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'd/i/r/file',
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'a',
-    new Header({
+    {
       path: 'd/i/r/file/a/b/c',
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'b',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   t.test('fail because of file', t => {
     const check = t => {
@@ -695,24 +669,16 @@ t.test('set umask option', t => {
   mkdirp.sync(dir)
   t.tearDown(_ => rimraf.sync(dir))
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'd/i/r/dir',
       type: 'Directory',
       mode: 0o751
-    }),
+    },
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
+
   new Unpack({
     umask: 0o027,
     cwd: dir
@@ -738,28 +704,19 @@ t.test('absolute paths', t => {
   const relative = absolute.substr(parsed.root.length)
   t.notOk(path.isAbsolute(relative))
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: absolute,
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'a',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   t.test('warn and correct', t => {
     const check = t => {
@@ -840,28 +797,19 @@ t.test('.. paths', t => {
   const dotted = 'a/b/c/../d'
   const resolved = path.resolve(dir, dotted)
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: dotted,
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'd',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   t.test('warn and skip', t => {
     const check = t => {
@@ -953,59 +901,50 @@ t.test('fail all stats', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'd/i/r/file/',
       type: 'Directory',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/dir/',
       type: 'Directory',
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/file',
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'a',
-    new Header({
+    {
       path: 'd/i/r/link',
       type: 'Link',
       linkpath: 'd/i/r/file',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/symlink',
       type: 'SymbolicLink',
       linkpath: './dir',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const check = (t, expect) => {
     t.match(warnings, expect)
@@ -1068,35 +1007,26 @@ t.test('fail symlink', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'd/i/r/dir/',
       type: 'Directory',
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/symlink',
       type: 'SymbolicLink',
       linkpath: './dir',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const check = (t, expect) => {
     t.match(warnings, expect)
@@ -1139,34 +1069,25 @@ t.test('fail chmod', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'd/i/r/dir/',
       type: 'Directory',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
-    new Header({
+    },
+    {
       path: 'd/i/r/dir/',
       type: 'Directory',
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const check = (t, expect) => {
     t.match(warnings, expect)
@@ -1214,27 +1135,18 @@ t.test('fail mkdir', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'dir/',
       type: 'Directory',
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const expect = [ [
     'ENOENT: no such file or directory, lstat \'' +
@@ -1285,27 +1197,18 @@ t.test('fail close', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'x',
       type: 'File',
       size: 1,
       mode: 0o751,
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'x',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const expect = [ [ 'poop', poop ] ]
 
@@ -1346,27 +1249,18 @@ t.test('skip existing', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'x',
       type: 'File',
       size: 1,
       mode: 0o751,
       mtime: new Date('2013-12-19T17:00:00.000Z')
-    }),
+    },
     'x',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const check = t => {
     const st = fs.lstatSync(dir + '/x')
@@ -1408,27 +1302,18 @@ t.test('skip newer', t => {
     cb()
   })
 
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'x',
       type: 'File',
       size: 1,
       mode: 0o751,
       mtime: new Date('2011-03-27T22:16:31.000Z')
-    }),
+    },
     'x',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const check = t => {
     const st = fs.lstatSync(dir + '/x')
@@ -1468,16 +1353,16 @@ t.test('no mtime', t => {
   })
 
   const date = new Date('2011-03-27T22:16:31.000Z')
-  const data = Buffer.concat([
-    new Header({
+  const data = makeTar([
+    {
       path: 'x/',
       type: 'Directory',
       size: 0,
       atime: date,
       ctime: date,
       mtime: date
-    }),
-    new Header({
+    },
+    {
       path: 'x/y',
       type: 'File',
       size: 1,
@@ -1485,20 +1370,11 @@ t.test('no mtime', t => {
       atime: date,
       ctime: date,
       mtime: date
-    }),
+    },
     'x',
     '',
     ''
-  ].map(c => {
-    if (typeof c === 'string') {
-      const b = Buffer.alloc(512)
-      b.write(c)
-      return b
-    } else {
-      c.encode()
-      return c.block
-    }
-  }))
+  ])
 
   const check = t => {
     // this may fail if it's run on March 27, 2011

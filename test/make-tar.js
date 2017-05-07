@@ -6,6 +6,8 @@ if (module === require.main)
 const Header = require('../lib/header.js')
 module.exports = chunks =>
   Buffer.concat(chunks.map(chunk => {
+    if (Buffer.isBuffer(chunk))
+      return chunk
     const buf = Buffer.alloc(512)
     if (typeof chunk === 'string')
       buf.write(chunk)
