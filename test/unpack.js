@@ -1576,3 +1576,45 @@ t.test('set owner', t => {
 
   t.end()
 })
+
+t.test('unpack when dir is not writable', t => {
+  const data = makeTar([
+    {
+      path: 'a/',
+      type: 'Directory',
+      mode: 0o444
+    },
+    {
+      path: 'a/b',
+      type: 'File',
+      size: 1
+    },
+    'a',
+    '',
+    ''
+  ])
+
+  const dir = path.resolve(unpackdir, 'nowrite-dir')
+  t.beforeEach(cb => mkdirp(dir, cb))
+  t.afterEach(cb => rimraf(dir, cb))
+
+  const check = t => {
+    t.equal(fs.statSync(dir + '/a').mode & 0o7777, 0o744)
+    t.equal(fs.readFileSync(dir + '/a/b', 'utf8'), 'a')
+    t.end()
+  }
+
+  t.test('sync', t => {
+    const u = new Unpack.Sync({ cwd: dir, strict: true })
+    u.end(data)
+    check(t)
+  })
+
+  t.test('async', t => {
+    const u = new Unpack({ cwd: dir, strict: true })
+    u.end(data)
+    u.on('close', _ => check(t))
+  })
+
+  t.end()
+})

@@ -219,6 +219,11 @@ no paths are provided, then all the entries are extracted.
 
 If the archive is gzipped, then tar will detect this and unzip it.
 
+Note that all directories that are created will be forced to be
+writable, readable, and listable by their owner, to avoid cases where
+a directory prevents extraction of child entries by virtue of its
+mode.
+
 The following options are supported:
 
 - `cwd` Extract files relative to the specified directory.  Defaults
@@ -451,6 +456,11 @@ A writable stream that unpacks a tar archive onto the file system.
 
 All the normal writable stream stuff is supported.  `write()` and
 `end()` methods, `'drain'` events, etc.
+
+Note that all directories that are created will be forced to be
+writable, readable, and listable by their owner, to avoid cases where
+a directory prevents extraction of child entries by virtue of its
+mode.
 
 `'close'` is emitted when it's done writing stuff to the file system.
 
