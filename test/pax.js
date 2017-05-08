@@ -221,5 +221,35 @@ t.test('parse', t => {
     global: false
   })
 
+  const breaky =
+    '93 NODETAR.package.readme=karma-moment\n' +
+    '=================\n' +
+    '\n' +
+    'Karma plugin for Moment framework\n' +
+    '\n'
+
+  const noKey = '10 =pathx\n'
+
+  t.same(Pax.parse(breaky + '9 gid=20\n10 path=x\n'+noKey, null, false), {
+    atime: null,
+    charset: null,
+    comment: null,
+    ctime: null,
+    gid: 20,
+    gname: null,
+    linkpath: null,
+    mtime: null,
+    path: 'x',
+    size: null,
+    uid: null,
+    uname: null,
+    dev: null,
+    ino: null,
+    nlink: null,
+    global: false
+  })
+
+
+
   t.end()
 })
