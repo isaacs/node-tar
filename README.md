@@ -61,6 +61,24 @@ that all of the data is immediately available by calling
 `stream.read()`.  For writable streams, it will be acted upon as soon
 as it is provided, but this can be at any time.
 
+### Warnings
+
+Some things cause tar to emit a warning, but should usually not cause
+the entire operation to fail.  There are three ways to handle
+warnings:
+
+1. **Ignore them** (default) Invalid entries won't be put in the
+   archive, and invalid entries won't be unpacked.  This is usually
+   fine, but can hide failures that you might care about.
+2. **Notice them**  Add an `onwarn` function to the options, or listen
+   to the `'warn'` event on any tar stream.  The function will get
+   called as `onwarn(message, data)`.  Handle as appropriate.
+3. **Explode them.**  Set `strict: true` in the options object, and
+   `warn` messages will be emitted as `'error'` events instead.  If
+   there's no `error` handler, this causes the program to crash.  If
+   used with a promise-returning/callback-taking method, then it'll
+   send the error to the promise/callback.
+
 ### Examples
 
 The API mimics the `tar(1)` command line functionality, with aliases
@@ -179,6 +197,7 @@ The following options are supported:
   any warnings encountered.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `cwd` The current working directory for creating the archive.
+  Defaults to `process.cwd()`.  [Alias: `C`]
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
   object with settings for `zlib.Gzip()` [Alias: `z`]
@@ -331,7 +350,7 @@ The following options are supported:
   any warnings encountered.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `cwd` The current working directory for adding entries to the
-  archive. [Alias: `C`]
+  archive.  Defaults to `process.cwd()`.  [Alias: `C`]
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
   object with settings for `zlib.Gzip()` [Alias: `z`]
@@ -370,7 +389,7 @@ The following options are supported:
   any warnings encountered.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `cwd` The current working directory for adding entries to the
-  archive. [Alias: `C`]
+  archive.  Defaults to `process.cwd()`.  [Alias: `C`]
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
   object with settings for `zlib.Gzip()` [Alias: `z`]
@@ -408,6 +427,7 @@ The following options are supported:
   any warnings encountered.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `cwd` The current working directory for creating the archive.
+  Defaults to `process.cwd()`.
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
   object with settings for `zlib.Gzip()`
