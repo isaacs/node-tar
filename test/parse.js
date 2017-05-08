@@ -443,3 +443,40 @@ t.test('consume while consuming', t => {
   t.test('size=1024', t => runTest(t, 4096))
   t.end()
 })
+
+t.test('truncated input', t => {
+  const data = makeTar([
+    {
+      path: 'foo/',
+      type: 'Directory'
+    },
+    {
+      path: 'foo/bar',
+      type: 'File',
+      size: 18
+    }
+  ])
+
+  t.test('truncated at block boundary', t => {
+    const warnings = []
+    const p = new Parse({ onwarn: message => warnings.push(message) })
+    p.end(data)
+    t.same(warnings, [
+      'Truncated input (needed 512 more bytes, only 0 available)'
+    ])
+    t.end()
+  })
+
+  t.test('truncated mid-block', t => {
+    const warnings = []
+    const p = new Parse({ onwarn: message => warnings.push(message) })
+    p.write(data)
+    p.end(new Buffer('not a full block'))
+    t.same(warnings, [
+      'Truncated input (needed 512 more bytes, only 16 available)'
+    ])
+    t.end()
+  })
+
+  t.end()
+})
