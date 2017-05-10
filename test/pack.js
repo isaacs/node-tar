@@ -115,7 +115,7 @@ t.test('pack a file with a prefix', t => {
 t.test('pack a dir', t => {
   const out = []
 
-  new Pack({ cwd: files })
+  new Pack({ cwd: files, portable: true })
     .add('dir')
     .on('data', c => out.push(c))
     .end()
@@ -134,19 +134,19 @@ t.test('pack a dir', t => {
         mtime: Date,
         cksum: Number,
         linkpath: '',
-        uname: 'isaacs',
+        uname: '',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: null,
+        ctime: null,
         nullBlock: false
       }
       t.match(h, expect)
       t.equal(data.length, 2048)
       t.match(data.slice(1024).toString(), /^\0{1024}$/)
 
-      const sync = new PackSync({ cwd: files })
+      const sync = new PackSync({ cwd: files, portable: true })
         .add('dir').end().read()
       t.equal(sync.slice(512).toString(), data.slice(512).toString())
       const hs = new Header(sync)
@@ -162,12 +162,12 @@ t.test('pack a dir', t => {
         mtime: Date,
         cksum: Number,
         linkpath: '',
-        uname: 'isaacs',
+        uname: '',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: null,
+        ctime: null,
         nullBlock: false
       }
       t.match(new Header(data.slice(512)), expect2)

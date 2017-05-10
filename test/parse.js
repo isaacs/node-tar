@@ -480,3 +480,51 @@ t.test('truncated input', t => {
 
   t.end()
 })
+
+t.test('truncated gzip input', t => {
+  const raw = makeTar([
+    {
+      path: 'foo/',
+      type: 'Directory'
+    },
+    {
+      path: 'foo/bar',
+      type: 'File',
+      size: 18
+    },
+    new Array(19).join('x'),
+    '',
+    ''
+  ])
+  const tgz = zlib.gzipSync(raw)
+  const split = Math.floor(tgz.length * 2 / 3)
+  const trunc = tgz.slice(0, split)
+
+  t.test('early end', t => {
+    const warnings = []
+    const p = new Parse({
+      onwarn: message => warnings.push(message) })
+    let aborted = false
+    p.on('abort', _ => aborted = true)
+    p.end(trunc)
+    t.equal(aborted, true, 'aborted writing')
+    t.same(warnings, [ 'zlib error: unexpected end of file' ])
+    t.end()
+  })
+
+  t.test('just wrong', t => {
+    const warnings = []
+    const p = new Parse({ onwarn: message => warnings.push(message) })
+    let aborted = false
+    p.on('abort', _ => aborted = true)
+    p.write(trunc)
+    p.write(trunc)
+    p.write(tgz.slice(split))
+    p.end()
+    t.equal(aborted, true, 'aborted writing')
+    t.same(warnings, [ 'zlib error: incorrect data check' ])
+    t.end()
+  })
+
+  t.end()
+})

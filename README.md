@@ -561,6 +561,11 @@ The following options are supported:
 - `onentry` A function that gets called with `(entry)` for each entry
   that passes the filter.
 
+#### abort(message, error)
+
+Stop all parsing activities.  This is called when there are zlib
+errors.  It also emits a warning with the message and error provided.
+
 ### class tar.ReadEntry extends [MiniPass](http://npm.im/minipass)
 
 A representation of an entry that is being read out of a tar archive.
