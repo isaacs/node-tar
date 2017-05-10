@@ -19,11 +19,23 @@ const EE = require('events').EventEmitter
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 
+const ctime = new Date('2017-05-10T01:03:12.000Z')
+const atime = new Date('2017-04-17T00:00:00.000Z')
+const mtime = new Date('2016-04-01T19:00:00.000Z')
+
+t.teardown(mutateFS.statMutate((er, st) => {
+  if (st) {
+    st.ctime = ctime
+    st.atime = atime
+    st.mtime = mtime
+  }
+}))
+
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
   const two = fs.statSync(files + '/hardlink-2')
   if (one.dev !== two.dev || one.ino !== two.ino) {
-    fs.unlinkSync(files + '/hardlink-2')
+    try { fs.unlinkSync(files + '/hardlink-2') } catch (e) {}
     fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   }
   chmodr.sync(files, 0o644)
@@ -46,19 +58,19 @@ t.test('pack a file', t => {
         path: 'one-byte.txt',
         mode: 0o644,
         size: 1,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: 'isaacs',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: atime,
+        ctime: ctime,
         nullBlock: false,
         type: 'File'
       }
-      t.match(h, expect)
+      t.match(h, expect) || console.log(h, expect)
       const ps = new PackSync({ cwd: files })
       const sout = []
       ps.on('data', chunk => sout.push(chunk))
@@ -90,15 +102,15 @@ t.test('pack a file with a prefix', t => {
         path: 'package/one-byte.txt',
         mode: 0o644,
         size: 1,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: 'isaacs',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: atime,
+        ctime: ctime,
         nullBlock: false,
         type: 'File'
       }
@@ -131,7 +143,7 @@ t.test('pack a dir', t => {
         path: 'dir/',
         mode: 0o755,
         size: 0,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: '',
@@ -159,7 +171,7 @@ t.test('pack a dir', t => {
         path: 'dir/x',
         mode: 0o644,
         size: 0,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: '',
@@ -199,15 +211,15 @@ t.test('use process cwd if cwd not specified', t => {
         path: 'dir/',
         mode: 0o755,
         size: 0,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: 'isaacs',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: atime,
+        ctime: ctime,
         nullBlock: false
       }
       t.match(h, expect)
@@ -227,15 +239,15 @@ t.test('use process cwd if cwd not specified', t => {
         path: 'dir/x',
         mode: 0o644,
         size: 0,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: 'isaacs',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: atime,
+        ctime: ctime,
         nullBlock: false
       }
       t.match(new Header(data.slice(512)), expect2)
@@ -265,15 +277,15 @@ t.test('filter', t => {
         path: 'dir/',
         mode: 0o755,
         size: 0,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: 'isaacs',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: atime,
+        ctime: ctime,
         nullBlock: false
       }
       t.match(h, expect)
@@ -311,15 +323,15 @@ t.test('add the same dir twice (exercise cache code)', t => {
         path: 'dir/',
         mode: 0o755,
         size: 0,
-        mtime: Date,
+        mtime: mtime,
         cksum: Number,
         linkpath: '',
         uname: 'isaacs',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        atime: Date,
-        ctime: Date,
+        atime: atime,
+        ctime: ctime,
         nullBlock: false
       }
       t.match(h, expect)
@@ -559,15 +571,15 @@ t.test('pipe into a slow reader', t => {
       path: 'long-path/',
       mode: 0o755,
       size: 0,
-      mtime: Date,
+      mtime: mtime,
       cksum: Number,
       linkpath: '',
       uname: 'isaacs',
       gname: '',
       devmaj: 0,
       devmin: 0,
-      atime: Date,
-      ctime: Date,
+      atime: atime,
+      ctime: ctime,
       nullBlock: false
     }
     t.match(h, expect)
@@ -617,15 +629,15 @@ t.test('pipe into a slow gzip reader', t => {
       path: 'long-path/',
       mode: 0o755,
       size: 0,
-      mtime: Date,
+      mtime: mtime,
       cksum: Number,
       linkpath: '',
       uname: 'isaacs',
       gname: '',
       devmaj: 0,
       devmin: 0,
-      atime: Date,
-      ctime: Date,
+      atime: atime,
+      ctime: ctime,
       nullBlock: false
     }
     t.match(h, expect)
