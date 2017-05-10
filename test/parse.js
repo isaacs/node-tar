@@ -500,10 +500,12 @@ t.test('truncated gzip input', t => {
   const split = Math.floor(tgz.length * 2 / 3)
   const trunc = tgz.slice(0, split)
 
-  t.test('early end', t => {
+  const skipEarlyEnd = process.version.match(/^v4\./)
+  t.test('early end', {
+    skip: skipEarlyEnd ? 'not a zlib error on v4' : false
+  }, t => {
     const warnings = []
-    const p = new Parse({
-      onwarn: message => warnings.push(message) })
+    const p = new Parse({ onwarn: message => warnings.push(message) })
     let aborted = false
     p.on('abort', _ => aborted = true)
     p.end(trunc)
