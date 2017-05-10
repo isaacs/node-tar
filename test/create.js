@@ -144,3 +144,24 @@ t.test('open fails', t => {
   t.throws(_ => fs.lstatSync(file))
   t.end()
 })
+
+t.test('gzipped tarball that makes some drain/resume stuff', t => {
+  const cwd = path.dirname(__dirname)
+  const out = path.resolve(dir, 'package.tgz')
+
+  c({ z: true, C: cwd },[ 'node_modules' ])
+    .pipe(fs.createWriteStream(out))
+    .on('finish', _ => {
+      const child = spawn('tar', ['tf', out], {
+        stdio: [ 'ignore', 'ignore', 'pipe' ]
+      })
+      child.stderr.on('data', c => {
+        t.fail(c + '')
+      })
+      child.on('close', (code, signal) => {
+        t.equal(code, 0)
+        t.equal(signal, null)
+        t.end()
+      })
+    })
+})
