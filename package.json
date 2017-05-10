@@ -17,7 +17,7 @@
     "bench": "for i in benchmarks/*/*.js; do echo $i; for j in {1..5}; do node $i || break; done; done"
   },
   "dependencies": {
-    "minipass": "^2.0.1",
+    "minipass": "^2.0.2",
     "minizlib": "^1.0.3",
     "mkdirp": "^0.5.0",
     "yallist": "^3.0.2"
