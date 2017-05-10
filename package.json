@@ -9,18 +9,28 @@
   },
   "main": "tar.js",
   "scripts": {
-    "test": "tap test/*.js"
+    "test": "tap test/*.js --100 -J --coverage-report=text",
+    "genparse": "node scripts/generate-parse-fixtures.js",
+    "bench": "for i in benchmarks/*/*.js; do echo $i; for j in {1..5}; do node $i || break; done; done"
   },
   "dependencies": {
-    "block-stream": "*",
-    "fstream": "^1.0.2",
-    "inherits": "2"
+    "minipass": "^2.0.1",
+    "minizlib": "^1.0.3",
+    "mkdirp": "^0.5.0",
+    "yallist": "^3.0.2"
   },
   "devDependencies": {
-    "graceful-fs": "^4.1.2",
+    "chmodr": "^1.0.2",
+    "events-to-array": "^1.1.2",
+    "mutate-fs": "^1.1.0",
     "rimraf": "1.x",
-    "tap": "0.x",
-    "mkdirp": "^0.5.0"
+    "tap": "^10.3.1",
+    "tar-fs": "^1.15.2",
+    "tar-stream": "^1.5.2"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "files": [
+    "tar.js",
+    "lib/"
+  ]
 }

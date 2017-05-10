@@ -1,0 +1,65 @@
+[
+  [
+    "meta",
+    "130 path=120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n1069 comment=all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy\n9 gid=20\n15 gname=staff\n20 mtime=1491843252\n12 size=100\n11 uid=501\n16 uname=isaacs\n"
+  ],
+  [
+    "entry",
+    {
+      "extended": {
+        "atime": null,
+        "charset": null,
+        "comment": "all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy all work and no play makes johnny a tar boy",
+        "ctime": null,
+        "gid": 20,
+        "gname": "staff",
+        "linkpath": null,
+        "mtime": "2017-04-10T16:54:12.000Z",
+        "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "size": 100,
+        "uid": 501,
+        "uname": "isaacs",
+        "dev": null,
+        "ino": null,
+        "nlink": null,
+        "global": false
+      },
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": false,
+      "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": "isaacs",
+      "gname": "staff",
+      "size": 100,
+      "mtime": "2017-04-10T16:54:12.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "120-byte-filename-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 100,
+        "mtime": "2017-04-10T16:54:12.000Z",
+        "cksum": 14495,
+        "linkpath": "",
+        "uname": "isaacs",
+        "gname": "staff",
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "end"
+  ]
+]

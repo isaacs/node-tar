@@ -1,0 +1,23 @@
+[
+  [
+    "error",
+    {
+      "message": "invalid: path is required"
+    }
+  ],
+  [
+    "error",
+    {
+      "message": "invalid entry"
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]

@@ -1,5 +1,6 @@
 .*.swp
 node_modules
-examples/extract/
-test/tmp/
-test/fixtures/
+.nyc_output/
+coverage/
+test/fixtures/unpack
+benchmarks/extract/cwd

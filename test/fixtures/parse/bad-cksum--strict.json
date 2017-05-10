@@ -1,0 +1,62 @@
+[
+  [
+    "entry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": false,
+      "path": "one-byte.txt",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": "isaacs",
+      "gname": "staff",
+      "size": 1,
+      "mtime": "2017-04-10T16:58:20.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "one-byte.txt",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 1,
+        "mtime": "2017-04-10T16:58:20.000Z",
+        "cksum": 6121,
+        "linkpath": "",
+        "uname": "isaacs",
+        "gname": "staff",
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "error",
+    {
+      "message": "invalid entry"
+    }
+  ],
+  [
+    "error",
+    {
+      "message": "invalid entry"
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]

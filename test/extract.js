@@ -1,367 +1,218 @@
-// Set the umask, so that it works the same everywhere.
-process.umask(parseInt('22', 8))
+'use strict'
 
-var tap = require("tap")
-  , tar = require("../tar.js")
-  , fs = require("fs")
-  , path = require("path")
-  , file = path.resolve(__dirname, "fixtures/c.tar")
-  , target = path.resolve(__dirname, "tmp/extract-test")
-  , index = 0
-  , fstream = require("fstream")
+const t = require('tap')
+const x = require('../lib/extract.js')
+const path = require('path')
+const fs = require('fs')
+const extractdir = path.resolve(__dirname, 'fixtures/extract')
+const tars = path.resolve(__dirname, 'fixtures/tars')
+const mkdirp = require('mkdirp')
+const rimraf = require('rimraf')
+const mutateFS = require('mutate-fs')
 
-  , ee = 0
-  , expectEntries =
-[ { path: 'c.txt',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 513,
-    linkpath: '',
-    nlink: undefined,
-    dev: undefined,
-    ino: undefined },
-  { path: 'cc.txt',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 513,
-    linkpath: '',
-    nlink: undefined,
-    dev: undefined,
-    ino: undefined },
-  { path: 'r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 100,
-    linkpath: '',
-    nlink: undefined,
-    dev: undefined,
-    ino: undefined },
-  { path: 'Ω.txt',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 2,
-    linkpath: '',
-    nlink: undefined,
-    dev: undefined,
-    ino: undefined },
-  { path: 'Ω.txt',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 2,
-    linkpath: '',
-    nlink: 1,
-    dev: 234881026,
-    ino: 51693379 },
-  { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 200,
-    linkpath: '',
-    nlink: 1,
-    dev: 234881026,
-    ino: 51681874 },
-  { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 201,
-    linkpath: '',
-    nlink: undefined,
-    dev: undefined,
-    ino: undefined },
-  { path: '200LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL',
-    mode: '777',
-    type: '2',
-    depth: undefined,
-    size: 0,
-    linkpath: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    nlink: undefined,
-    dev: undefined,
-    ino: undefined },
-  { path: '200-hard',
-    mode: '644',
-    type: '0',
-    depth: undefined,
-    size: 200,
-    linkpath: '',
-    nlink: 2,
-    dev: 234881026,
-    ino: 51681874 },
-  { path: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    mode: '644',
-    type: '1',
-    depth: undefined,
-    size: 0,
-    linkpath: path.resolve(target, '200-hard'),
-    nlink: 2,
-    dev: 234881026,
-    ino: 51681874 } ]
+t.teardown(_ => rimraf.sync(extractdir))
 
-  , ef = 0
-  , expectFiles =
-[ { path: '',
-    mode: '40755',
-    type: 'Directory',
-    depth: 0,
-    linkpath: undefined },
-  { path: '/200-hard',
-    mode: '100644',
-    type: 'File',
-    depth: 1,
-    size: 200,
-    linkpath: undefined,
-    nlink: 2 },
-  { path: '/200LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL',
-    mode: '120777',
-    type: 'SymbolicLink',
-    depth: 1,
-    size: 200,
-    linkpath: '200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    nlink: 1 },
-  { path: '/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    mode: '100644',
-    type: 'Link',
-    depth: 1,
-    size: 200,
-    linkpath: path.join(target, '200-hard'),
-    nlink: 2 },
-  { path: '/c.txt',
-    mode: '100644',
-    type: 'File',
-    depth: 1,
-    size: 513,
-    linkpath: undefined,
-    nlink: 1 },
-  { path: '/cc.txt',
-    mode: '100644',
-    type: 'File',
-    depth: 1,
-    size: 513,
-    linkpath: undefined,
-    nlink: 1 },
-  { path: '/r',
-    mode: '40755',
-    type: 'Directory',
-    depth: 1,
-    linkpath: undefined },
-  { path: '/r/e',
-    mode: '40755',
-    type: 'Directory',
-    depth: 2,
-    linkpath: undefined },
-  { path: '/r/e/a',
-    mode: '40755',
-    type: 'Directory',
-    depth: 3,
-    linkpath: undefined },
-  { path: '/r/e/a/l',
-    mode: '40755',
-    type: 'Directory',
-    depth: 4,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l',
-    mode: '40755',
-    type: 'Directory',
-    depth: 5,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y',
-    mode: '40755',
-    type: 'Directory',
-    depth: 6,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-',
-    mode: '40755',
-    type: 'Directory',
-    depth: 7,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d',
-    mode: '40755',
-    type: 'Directory',
-    depth: 8,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e',
-    mode: '40755',
-    type: 'Directory',
-    depth: 9,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e',
-    mode: '40755',
-    type: 'Directory',
-    depth: 10,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p',
-    mode: '40755',
-    type: 'Directory',
-    depth: 11,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-',
-    mode: '40755',
-    type: 'Directory',
-    depth: 12,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f',
-    mode: '40755',
-    type: 'Directory',
-    depth: 13,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o',
-    mode: '40755',
-    type: 'Directory',
-    depth: 14,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l',
-    mode: '40755',
-    type: 'Directory',
-    depth: 15,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d',
-    mode: '40755',
-    type: 'Directory',
-    depth: 16,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e',
-    mode: '40755',
-    type: 'Directory',
-    depth: 17,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r',
-    mode: '40755',
-    type: 'Directory',
-    depth: 18,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-',
-    mode: '40755',
-    type: 'Directory',
-    depth: 19,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p',
-    mode: '40755',
-    type: 'Directory',
-    depth: 20,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a',
-    mode: '40755',
-    type: 'Directory',
-    depth: 21,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t',
-    mode: '40755',
-    type: 'Directory',
-    depth: 22,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h',
-    mode: '40755',
-    type: 'Directory',
-    depth: 23,
-    linkpath: undefined },
-  { path: '/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    mode: '100644',
-    type: 'File',
-    depth: 24,
-    size: 100,
-    linkpath: undefined,
-    nlink: 1 },
-  { path: '/Ω.txt',
-    mode: '100644',
-    type: 'File',
-    depth: 1,
-    size: 2,
-    linkpath: undefined,
-    nlink: 1 } ]
+t.test('basic extracting', t => {
+  const file = path.resolve(tars, 'utf8.tar')
+  const dir = path.resolve(extractdir, 'basic')
 
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
 
+  const check = t => {
+    fs.lstatSync(dir + '/Ω.txt')
+    fs.lstatSync(dir + '/🌟.txt')
+    t.throws(_ => fs.lstatSync(dir + '/long-path/r/e/a/l/l/y/-/d/e/e/p/-' +
+                               '/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'))
 
-// The extract class basically just pipes the input
-// to a Reader, and then to a fstream.DirWriter
+    rimraf.sync(dir)
+    t.end()
+  }
 
-// So, this is as much a test of fstream.Reader and fstream.Writer
-// as it is of tar.Extract, but it sort of makes sense.
+  t.test('sync', t => {
+    x({ file: file, sync: true, C: dir }, [ '🌟.txt', 'Ω.txt' ])
+    check(t)
+  })
 
-tap.test("preclean", function (t) {
-  require("rimraf").sync(__dirname + "/tmp/extract-test")
-  t.pass("cleaned!")
+  t.test('async promisey', t => {
+    return x({ file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ]).then(_ => {
+      check(t)
+    })
+  })
+
+  t.test('async cb', t => {
+    return x({ file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ], er => {
+      if (er)
+        throw er
+      check(t)
+    })
+  })
+
   t.end()
 })
 
-tap.test("extract test", function (t) {
-  var extract = tar.Extract(target)
-  var inp = fs.createReadStream(file)
+t.test('file list and filter', t => {
+  const file = path.resolve(tars, 'utf8.tar')
+  const dir = path.resolve(extractdir, 'filter')
 
-  // give it a weird buffer size to try to break in odd places
-  inp.bufferSize = 1234
-
-  inp.pipe(extract)
-
-  extract.on("end", function () {
-    t.equal(ee, expectEntries.length, "should see "+ee+" entries")
-
-    // should get no more entries after end
-    extract.removeAllListeners("entry")
-    extract.on("entry", function (e) {
-      t.fail("Should not get entries after end!")
-    })
-
-    next()
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
   })
 
-  extract.on("entry", function (entry) {
-    var found =
-      { path: entry.path
-      , mode: entry.props.mode.toString(8)
-      , type: entry.props.type
-      , depth: entry.props.depth
-      , size: entry.props.size
-      , linkpath: entry.props.linkpath
-      , nlink: entry.props.nlink
-      , dev: entry.props.dev
-      , ino: entry.props.ino
-      }
+  const check = t => {
+    fs.lstatSync(dir + '/Ω.txt')
+    t.throws(_ => fs.lstatSync(dir + '/🌟.txt'))
+    t.throws(_ => fs.lstatSync(dir + '/long-path/r/e/a/l/l/y/-/d/e/e/p/-' +
+                               '/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'))
 
-    var wanted = expectEntries[ee ++]
-
-    t.equivalent(found, wanted, "tar entry " + ee + " " + wanted.path)
-  })
-
-  function next () {
-    var r = fstream.Reader({ path: target
-                           , type: "Directory"
-                           // this is just to encourage consistency
-                           , sort: "alpha" })
-
-    r.on("ready", function () {
-      foundEntry(r)
-    })
-
-    r.on("end", finish)
-
-    function foundEntry (entry) {
-      var p = entry.path.substr(target.length)
-      var found =
-        { path: p
-        , mode: entry.props.mode.toString(8)
-        , type: entry.props.type
-        , depth: entry.props.depth
-        , size: entry.props.size
-        , linkpath: entry.props.linkpath
-        , nlink: entry.props.nlink
-        }
-
-      var wanted = expectFiles[ef ++]
-
-      t.has(found, wanted, "unpacked file " + ef + " " + wanted.path)
-
-      entry.on("entry", foundEntry)
-    }
-
-    function finish () {
-      t.equal(ef, expectFiles.length, "should have "+ef+" items")
-      t.end()
-    }
+    rimraf.sync(dir)
+    t.end()
   }
+
+  const filter = path => path === 'Ω.txt'
+
+  t.test('sync', t => {
+    x({ filter: filter, file: file, sync: true, C: dir }, [ '🌟.txt', 'Ω.txt' ])
+    check(t)
+  })
+
+  t.test('async promisey', t => {
+    return x({ filter: filter, file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ]).then(_ => {
+      check(t)
+    })
+  })
+
+  t.test('async cb', t => {
+    return x({ filter: filter, file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ], er => {
+      if (er)
+        throw er
+      check(t)
+    })
+  })
+
+  t.end()
+})
+
+t.test('no file list', t => {
+  const file = path.resolve(tars, 'body-byte-counts.tar')
+  const dir = path.resolve(extractdir, 'no-list')
+
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const check = t => {
+    t.equal(fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size, 1024)
+    t.equal(fs.lstatSync(path.resolve(dir, '512-bytes.txt')).size, 512)
+    t.equal(fs.lstatSync(path.resolve(dir, 'one-byte.txt')).size, 1)
+    t.equal(fs.lstatSync(path.resolve(dir, 'zero-byte.txt')).size, 0)
+    rimraf.sync(dir)
+    t.end()
+  }
+
+  t.test('sync', t => {
+    x({ file: file, sync: true, C: dir })
+    check(t)
+  })
+
+  t.test('async promisey', t => {
+    return x({ file: file, cwd: dir }).then(_ => {
+      check(t)
+    })
+  })
+
+  t.test('async cb', t => {
+    return x({ file: file, cwd: dir }, er => {
+      if (er)
+        throw er
+      check(t)
+    })
+  })
+
+  t.end()
+})
+
+t.test('read in itty bits', t => {
+  const maxReadSize = 1000
+  const file = path.resolve(tars, 'body-byte-counts.tar')
+  const dir = path.resolve(extractdir, 'no-list')
+
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir)
+    cb()
+  })
+
+  const check = t => {
+    t.equal(fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size, 1024)
+    t.equal(fs.lstatSync(path.resolve(dir, '512-bytes.txt')).size, 512)
+    t.equal(fs.lstatSync(path.resolve(dir, 'one-byte.txt')).size, 1)
+    t.equal(fs.lstatSync(path.resolve(dir, 'zero-byte.txt')).size, 0)
+    rimraf.sync(dir)
+    t.end()
+  }
+
+  t.test('sync', t => {
+    x({ file: file, sync: true, C: dir, maxReadSize: maxReadSize })
+    check(t)
+  })
+
+  t.test('async promisey', t => {
+    return x({ file: file, cwd: dir, maxReadSize: maxReadSize }).then(_ => {
+      check(t)
+    })
+  })
+
+  t.test('async cb', t => {
+    return x({ file: file, cwd: dir, maxReadSize: maxReadSize }, er => {
+      if (er)
+        throw er
+      check(t)
+    })
+  })
+
+  t.end()
+})
+
+t.test('bad calls', t => {
+  t.throws(_=> x(_=>_))
+  t.throws(_=> x({sync: true}, _=>_))
+  t.throws(_=> x({sync: true}, [], _=>_))
+  t.end()
+})
+
+t.test('no file', t => {
+  const Unpack = require('../lib/unpack.js')
+  t.isa(x(), Unpack)
+  t.isa(x(['asdf']), Unpack)
+  t.isa(x({sync:true}), Unpack.Sync)
+  t.end()
+})
+
+t.test('nonexistent', t => {
+  t.throws(_ => x({sync: true, file: 'does not exist' }))
+  x({ file: 'does not exist' }).catch(_ => t.end())
+})
+
+t.test('read fail', t => {
+  const poop = new Error('poop')
+  t.teardown(mutateFS.fail('read', poop))
+
+  t.throws(_ => x({maxReadSize: 10, sync: true, file: __filename }), poop)
+  t.end()
+})
+
+t.test('readFile fail', t => {
+  const poop = new Error('poop')
+  t.teardown(mutateFS.fail('readFile', poop))
+
+  t.throws(_ => x({ sync: true, file: __filename }), poop)
+  return x({ file: __filename }, er => t.match(er, poop))
 })

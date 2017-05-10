@@ -1,0 +1,128 @@
+[
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "ExtendedHeader",
+      "meta": true,
+      "ignore": true,
+      "path": "PaxHeader/🌟.txt",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": "isaacs",
+      "gname": "staff",
+      "size": 120,
+      "mtime": "2017-04-10T17:05:55.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "PaxHeader/🌟.txt",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 120,
+        "mtime": "2017-04-10T17:05:55.000Z",
+        "cksum": 7024,
+        "linkpath": "",
+        "uname": "isaacs",
+        "gname": "staff",
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": true,
+      "path": "🌟.txt",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": "isaacs",
+      "gname": "staff",
+      "size": 106,
+      "mtime": "2017-04-10T17:05:55.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "🌟.txt",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 106,
+        "mtime": "2017-04-10T17:05:55.000Z",
+        "cksum": 6023,
+        "linkpath": "",
+        "uname": "isaacs",
+        "gname": "staff",
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "entry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": false,
+      "path": "one-byte.txt",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": "isaacs",
+      "gname": "staff",
+      "size": 1,
+      "mtime": "2017-04-10T16:58:20.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "one-byte.txt",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 1,
+        "mtime": "2017-04-10T16:58:20.000Z",
+        "cksum": 6121,
+        "linkpath": "",
+        "uname": "isaacs",
+        "gname": "staff",
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]

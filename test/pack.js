@@ -1,952 +1,825 @@
+'use strict'
+const t = require('tap')
+const Pack = require('../lib/pack.js')
+const PackSync = Pack.Sync
+const fs = require('fs')
+const path = require('path')
+const fixtures = path.resolve(__dirname, 'fixtures')
+const files = path.resolve(fixtures, 'files')
+const parse = path.resolve(fixtures, 'parse')
+const tars = path.resolve(fixtures, 'tars')
+const chmodr = require('chmodr')
+const Header = require('../lib/header.js')
+const zlib = require('zlib')
+const miniz = require('minizlib')
+const mutateFS = require('mutate-fs')
+const MiniPass = require('minipass')
+process.env.USER = 'isaacs'
+const EE = require('events').EventEmitter
+const rimraf = require('rimraf')
+const mkdirp = require('mkdirp')
 
-// the symlink file is excluded from git, because it makes
-// windows freak the hell out.
-var fs = require("fs")
-  , path = require("path")
-  , symlink = path.resolve(__dirname, "fixtures/symlink")
-try { fs.unlinkSync(symlink) } catch (e) {}
-fs.symlinkSync("./hardlink-1", symlink)
-process.on("exit", function () {
-  fs.unlinkSync(symlink)
+const ctime = new Date('2017-05-10T01:03:12.000Z')
+const atime = new Date('2017-04-17T00:00:00.000Z')
+const mtime = new Date('2016-04-01T19:00:00.000Z')
+
+t.teardown(mutateFS.statMutate((er, st) => {
+  if (st) {
+    st.ctime = ctime
+    st.atime = atime
+    st.mtime = mtime
+  }
+}))
+
+t.test('set up', t => {
+  const one = fs.statSync(files + '/hardlink-1')
+  const two = fs.statSync(files + '/hardlink-2')
+  if (one.dev !== two.dev || one.ino !== two.ino) {
+    try { fs.unlinkSync(files + '/hardlink-2') } catch (e) {}
+    fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
+  }
+  chmodr.sync(files, 0o644)
+  t.end()
 })
 
-
-var tap = require("tap")
-  , tar = require("../tar.js")
-  , pkg = require("../package.json")
-  , Pack = tar.Pack
-  , fstream = require("fstream")
-  , Reader = fstream.Reader
-  , Writer = fstream.Writer
-  , input = path.resolve(__dirname, "fixtures/")
-  , target = path.resolve(__dirname, "tmp/pack.tar")
-  , uid = process.getuid ? process.getuid() : 0
-  , gid = process.getgid ? process.getgid() : 0
-
-  , entries =
-
-    // the global header and root fixtures/ dir are going to get
-    // a different date each time, so omit that bit.
-    // Also, dev/ino values differ across machines, so that's not
-    // included.
-    [ [ 'globalExtendedHeader',
-      { path: 'PaxHeader/',
-        mode: 438,
-        uid: 0,
-        gid: 0,
-        type: 'g',
+t.test('pack a file', t => {
+  const out = []
+  new Pack({ cwd: files })
+    .end('one-byte.txt')
+    .on('data', c => out.push(c))
+    .on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(data.slice(512).toString(), /^a\0{511}\0{1024}$/)
+      const h = new Header(data)
+      const expect = {
+        cksumValid: true,
+        needPax: false,
+        path: 'one-byte.txt',
+        mode: 0o644,
+        size: 1,
+        mtime: mtime,
+        cksum: Number,
         linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
+        uname: 'isaacs',
         gname: '',
         devmaj: 0,
         devmin: 0,
-        fill: '' },
-      { "NODETAR.author": pkg.author,
-        "NODETAR.name": pkg.name,
-        "NODETAR.description": pkg.description,
-        "NODETAR.version": pkg.version,
-        "NODETAR.repository.type": pkg.repository.type,
-        "NODETAR.repository.url": pkg.repository.url,
-        "NODETAR.main": pkg.main,
-        "NODETAR.scripts.test": pkg.scripts.test } ]
+        atime: atime,
+        ctime: ctime,
+        nullBlock: false,
+        type: 'File'
+      }
+      t.match(h, expect) || console.log(h, expect)
+      const ps = new PackSync({ cwd: files })
+      const sout = []
+      ps.on('data', chunk => sout.push(chunk))
+      ps.add('one-byte.txt').end()
+      const sync = Buffer.concat(sout)
+      if (sync.length === 0)
+        throw new Error('no data!')
 
-    , [ 'entry',
-      { path: 'fixtures/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'extendedHeader',
-      { path: 'PaxHeader/fixtures/200cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        type: 'x',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' },
-      { path: 'fixtures/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        'NODETAR.depth': '1',
-        'NODETAR.type': 'File',
-        nlink: 1,
-        uid: uid,
-        gid: gid,
-        size: 200,
-        'NODETAR.blksize': '4096',
-        'NODETAR.blocks': '8' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/200ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 200,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '',
-        'NODETAR.depth': '1',
-        'NODETAR.type': 'File',
-        nlink: 1,
-        'NODETAR.blksize': '4096',
-        'NODETAR.blocks': '8' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/a.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 257,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/b.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 512,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/c.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 513,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/cc.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 513,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/dir/',
-        mode: 488,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/dir/sub/',
-        mode: 488,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-
-    , [ 'entry',
-      { path: 'fixtures/foo.js',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 4,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/hardlink-1',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 200,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/hardlink-2',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '1',
-        linkpath: 'fixtures/hardlink-1',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/omega.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 2,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/packtest/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/packtest/omega.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 2,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/packtest/star.4.html',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 54081,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'extendedHeader',
-      { path: 'PaxHeader/fixtures/packtest/Ω.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        type: 'x',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' },
-      { path: 'fixtures/packtest/Ω.txt',
-        'NODETAR.depth': '2',
-        'NODETAR.type': 'File',
-        nlink: 1,
-        uid: uid,
-        gid: gid,
-        size: 2,
-        'NODETAR.blksize': '4096',
-        'NODETAR.blocks': '8' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/packtest/Ω.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 2,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '',
-        'NODETAR.depth': '2',
-        'NODETAR.type': 'File',
-        nlink: 1,
-        'NODETAR.blksize': '4096',
-        'NODETAR.blocks': '8' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
-        mode: 493,
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '5',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 100,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'entry',
-      { path: 'fixtures/symlink',
-        uid: uid,
-        gid: gid,
-        size: 0,
-        type: '2',
-        linkpath: 'hardlink-1',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' } ]
-
-    , [ 'extendedHeader',
-      { path: 'PaxHeader/fixtures/Ω.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        type: 'x',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '' },
-      { path: "fixtures/Ω.txt"
-      , "NODETAR.depth": "1"
-      , "NODETAR.type": "File"
-      , nlink: 1
-      , uid: uid
-      , gid: gid
-      , size: 2
-      , "NODETAR.blksize": "4096"
-      , "NODETAR.blocks": "8" } ]
-
-    , [ 'entry',
-      { path: 'fixtures/Ω.txt',
-        mode: 420,
-        uid: uid,
-        gid: gid,
-        size: 2,
-        type: '0',
-        linkpath: '',
-        ustar: 'ustar\u0000',
-        ustarver: '00',
-        uname: '',
-        gname: '',
-        devmaj: 0,
-        devmin: 0,
-        fill: '',
-        'NODETAR.depth': '1',
-        'NODETAR.type': 'File',
-        nlink: 1,
-        'NODETAR.blksize': '4096',
-        'NODETAR.blocks': '8' } ]
-    ]
-
-
-// first, make sure that the hardlinks are actually hardlinks, or this
-// won't work.  Git has a way of replacing them with a copy.
-var hard1 = path.resolve(__dirname, "fixtures/hardlink-1")
-  , hard2 = path.resolve(__dirname, "fixtures/hardlink-2")
-  , fs = require("fs")
-
-try { fs.unlinkSync(hard2) } catch (e) {}
-fs.linkSync(hard1, hard2)
-
-tap.test("with global header", { timeout: 10000 }, function (t) {
-  runTest(t, true)
+      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      const hs = new Header(sync)
+      t.match(hs, expect)
+      t.end()
+    })
 })
 
-tap.test("without global header", { timeout: 10000 }, function (t) {
-  runTest(t, false)
+t.test('pack a file with a prefix', t => {
+  const out = []
+  new Pack({ cwd: files, prefix: 'package/' })
+    .end('one-byte.txt')
+    .on('data', c => out.push(c))
+    .on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(data.slice(512).toString(), /^a\0{511}\0{1024}$/)
+      const h = new Header(data)
+      const expect = {
+        cksumValid: true,
+        needPax: false,
+        path: 'package/one-byte.txt',
+        mode: 0o644,
+        size: 1,
+        mtime: mtime,
+        cksum: Number,
+        linkpath: '',
+        uname: 'isaacs',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        atime: atime,
+        ctime: ctime,
+        nullBlock: false,
+        type: 'File'
+      }
+      t.match(h, expect)
+      const sync = new PackSync({ cwd: files, prefix: 'package' })
+        .add('one-byte.txt').end().read()
+      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      const hs = new Header(sync)
+      t.match(hs, expect)
+      t.end()
+    })
 })
 
-tap.test("with from base", { timeout: 10000 }, function (t) {
-  runTest(t, true, true)
+t.test('pack a dir', t => {
+  const out = []
+
+  new Pack({ cwd: files, portable: true })
+    .add('dir')
+    .on('data', c => out.push(c))
+    .end()
+    .on('end', _ => {
+      const data = Buffer.concat(out)
+      // dir/, dir/x, and the nulls
+      // neither the dir or the file have any body bits
+      const h = new Header(data)
+      const expect = {
+        type: 'Directory',
+        cksumValid: true,
+        needPax: false,
+        path: 'dir/',
+        mode: 0o755,
+        size: 0,
+        mtime: mtime,
+        cksum: Number,
+        linkpath: '',
+        uname: '',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        atime: null,
+        ctime: null,
+        nullBlock: false
+      }
+      t.match(h, expect)
+      t.equal(data.length, 2048)
+      t.match(data.slice(1024).toString(), /^\0{1024}$/)
+
+      const sync = new PackSync({ cwd: files, portable: true })
+        .add('dir').end().read()
+      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      const hs = new Header(sync)
+      t.match(hs, expect)
+
+      const expect2 = {
+        type: 'File',
+        cksumValid: true,
+        needPax: false,
+        path: 'dir/x',
+        mode: 0o644,
+        size: 0,
+        mtime: mtime,
+        cksum: Number,
+        linkpath: '',
+        uname: '',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        atime: null,
+        ctime: null,
+        nullBlock: false
+      }
+      t.match(new Header(data.slice(512)), expect2)
+      t.match(new Header(sync.slice(512)), expect2)
+      t.end()
+    })
 })
 
-function alphasort (a, b) {
-  return a === b ? 0
-       : a.toLowerCase() > b.toLowerCase() ? 1
-       : a.toLowerCase() < b.toLowerCase() ? -1
-       : a > b ? 1
-       : -1
-}
+t.test('use process cwd if cwd not specified', t => {
+  const cwd = process.cwd()
+  t.tearDown(_ => process.chdir(cwd))
+  process.chdir(files)
 
+  const out = []
 
-function runTest (t, doGH, doFromBase) {
-  var reader = Reader({ path: input
-                      , filter: function () {
-                          return !this.path.match(/\.(tar|hex)$/)
-                        }
-                      , sort: alphasort
-                      })
+  new Pack()
+    .add('dir')
+    .on('data', c => out.push(c))
+    .end()
+    .on('end', _ => {
+      const data = Buffer.concat(out)
+      // dir/, dir/x, and the nulls
+      // neither the dir or the file have any body bits
+      const h = new Header(data)
+      const expect = {
+        type: 'Directory',
+        cksumValid: true,
+        needPax: false,
+        path: 'dir/',
+        mode: 0o755,
+        size: 0,
+        mtime: mtime,
+        cksum: Number,
+        linkpath: '',
+        uname: 'isaacs',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        atime: atime,
+        ctime: ctime,
+        nullBlock: false
+      }
+      t.match(h, expect)
+      t.equal(data.length, 2048)
+      t.match(data.slice(1024).toString(), /^\0{1024}$/)
 
-  var props = doGH ? pkg : {}
-  if(doFromBase) props.fromBase = true;
+      const sync = new PackSync({ cwd: files })
+        .add('dir').end().read()
+      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      const hs = new Header(sync)
+      t.match(hs, expect)
 
-  var pack = Pack(props)
-  var writer = Writer(target)
+      const expect2 = {
+        type: 'File',
+        cksumValid: true,
+        needPax: false,
+        path: 'dir/x',
+        mode: 0o644,
+        size: 0,
+        mtime: mtime,
+        cksum: Number,
+        linkpath: '',
+        uname: 'isaacs',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        atime: atime,
+        ctime: ctime,
+        nullBlock: false
+      }
+      t.match(new Header(data.slice(512)), expect2)
+      t.match(new Header(sync.slice(512)), expect2)
+      t.end()
+    })
+})
 
-  // skip the global header if we're not doing that.
-  var entry = doGH ? 0 : 1
+t.test('filter', t => {
+  const out = []
+  const filter = (path, stat) => stat.isDirectory()
 
-  t.ok(reader, "reader ok")
-  t.ok(pack, "pack ok")
-  t.ok(writer, "writer ok")
+  // only include directories, so dir/x should not appear
+  new Pack({ cwd: files, filter: filter })
+    .add('dir')
+    .on('data', c => out.push(c))
+    .end()
+    .on('end', _ => {
+      const data = Buffer.concat(out)
+      // dir/, dir/x, and the nulls
+      // neither the dir or the file have any body bits
+      const h = new Header(data)
+      const expect = {
+        type: 'Directory',
+        cksumValid: true,
+        needPax: false,
+        path: 'dir/',
+        mode: 0o755,
+        size: 0,
+        mtime: mtime,
+        cksum: Number,
+        linkpath: '',
+        uname: 'isaacs',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        atime: atime,
+        ctime: ctime,
+        nullBlock: false
+      }
+      t.match(h, expect)
+      t.equal(data.length, 1536)
+      t.match(data.slice(512).toString(), /^\0{1024}$/)
 
-  pack.pipe(writer)
+      const sync = new PackSync({ cwd: files, filter: filter })
+        .add('dir').end().read()
+      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      const hs = new Header(sync)
+      t.match(hs, expect)
+      t.end()
+    })
+})
 
-  var parse = tar.Parse()
-  t.ok(parse, "parser should be ok")
+t.test('add the same dir twice (exercise cache code)', t => {
+  const out = []
+  const filter = (path, stat) => stat.isDirectory()
 
-  pack.on("data", function (c) {
-    // console.error("PACK DATA")
-    if (c.length !== 512) {
-      // this one is too noisy, only assert if it'll be relevant
-      t.equal(c.length, 512, "parser should emit data in 512byte blocks")
-    }
-    parse.write(c)
-  })
+  // only include directories, so dir/x should not appear
+  const pack = new Pack({ cwd: files, filter: filter })
+    .add('dir')
+    .add('dir')
+    .on('data', c => out.push(c))
+    .end()
+    .on('end', _ => {
+      const data = Buffer.concat(out)
+      // dir/, dir/x, and the nulls
+      // neither the dir or the file have any body bits
+      const h = new Header(data)
+      const expect = {
+        type: 'Directory',
+        cksumValid: true,
+        needPax: false,
+        path: 'dir/',
+        mode: 0o755,
+        size: 0,
+        mtime: mtime,
+        cksum: Number,
+        linkpath: '',
+        uname: 'isaacs',
+        gname: '',
+        devmaj: 0,
+        devmin: 0,
+        atime: atime,
+        ctime: ctime,
+        nullBlock: false
+      }
+      t.match(h, expect)
+      const h2 = new Header(data.slice(512))
+      t.match(h2, expect)
+      t.equal(data.length, 2048)
+      t.match(data.slice(1024).toString(), /^\0{1024}$/)
 
-  pack.on("end", function () {
-    // console.error("PACK END")
-    t.pass("parser ends")
-    parse.end()
-  })
-
-  pack.on("error", function (er) {
-    t.fail("pack error", er)
-  })
-
-  parse.on("error", function (er) {
-    t.fail("parse error", er)
-  })
-
-  writer.on("error", function (er) {
-    t.fail("writer error", er)
-  })
-
-  reader.on("error", function (er) {
-    t.fail("reader error", er)
-  })
-
-  parse.on("*", function (ev, e) {
-    var wanted = entries[entry++]
-    if (!wanted) {
-      t.fail("unexpected event: "+ev)
-      return
-    }
-    t.equal(ev, wanted[0], "event type should be "+wanted[0])
-
-    if(doFromBase) {
-      if(wanted[1].path.indexOf('fixtures/') && wanted[1].path.length == 100)
-        wanted[1].path = wanted[1].path.replace('fixtures/', '') + 'ccccccccc'
-
-      if(wanted[1]) wanted[1].path = wanted[1].path.replace('fixtures/', '').replace('//', '/')
-      if(wanted[1].path == '') wanted[1].path = '/'
-      if(wanted[2] && wanted[2].path) wanted[2].path = wanted[2].path.replace('fixtures', '').replace(/^\//, '')
-
-      wanted[1].linkpath = wanted[1].linkpath.replace('fixtures/', '')
-    }
-
-    if (ev !== wanted[0] || e.path !== wanted[1].path) {
-      console.error("wanted", wanted)
-      console.error([ev, e.props])
-      e.on("end", function () {
-        console.error(e.fields)
-        throw "break"
+      const sync = new PackSync({
+        cwd: files,
+        filter: filter,
+        linkCache: pack.linkCache,
+        readdirCache: pack.readdirCache,
+        statCache: pack.statCache
       })
-    }
+        .add('dir').add('dir').end().read()
+      t.equal(sync.slice(1024).toString(), data.slice(1024).toString())
+      const hs = new Header(sync)
+      t.match(hs, expect)
+      const hs2 = new Header(sync.slice(512))
+      t.match(hs2, expect)
+      t.end()
+    })
+})
 
+t.test('if gzip is truthy, make it an object', t => {
+  const opt = { gzip: true }
+  const pack = new Pack(opt)
+  t.isa(opt.gzip, 'object')
+  t.end()
+})
 
-    t.has(e.props, wanted[1], "properties "+wanted[1].path)
-    if (wanted[2]) {
-      e.on("end", function () {
-        if (!e.fields) {
-          t.ok(e.fields, "should get fields")
-        } else {
-          t.has(e.fields, wanted[2], "should get expected fields")
-        }
+t.test('gzip, also a very deep path', t => {
+  const out = []
+
+  const pack = new Pack({
+    cwd: files,
+    gzip: { flush: 1 }
+  })
+    .add('dir')
+    .add('long-path')
+    .on('data', c => out.push(c))
+    .end()
+    .on('end', _ => {
+      const zipped = Buffer.concat(out)
+      const data = zlib.unzipSync(zipped)
+      const entries = []
+      for (var i = 0; i < data.length; i += 512) {
+        const slice = data.slice(i, i + 512)
+        const h = new Header(slice)
+        if (h.nullBlock)
+          entries.push('null block')
+        else if (h.cksumValid)
+          entries.push([h.type, h.path])
+        else if (entries[entries.length-1][0] === 'File')
+          entries[entries.length-1].push(slice.toString().replace(/\0.*$/, ''))
+      }
+
+      const expect = [
+        [ 'Directory', 'dir/' ],
+        [ 'Directory', 'long-path/' ],
+        [ 'File', 'dir/x' ],
+        [ 'Directory', 'long-path/r/' ],
+        [ 'Directory', 'long-path/r/e/' ],
+        [ 'Directory', 'long-path/r/e/a/' ],
+        [ 'Directory', 'long-path/r/e/a/l/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/' ],
+        [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/' ],
+        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n' ],
+        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111' ],
+        [ 'ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
+        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222' ],
+        [ 'ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc' ],
+        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
+        [ 'ExtendedHeader', 'PaxHeader/Ω.txt' ],
+        [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω' ],
+        'null block',
+        'null block'
+      ]
+
+      let ok = true
+      entries.forEach((entry, i) => {
+        ok = ok &&
+          t.equal(entry[0], expect[i][0]) &&
+          t.equal(entry[1], expect[i][1]) &&
+          (!entry[2] || t.equal(entry[2], expect[i][2]))
       })
+
+      // t.match(entries, expect)
+      t.end()
+    })
+})
+
+t.test('very deep gzip path, sync', t => {
+  const out = []
+
+  const pack = new PackSync({
+    cwd: files,
+    gzip: true
+  }).add('dir')
+    .add('long-path')
+    .end()
+
+  // these do nothing!
+  pack.pause()
+  pack.resume()
+
+  const zipped = pack.read()
+  t.isa(zipped, Buffer)
+  const data = zlib.unzipSync(zipped)
+  const entries = []
+  for (var i = 0; i < data.length; i += 512) {
+    const slice = data.slice(i, i + 512)
+    const h = new Header(slice)
+    if (h.nullBlock)
+      entries.push('null block')
+    else if (h.cksumValid)
+      entries.push([h.type, h.path])
+    else if (entries[entries.length-1][0] === 'File')
+      entries[entries.length-1].push(slice.toString().replace(/\0.*$/, ''))
+  }
+
+  const expect = [
+    [ 'Directory', 'dir/' ],
+    [ 'File', 'dir/x' ],
+    [ 'Directory', 'long-path/' ],
+    [ 'Directory', 'long-path/r/' ],
+    [ 'Directory', 'long-path/r/e/' ],
+    [ 'Directory', 'long-path/r/e/a/' ],
+    [ 'Directory', 'long-path/r/e/a/l/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/' ],
+    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/' ],
+    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n' ],
+    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111' ],
+    [ 'ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
+    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222' ],
+    [ 'ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc' ],
+    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
+    [ 'ExtendedHeader', 'PaxHeader/Ω.txt' ],
+    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω' ],
+    'null block',
+    'null block'
+  ]
+
+  let ok = true
+  entries.forEach((entry, i) => {
+    ok = ok &&
+      t.equal(entry[0], expect[i][0]) &&
+      t.equal(entry[1], expect[i][1]) &&
+      (!entry[2] || t.equal(entry[2], expect[i][2]))
+  })
+
+  // t.match(entries, expect)
+  t.end()
+})
+
+t.test('write after end', t => {
+  const p = new Pack()
+  p.end()
+  t.throws(_ => p.add('nope'), new Error('write after end'))
+  t.end()
+})
+
+t.test('emit error when stat fail', t => {
+  t.tearDown(mutateFS.statFail(new Error('xyz')))
+  t.throws(_ => new PackSync({ cwd: files }).add('one-byte.txt'),
+           new Error('xyz'))
+
+  const p = new Pack({ cwd: files }).add('one-byte.txt').on('error', e => {
+    t.match(e, { message: 'xyz' })
+    t.end()
+  })
+})
+
+t.test('readdir fail', t => {
+  t.tearDown(mutateFS.fail('readdir', new Error('xyz')))
+  t.throws(_ => new PackSync({ cwd: files }).add('dir'), new Error('xyz'))
+
+  const p = new Pack({ cwd: files }).add('dir').on('error', e => {
+    t.match(e, { message: 'xyz' })
+    t.end()
+  })
+})
+
+t.test('pipe into a slow reader', t => {
+  const out = []
+  const mp = new MiniPass()
+  const mp2 = new MiniPass()
+  const p = new Pack({ cwd: files }).add('long-path').end()
+  p.pause()
+  p.pipe(mp).pipe(mp2)
+  setTimeout(_ => {
+    mp2.on('data', c => out.push(c))
+    setTimeout(_ => p.resume(), 100)
+  }, 100)
+  mp.on('end', _ => {
+    const data = Buffer.concat(out)
+    const h = new Header(data)
+    const expect = {
+      type: 'Directory',
+      cksumValid: true,
+      needPax: false,
+      path: 'long-path/',
+      mode: 0o755,
+      size: 0,
+      mtime: mtime,
+      cksum: Number,
+      linkpath: '',
+      uname: 'isaacs',
+      gname: '',
+      devmaj: 0,
+      devmin: 0,
+      atime: atime,
+      ctime: ctime,
+      nullBlock: false
+    }
+    t.match(h, expect)
+    t.equal(data.length, 21504)
+    t.match(data.slice(data.length - 1024).toString(), /^\0{1024}$/)
+    t.end()
+  })
+})
+
+t.test('pipe into a slow gzip reader', t => {
+  const out = []
+  const mp2 = new miniz.Unzip()
+  const p = new Pack({ cwd: files, gzip: true }).add('long-path').end()
+  p.pause()
+
+  class SlowStream extends EE {
+    write (chunk) {
+      mp2.write(chunk)
+      setTimeout(_ => {
+        this.emit('drain')
+        p.resume()
+      })
+      return false
+    }
+    end (chunk) {
+      return mp2.end(chunk)
+    }
+  }
+  const ss = new SlowStream()
+
+  setTimeout(_=> {
+    p.pipe(ss)
+    p.resume()
+  })
+
+  mp2.on('data', c => out.push(c))
+  mp2.on('end', _ => {
+    t.pass('mp2 end')
+    const data = Buffer.concat(out)
+    // dir/, dir/x, and the nulls
+    // neither the dir or the file have any body bits
+    const h = new Header(data)
+    const expect = {
+      type: 'Directory',
+      cksumValid: true,
+      needPax: false,
+      path: 'long-path/',
+      mode: 0o755,
+      size: 0,
+      mtime: mtime,
+      cksum: Number,
+      linkpath: '',
+      uname: 'isaacs',
+      gname: '',
+      devmaj: 0,
+      devmin: 0,
+      atime: atime,
+      ctime: ctime,
+      nullBlock: false
+    }
+    t.match(h, expect)
+    t.equal(data.length, 21504)
+    t.match(data.slice(data.length - 1024).toString(), /^\0{1024}$/)
+    t.end()
+  })
+})
+
+t.test('ignores mid-queue', t => {
+  // we let the first one through, and then ignore all the others
+  // so that we trigger the case where an ignored entry is not the
+  // head of the queue.
+  let didFirst = false
+  const p = new Pack({
+    cwd: tars,
+    filter: (p, st) => {
+      if (p === './')
+        return true
+      if (!didFirst)
+        return didFirst = true
+      return false
     }
   })
 
-  reader.pipe(pack)
+  const out = []
+  const files = fs.readdirSync(tars)
 
-  writer.on("close", function () {
-    t.equal(entry, entries.length, "should get all expected entries")
-    t.pass("it finished")
+  p.on('data', c => out.push(c))
+  p.on('end', _ => {
+    const data = Buffer.concat(out)
+    t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), './')
+    const file = data.slice(512, 612).toString().replace(/\0.*$/, '')
+    t.notequal(files.indexOf(file), -1)
     t.end()
   })
 
-}
+  p.add('')
+  p.end()
+})
+
+t.test('warnings', t => {
+  const f = path.resolve(files, '512-bytes.txt')
+  t.test('preservePaths=false strict=false', t => {
+    const warnings = []
+    const p = new Pack({
+      cwd: files,
+      onwarn: (m, p) => warnings.push([m, p])
+    }).end(f).on('data', c => out.push(c))
+
+    const out = []
+    p.on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(warnings, [[
+        /stripping .* from absolute path/, f
+      ]])
+
+      t.match(new Header(data), {
+        path: f.replace(/^(\/|[a-z]:\\\\)/, '')
+      })
+      t.end()
+    })
+  })
+
+  t.test('preservePaths=true', t => {
+    t.plan(2)
+    // with preservePaths, strictness doens't matter
+    ;[true, false].forEach(strict => {
+
+      t.test('strict=' + strict, t => {
+        const warnings = []
+        const out = []
+        const p = new Pack({
+          cwd: files,
+          strict: strict,
+          preservePaths: true,
+          onwarn: (m, p) => warnings.push([m, p])
+        }).end(f).on('data', c => out.push(c))
+        p.on('end', _ => {
+          const data = Buffer.concat(out)
+          t.equal(warnings.length, 0)
+
+          t.match(new Header(data), {
+            path: f
+          })
+          t.end()
+        })
+      })
+    })
+  })
+
+  t.test('preservePaths=false strict=true', t => {
+    new Pack({
+      strict: true,
+      cwd: files
+    }).end(f).on('error', e => {
+      t.match(e, { message: /stripping .* from absolute path/, data: f })
+      t.end()
+    })
+  })
+
+  t.end()
+})
+
+t.test('no dir recurse', t => {
+  const dir = path.resolve(fixtures, 'pack-no-dir-recurse')
+  t.teardown(_ => rimraf.sync(dir))
+  t.beforeEach(cb => {
+    rimraf.sync(dir)
+    mkdirp.sync(dir + '/x')
+    fs.writeFileSync(dir + '/x/y', 'y')
+    cb()
+  })
+
+  const check = (t, data) => {
+    t.equal(data.length, 512 + 1024)
+    t.equal(data.slice(512).toString(), new Array(1025).join('\0'))
+    t.match(new Header(data), {
+      type: 'Directory',
+      path: 'x/',
+      size: 0
+    })
+    t.end()
+  }
+
+  t.test('async', t => {
+    const p = new Pack({
+      cwd: dir,
+      noDirRecurse: true
+    })
+
+    const out = []
+    p.end('x')
+      .on('data', c => out.push(c))
+      .on('end', _ => check(t, Buffer.concat(out)))
+  })
+
+  t.test('sync', t => {
+    const p = new Pack.Sync({
+      cwd: dir,
+      noDirRecurse: true
+    })
+
+    p.end('x')
+    check(t, p.read())
+  })
+
+  t.end()
+})
+
+t.test('follow', t => {
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    t.equal(data.length, 2048)
+    t.match(new Header(data, 0), {
+      type: 'File',
+      cksumValid: true,
+      needPax: false,
+      path: 'symlink',
+      mode: 0o644,
+      size: 26
+    })
+    t.match(data.slice(512).toString(), /this link is like diamond\n\0+$/)
+    t.end()
+  }
+
+  t.test('async', t => {
+    const out = []
+    const p = new Pack({ cwd: files, follow: true })
+    p.on('data', c => out.push(c))
+    p.on('end', _ => check(out, t))
+    p.end('symlink')
+  })
+
+  t.test('sync', t => {
+    const out = []
+    const p = new Pack.Sync({ cwd: files, follow: true })
+    p.on('data', c => out.push(c))
+    p.end('symlink')
+    check(out, t)
+  })
+
+  t.end()
+})
