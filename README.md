@@ -133,8 +133,10 @@ fs.createReadStream('my-tarball.tgz').pipe(
 To replicate `tar tf my-tarball.tgz`, do this:
 
 ```js
-tar.t({ file: 'my-tarball.tgz' })
-  .on('entry', entry => { .. do whatever with it .. })
+tar.t({
+  file: 'my-tarball.tgz',
+  onentry: entry => { .. do whatever with it .. }
+})
 ```
 
 To replicate `cat my-tarball.tgz | tar t` do:
@@ -454,15 +456,15 @@ The following options are supported:
 - `follow` Set to true to pack the targets of symbolic links.  Without
   this option, symbolic links are archived as such.
 
-#### add(path) -> this
+#### add(path)
 
 Adds an entry to the archive.  Returns the Pack stream.
 
-#### write(path) -> Boolean
+#### write(path)
 
 Adds an entry to the archive.  Returns true if flushed.
 
-#### end() -> this
+#### end()
 
 Finishes the archive.
 
