@@ -312,6 +312,32 @@ t.test('really deep path', t => {
       devmaj: 0,
       devmin: 0
     })
+    t.equal(out.length, 2048)
+    t.end()
+  })
+})
+
+t.test('no pax', t => {
+  const f = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+  const ws = new WriteEntry(f, { cwd: files, noPax: true })
+  let out = []
+  ws.on('data', c => out.push(c))
+
+  ws.on('end', _ => {
+    out = Buffer.concat(out)
+    t.match(ws.header, {
+      cksumValid: true,
+      needPax: true,
+      path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      mode: 0o644,
+      size: 100,
+      linkpath: null,
+      uname: 'isaacs',
+      gname: null,
+      devmaj: 0,
+      devmin: 0
+    })
+    t.equal(out.length, 1024)
     t.end()
   })
 })

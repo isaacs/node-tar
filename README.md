@@ -218,6 +218,9 @@ The following options are supported:
   directories. [Alias: `n`]
 - `follow` Set to true to pack the targets of symbolic links.  Without
   this option, symbolic links are archived as such. [Alias: `L`, `h`]
+- `noPax` Suppress pax extended headers.  Note that this means that
+  long paths and linkpaths will be truncated, and large or negative
+  numeric values may be interpreted incorrectly.
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -372,6 +375,9 @@ The following options are supported:
   directories. [Alias: `n`]
 - `follow` Set to true to pack the targets of symbolic links.  Without
   this option, symbolic links are archived as such. [Alias: `L`, `h`]
+- `noPax` Suppress pax extended headers.  Note that this means that
+  long paths and linkpaths will be truncated, and large or negative
+  numeric values may be interpreted incorrectly.
 
 ### tar.r(options, fileList, callback) [alias: tar.replace]
 
@@ -411,6 +417,9 @@ The following options are supported:
   directories. [Alias: `n`]
 - `follow` Set to true to pack the targets of symbolic links.  Without
   this option, symbolic links are archived as such. [Alias: `L`, `h`]
+- `noPax` Suppress pax extended headers.  Note that this means that
+  long paths and linkpaths will be truncated, and large or negative
+  numeric values may be interpreted incorrectly.
 
 ## Low-Level API
 
@@ -455,6 +464,9 @@ The following options are supported:
   directories.
 - `follow` Set to true to pack the targets of symbolic links.  Without
   this option, symbolic links are archived as such.
+- `noPax` Suppress pax extended headers.  Note that this means that
+  long paths and linkpaths will be truncated, and large or negative
+  numeric values may be interpreted incorrectly.
 
 #### add(path)
 
@@ -631,6 +643,9 @@ It has the following fields:
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `win32` True if on a windows platform.  Causes behavior where paths
   replace `\` with `/`.
+- `noPax` Suppress pax extended headers.  Note that this means that
+  long paths and linkpaths will be truncated, and large or negative
+  numeric values may be interpreted incorrectly.
 
 #### constructor(path, options)
 
