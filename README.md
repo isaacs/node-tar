@@ -336,6 +336,10 @@ The following options are supported:
   `sync` are set, because it will be called synchronously.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
+- `noResume` By default, `entry` streams are resumed immediately after
+  the call to `onentry`.  Set `noResume: true` to suppress this
+  behavior.  Note that by opting into this, the stream will never
+  complete until the entry data is consumed.
 
 ### tar.u(options, fileList, callback) [alias: tar.update]
 

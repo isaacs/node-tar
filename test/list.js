@@ -183,3 +183,41 @@ t.test('read fail', t => {
   })
   t.end()
 })
+
+t.test('noResume option', t => {
+  const file = path.resolve(__dirname, 'fixtures/tars/file.tar')
+  t.test('sync', t => {
+    let e
+    list({
+      file: file,
+      onentry: entry => {
+        e = entry
+        process.nextTick(_ => {
+          t.notOk(entry.flowing)
+          entry.resume()
+        })
+      },
+      sync: true,
+      noResume: true
+    })
+    t.ok(e)
+    t.notOk(e.flowing)
+    e.on('end', _ => t.end())
+  })
+
+  t.test('async', t => {
+    let e
+    return list({
+      file: file,
+      onentry: entry => {
+        process.nextTick(_ => {
+          t.notOk(entry.flowing)
+          entry.resume()
+        })
+      },
+      noResume: true
+    })
+  })
+
+  t.end()
+})
