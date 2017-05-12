@@ -1618,3 +1618,49 @@ t.test('unpack when dir is not writable', t => {
 
   t.end()
 })
+
+t.test('transmute chars on windows', t => {
+  const data = makeTar([
+    {
+      path: '<|>?.txt',
+      size: 4,
+      type: 'File'
+    },
+    '<|>?',
+    '',
+    ''
+  ])
+
+  const dir = path.resolve(unpackdir, 'winchars')
+  t.beforeEach(cb => mkdirp(dir, cb))
+  t.afterEach(cb => rimraf(dir, cb))
+
+  const uglyName = new Buffer('ef80bcef81bcef80beef80bf2e747874', 'hex').toString()
+  const ugly = path.resolve(dir, uglyName)
+
+  const check = t => {
+    t.same(fs.readdirSync(dir), [ uglyName ])
+    t.equal(fs.readFileSync(ugly, 'utf8'), '<|>?')
+    t.end()
+  }
+
+  t.test('async', t => {
+    const u = new Unpack({
+      cwd: dir,
+      win32: true
+    })
+    u.end(data)
+    u.on('close', _ => check(t))
+  })
+
+  t.test('sync', t => {
+    const u = new Unpack.Sync({
+      cwd: dir,
+      win32: true
+    })
+    u.end(data)
+    check(t)
+  })
+
+  t.end()
+})

@@ -12,6 +12,9 @@ const mutateFS = require('mutate-fs')
 process.env.USER = 'isaacs'
 const chmodr = require('chmodr')
 const Parser = require('../lib/parse.js')
+const rimraf = require('rimraf')
+const mkdirp = require('mkdirp')
+const isWindows = process.platform === 'win32'
 
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
@@ -469,7 +472,7 @@ t.test('no user environ, sets uname to empty string', t => {
 })
 
 t.test('an unsuppored type', {
-  skip: process.platform === 'win32' && '/dev/random on windows'
+  skip: isWindows && '/dev/random on windows'
 }, t => {
   const ws = new WriteEntry('/dev/random', { preservePaths: true })
   ws.on('data', c => { throw new Error('should not get data from random') })
@@ -590,13 +593,45 @@ t.test('short reads', t => {
   t.end()
 })
 
-t.test('win32 path conversion', { skip: process.platform === 'win32' }, t => {
+t.test('win32 path conversion', {
+  skip: isWindows && 'no need to test on windows'
+}, t => {
   const ws = new WriteEntry('long-path\\r', {
     cwd: files,
     win32: true
   })
   t.equal(ws.path, 'long-path/r')
   t.end()
+})
+
+t.test('win32 <|>? in paths', {
+  skip: isWindows && 'do not create annoying junk on windows systems'
+}, t => {
+  const file = path.resolve(fixtures, '<|>?.txt')
+  const uglyName = new Buffer('ef80bcef81bcef80beef80bf2e747874', 'hex').toString()
+  const ugly = path.resolve(fixtures, uglyName)
+  t.teardown(_ => {
+    rimraf.sync(file)
+    rimraf.sync(ugly)
+  })
+
+  fs.writeFileSync(ugly, '<|>?')
+
+  const wc = new WriteEntry(uglyName, {
+    cwd: fixtures,
+    win32: true
+  })
+
+  const out = []
+  wc.on('data', c => out.push(c))
+  wc.on('end', _ => {
+    const data = Buffer.concat(out).toString()
+    t.equal(data.substr(0, 4), '<|>?')
+    t.end()
+  })
+
+  t.equal(wc.path, '<|>?.txt')
+  t.equal(wc.absolute, ugly)
 })
 
 t.test('uid doesnt match, dont set uname', t => {

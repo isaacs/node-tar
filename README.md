@@ -549,6 +549,9 @@ mode.
   group of the user running the process.  This is similar to `-p` in
   `tar(1)`, but ACLs and other system-specific data is never unpacked
   in this implementation, and modes are set by default already.
+- `win32` True if on a windows platform.  Causes behavior where
+  filenames containing `<|>?` chars are converted to
+  windows-compatible values while being unpacked.
 
 ### class tar.Unpack.Sync
 
@@ -653,7 +656,9 @@ It has the following fields:
   overridden explicitly.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `win32` True if on a windows platform.  Causes behavior where paths
-  replace `\` with `/`.
+  replace `\` with `/` and filenames containing the windows-compatible
+  forms of `<|>?` characters are converted to actual `<|>?` characters
+  in the archive.
 - `noPax` Suppress pax extended headers.  Note that this means that
   long paths and linkpaths will be truncated, and large or negative
   numeric values may be interpreted incorrectly.
