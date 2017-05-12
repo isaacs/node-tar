@@ -2,9 +2,11 @@
 
 const t = require('tap')
 const c = require('../lib/create.js')
+const list = require('../lib/list.js')
 const fs = require('fs')
 const path = require('path')
 const dir = path.resolve(__dirname, 'fixtures/create')
+const tars = path.resolve(__dirname, 'fixtures/tars')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const spawn = require('child_process').spawn
@@ -164,4 +166,40 @@ t.test('gzipped tarball that makes some drain/resume stuff', t => {
         t.end()
       })
     })
+})
+
+t.test('create tarball out of another tarball', t => {
+  const out = path.resolve(dir, 'out.tar')
+
+  const check = t => {
+    const expect = [
+      'dir/',
+      'Ω.txt',
+      '🌟.txt',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+    ]
+    list({ f: out, sync: true, onentry: entry => {
+      t.equal(entry.path, expect.shift())
+    }})
+    t.same(expect, [])
+    t.end()
+  }
+
+  t.test('sync', t => {
+    c({
+      f: out,
+      cwd: tars,
+      sync: true
+    }, ['@dir.tar', '@utf8.tar'])
+    check(t)
+  })
+
+  t.test('async', t => {
+    c({
+      f: out,
+      cwd: tars
+    }, ['@dir.tar', '@utf8.tar'], _ => check(t))
+  })
+
+  t.end()
 })

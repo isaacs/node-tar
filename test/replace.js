@@ -6,6 +6,7 @@ const fs = require('fs')
 const mkdirp = require('mkdirp')
 const rimraf = require('rimraf')
 const mutateFS = require('mutate-fs')
+const list = require('../lib/list.js')
 
 const fixtures = path.resolve(__dirname, 'fixtures')
 const dir = path.resolve(fixtures, 'replace')
@@ -295,6 +296,46 @@ t.test('mtime cache', t => {
       cwd: __dirname,
       mtimeCache: mtimeCache = new Map()
     }, [path.basename(__filename)]).then(_ => check(file, t))
+  })
+
+  t.end()
+})
+
+t.test('create tarball out of another tarball', t => {
+  const out = path.resolve(dir, 'out.tar')
+
+  t.beforeEach(cb => {
+    fs.writeFile(out, fs.readFileSync(path.resolve(tars, 'dir.tar')), cb)
+  })
+
+  const check = t => {
+    const expect = [
+      'dir/',
+      'Ω.txt',
+      '🌟.txt',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+    ]
+    list({ f: out, sync: true, onentry: entry => {
+      t.equal(entry.path, expect.shift())
+    }})
+    t.same(expect, [])
+    t.end()
+  }
+
+  t.test('sync', t => {
+    r({
+      f: out,
+      cwd: tars,
+      sync: true
+    }, ['@utf8.tar'])
+    check(t)
+  })
+
+  t.test('async', t => {
+    r({
+      f: out,
+      cwd: tars
+    }, ['@utf8.tar'], _ => check(t))
   })
 
   t.end()

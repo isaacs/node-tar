@@ -183,6 +183,10 @@ Create a tarball archive.
 The `fileList` is an array of paths to add to the tarball.  Adding a
 directory also adds its children recursively.
 
+An entry in `fileList` that starts with an `@` symbol is a tar archive
+whose entries will be added.  To add a file that starts with `@`,
+prepend it with `./`.
+
 The following options are supported:
 
 - `file` Write the tarball archive to the specified filename.  If this
@@ -348,6 +352,10 @@ the tarball archive.
 The `fileList` is an array of paths to add to the tarball.  Adding a
 directory also adds its children recursively.
 
+An entry in `fileList` that starts with an `@` symbol is a tar archive
+whose entries will be added.  To add a file that starts with `@`,
+prepend it with `./`.
+
 The following options are supported:
 
 - `file` Required. Write the tarball archive to the specified
@@ -388,6 +396,10 @@ earlier entries, this effectively replaces any existing entries.
 
 The `fileList` is an array of paths to add to the tarball.  Adding a
 directory also adds its children recursively.
+
+An entry in `fileList` that starts with an `@` symbol is a tar archive
+whose entries will be added.  To add a file that starts with `@`,
+prepend it with `./`.
 
 The following options are supported:
 
