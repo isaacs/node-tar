@@ -210,9 +210,8 @@ The following options are supported:
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
   that `mtime` is still included, because this is necessary other
   time-based operations.
-- `preservePaths` Allow absolute paths and paths containing `..`.  By
-  default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive. [Alias: `P`]
+- `preservePaths` Allow absolute paths.  By default, `/` is stripped
+  from absolute paths. [Alias: `P`]
 - `mode` The mode to set on the created file archive
 - `noDirRecurse` Do not recursively archive the contents of
   directories. [Alias: `n`]
@@ -370,9 +369,8 @@ The following options are supported:
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
   that `mtime` is still included, because this is necessary other
   time-based operations.
-- `preservePaths` Allow absolute paths and paths containing `..`.  By
-  default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive. [Alias: `P`]
+- `preservePaths` Allow absolute paths.  By default, `/` is stripped
+  from absolute paths. [Alias: `P`]
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
 - `noDirRecurse` Do not recursively archive the contents of
@@ -412,9 +410,8 @@ The following options are supported:
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
   that `mtime` is still included, because this is necessary other
   time-based operations.
-- `preservePaths` Allow absolute paths and paths containing `..`.  By
-  default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive. [Alias: `P`]
+- `preservePaths` Allow absolute paths.  By default, `/` is stripped
+  from absolute paths. [Alias: `P`]
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
 - `noDirRecurse` Do not recursively archive the contents of
@@ -453,9 +450,8 @@ The following options are supported:
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
   that `mtime` is still included, because this is necessary other
   time-based operations.
-- `preservePaths` Allow absolute paths and paths containing `..`.  By
-  default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive.
+- `preservePaths` Allow absolute paths.  By default, `/` is stripped
+  from absolute paths.
 - `linkCache` A Map object containing the device and inode value for
   any file whose nlink is > 1, to identify hard links.
 - `statCache` A Map object that caches calls `lstat`.
@@ -636,9 +632,8 @@ It has the following fields:
 - `linkCache` A Map object containing the device and inode value for
   any file whose nlink is > 1, to identify hard links.
 - `statCache` A Map object that caches calls `lstat`.
-- `preservePaths` Allow absolute paths and paths containing `..`.  By
-  default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive.
+- `preservePaths` Allow absolute paths.  By default, `/` is stripped
+  from absolute paths.
 - `cwd` The current working directory for creating the archive.
   Defaults to `process.cwd()`.
 - `absolute` The absolute path to the entry on the filesystem.  By
@@ -666,9 +661,8 @@ The following options are supported:
 - `linkCache` A Map object containing the device and inode value for
   any file whose nlink is > 1, to identify hard links.
 - `statCache` A Map object that caches calls `lstat`.
-- `preservePaths` Allow absolute paths and paths containing `..`.  By
-  default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive.
+- `preservePaths` Allow absolute paths.  By default, `/` is stripped
+  from absolute paths.
 - `cwd` The current working directory for creating the archive.
   Defaults to `process.cwd()`.
 - `absolute` The absolute path to the entry on the filesystem.  By
@@ -705,9 +699,8 @@ The following options are supported:
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
   that `mtime` is still included, because this is necessary other
   time-based operations.
-- `preservePaths` Allow absolute paths and paths containing `..`.  By
-  default, `/` is stripped from absolute paths, `..` paths are not
-  added to the archive.
+- `preservePaths` Allow absolute paths.  By default, `/` is stripped
+  from absolute paths.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `onwarn` A function that will get called with `(message, data)` for
   any warnings encountered.
