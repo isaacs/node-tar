@@ -232,7 +232,7 @@ advanced use cases, such as re-using caches between runs.
 - `jobs` A number specifying how many concurrent jobs to run.
   Defaults to 4.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
-  Defaults to 1 MB.
+  Defaults to 16 MB.
 
 ### tar.x(options, fileList, callback) [alias: tar.extract]
 
@@ -689,6 +689,28 @@ Othewise, emit a `'warn'` event with the provided message and data.
 ### class tar.WriteEntry.Sync
 
 Synchronous version of tar.WriteEntry
+
+### class tar.WriteEntry.Tar
+
+A version of tar.WriteEntry that gets its data from a tar.ReadEntry
+instead of from the filesystem.
+
+#### constructor(readEntry, options)
+
+`readEntry` is the entry being read out of another archive.
+
+The following options are supported:
+
+- `portable` Omit metadata that is system-specific: `ctime`, `atime`,
+  `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
+  that `mtime` is still included, because this is necessary other
+  time-based operations.
+- `preservePaths` Allow absolute paths and paths containing `..`.  By
+  default, `/` is stripped from absolute paths, `..` paths are not
+  added to the archive.
+- `strict` Treat warnings as crash-worthy errors.  Default false.
+- `onwarn` A function that will get called with `(message, data)` for
+  any warnings encountered.
 
 ### class tar.Header
 

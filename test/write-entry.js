@@ -1,5 +1,7 @@
 'use strict'
 const t = require('tap')
+const ReadEntry = require('../lib/read-entry.js')
+const makeTar = require('./make-tar.js')
 const WriteEntry = require('../lib/write-entry.js')
 const fs = require('fs')
 const path = require('path')
@@ -689,4 +691,159 @@ t.test('portable entries, nothing platform-specific', t => {
     t.match(entry.header, hexpect)
     t.end()
   })
+})
+
+t.test('write entry from read entry', t => {
+  const data = makeTar([
+    {
+      path: '$',
+      type: 'File',
+      size: 10,
+      mode: 0o755,
+      uid: 123,
+      gid: 321,
+      ctime: new Date('1979-07-01'),
+      atime: new Date('1980-08-17')
+    },
+    '$$$$$$$$$$',
+    {
+      path: 'blep',
+      type: 'SymbolicLink',
+      linkpath: 'xyz'
+    },
+    '',
+    ''
+  ])
+
+  t.test('basic file', t => {
+    const fileEntry = new ReadEntry(new Header(data))
+    const wetFile = new WriteEntry.Tar(fileEntry)
+    const out = []
+    let wetFileEnded = false
+    wetFile.on('data', c => out.push(c))
+    wetFile.on('end', _ => wetFileEnded = true)
+    fileEntry.write(data.slice(512, 550))
+    fileEntry.write(data.slice(550, 1000))
+    fileEntry.end(data.slice(1000, 1024))
+    t.equal(wetFileEnded, true)
+    const result = Buffer.concat(out)
+    t.equal(result.length, 1024)
+    t.equal(result.toString().replace(/\0.*$/, ''), '$')
+    const body = result.slice(512).toString().replace(/\0*$/, '')
+    t.equal(body, '$$$$$$$$$$')
+    t.end()
+  })
+
+  t.test('with pax header', t => {
+    const fileEntryPax = new ReadEntry(new Header(data))
+    fileEntryPax.path = new Array(200).join('$')
+    const wetPax = new WriteEntry.Tar(fileEntryPax)
+    let wetPaxEnded = false
+    const out = []
+    wetPax.on('data', c => out.push(c))
+    wetPax.on('end', _ => wetPaxEnded = true)
+    fileEntryPax.write(data.slice(512, 550))
+    fileEntryPax.write(data.slice(550, 1000))
+    fileEntryPax.end(data.slice(1000, 1024))
+    t.equal(wetPaxEnded, true)
+    const result = Buffer.concat(out)
+    t.equal(result.length, 2048)
+    t.match(result.slice(1024, 1124).toString(), /^\$+\0?$/)
+    const body = result.slice(1536).toString().replace(/\0*$/, '')
+    t.match(new Header(result), { type: 'ExtendedHeader' })
+    t.equal(body, '$$$$$$$$$$')
+    t.end()
+  })
+
+  t.test('pax and portable', t => {
+    const fileEntryPax = new ReadEntry(new Header(data))
+    fileEntryPax.path = new Array(200).join('$')
+    const wetPax = new WriteEntry.Tar(fileEntryPax, { portable: true })
+    let wetPaxEnded = false
+    const out = []
+    wetPax.on('data', c => out.push(c))
+    wetPax.on('end', _ => wetPaxEnded = true)
+    fileEntryPax.write(data.slice(512, 550))
+    fileEntryPax.write(data.slice(550, 1000))
+    fileEntryPax.end(data.slice(1000, 1024))
+    t.equal(wetPaxEnded, true)
+    const result = Buffer.concat(out)
+    t.equal(result.length, 2048)
+    t.match(result.slice(1024, 1124).toString(), /^\$+\0?$/)
+    t.match(new Header(result), { type: 'ExtendedHeader' })
+    t.match(new Header(result.slice(1024)), {
+      ctime: null,
+      atime: null,
+      uname: '',
+      gname: ''
+    })
+    const body = result.slice(1536).toString().replace(/\0*$/, '')
+    t.equal(body, '$$$$$$$$$$')
+    t.end()
+  })
+
+  t.test('abs path', t => {
+    const fileEntry = new ReadEntry(new Header(data))
+    fileEntry.path = '/a/b/c'
+
+    t.test('warn', t => {
+      const warnings = []
+      const wetFile = new WriteEntry.Tar(fileEntry, {
+        onwarn: (msg, data) => warnings.push(msg, data)
+      })
+      t.same(warnings, ['stripping / from absolute path', '/a/b/c'])
+      t.end()
+    })
+
+    t.test('preserve', t => {
+      const warnings = []
+      const wetFile = new WriteEntry.Tar(fileEntry, {
+        onwarn: (msg, data) => warnings.push(msg, data),
+        preservePaths: true
+      })
+      t.same(warnings, [])
+      t.end()
+    })
+
+    t.test('throw', t => {
+      t.throws(_ => new WriteEntry.Tar(fileEntry, {
+        strict: true
+      }))
+      t.end()
+    })
+    t.end()
+  })
+
+  t.test('no block remain', t => {
+    const readEntry = new ReadEntry(new Header({
+      size: 512,
+      type: 'File',
+      path: 'x'
+    }))
+    const wet = new WriteEntry.Tar(readEntry)
+    const out = []
+    wet.on('data', c => out.push(c))
+    let wetEnded = false
+    wet.on('end', _ => wetEnded = true)
+    t.equal(wetEnded, false)
+    readEntry.end(new Buffer(new Array(513).join('@')))
+    t.equal(wetEnded, true)
+    const res = Buffer.concat(out)
+    t.equal(res.length, 1024)
+    t.match(res.slice(512).toString(), /^@+$/)
+    t.end()
+  })
+
+  t.test('write more than appropriate', t => {
+    const readEntry = new ReadEntry(new Header({
+      path: 'x',
+      type: 'File',
+      size: '1'
+    }))
+    const wet = new WriteEntry.Tar(readEntry)
+    t.throws(_ => wet.write(new Buffer(new Array(1024).join('x'))))
+    t.end()
+  })
+
+  t.end()
 })
