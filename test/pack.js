@@ -18,6 +18,7 @@ process.env.USER = 'isaacs'
 const EE = require('events').EventEmitter
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const ReadEntry = require('../lib/read-entry.js')
 
 const ctime = new Date('2017-05-10T01:03:12.000Z')
 const atime = new Date('2017-04-17T00:00:00.000Z')
@@ -819,6 +820,132 @@ t.test('follow', t => {
     p.on('data', c => out.push(c))
     p.end('symlink')
     check(out, t)
+  })
+
+  t.end()
+})
+
+t.test('pack ReadEntries', t => {
+  t.test('basic', t => {
+    const readEntry = new ReadEntry(new Header({
+      path: 'x',
+      type: 'File',
+      size: 1
+    }))
+    const p = new Pack()
+    p.end(readEntry)
+    const out = []
+    p.on('data', c => out.push(c))
+    p.on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(data.slice(1024).toString(), /^\0+$/)
+      t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), 'x')
+      t.equal(data.slice(512, 514).toString(), 'x\0')
+      t.end()
+    })
+    const buf = Buffer.alloc(512)
+    buf.write('x')
+    readEntry.end(buf)
+  })
+
+  t.test('prefix', t => {
+    const readEntry = new ReadEntry(new Header({
+      path: 'x',
+      type: 'File',
+      size: 1
+    }))
+    const p = new Pack({ prefix: 'y' })
+    p.end(readEntry)
+    const out = []
+    p.on('data', c => out.push(c))
+    p.on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(data.slice(1024).toString(), /^\0+$/)
+      t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), 'y/x')
+      t.equal(data.slice(512, 514).toString(), 'x\0')
+      t.end()
+    })
+    const buf = Buffer.alloc(512)
+    buf.write('x')
+    readEntry.end(buf)
+  })
+
+  t.test('filter out', t => {
+    const re1 = new ReadEntry(new Header({
+      path: 'a',
+      type: 'File',
+      size: 1
+    }))
+    const re2 = new ReadEntry(new Header({
+      path: 'x',
+      type: 'File',
+      size: 1
+    }))
+    const re3 = new ReadEntry(new Header({
+      path: 'y',
+      type: 'File',
+      size: 1
+    }))
+    const p = new Pack({ filter: p => p === 'x' })
+    p.add(re1)
+    p.add(re2)
+    p.end(re3)
+    const out = []
+    p.on('data', c => out.push(c))
+    p.on('end', _ => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(data.slice(1024).toString(), /^\0+$/)
+      t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), 'x')
+      t.equal(data.slice(512, 514).toString(), 'x\0')
+      t.end()
+    })
+    {
+      const buf = Buffer.alloc(512)
+      buf.write('x')
+      re1.end(buf)
+    }
+    {
+      const buf = Buffer.alloc(512)
+      buf.write('x')
+      re2.end(buf)
+    }
+    {
+      const buf = Buffer.alloc(512)
+      buf.write('x')
+      re3.end(buf)
+    }
+  })
+
+  t.end()
+})
+
+t.test('filter out everything', t => {
+  const filter = _ => false
+
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    t.equal(data.length, 1024)
+    t.match(data.toString(), /^\0+$/)
+    t.end()
+  }
+
+  t.test('sync', t => {
+    const out = []
+    const p = new Pack.Sync({ cwd: files, filter: filter })
+    p.on('data', c => out.push(c))
+    p.end('./')
+    check(out, t)
+  })
+
+  t.test('async', t => {
+    const out = []
+    const p = new Pack.Sync({ cwd: files, filter: filter })
+    p.on('data', c => out.push(c))
+    p.on('end', _ => check(out, t))
+    p.end('./')
   })
 
   t.end()
