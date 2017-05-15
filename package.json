@@ -7,7 +7,6 @@
     "type": "git",
     "url": "https://github.com/npm/node-tar.git"
   },
-  "main": "tar.js",
   "scripts": {
     "test": "tap test/*.js --100 -J --coverage-report=text",
     "preversion": "npm test",
@@ -33,7 +32,7 @@
   },
   "license": "ISC",
   "files": [
-    "tar.js",
+    "index.js",
     "lib/"
   ]
 }
