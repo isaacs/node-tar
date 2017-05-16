@@ -1622,11 +1622,11 @@ t.test('unpack when dir is not writable', t => {
 t.test('transmute chars on windows', t => {
   const data = makeTar([
     {
-      path: '<|>?.txt',
-      size: 4,
+      path: '<|>?:.txt',
+      size: 5,
       type: 'File'
     },
-    '<|>?',
+    '<|>?:',
     '',
     ''
   ])
@@ -1635,12 +1635,13 @@ t.test('transmute chars on windows', t => {
   t.beforeEach(cb => mkdirp(dir, cb))
   t.afterEach(cb => rimraf(dir, cb))
 
-  const uglyName = new Buffer('ef80bcef81bcef80beef80bf2e747874', 'hex').toString()
+  const hex = 'ef80bcef81bcef80beef80bfef80ba2e747874'
+  const uglyName = new Buffer(hex, 'hex').toString()
   const ugly = path.resolve(dir, uglyName)
 
   const check = t => {
     t.same(fs.readdirSync(dir), [ uglyName ])
-    t.equal(fs.readFileSync(ugly, 'utf8'), '<|>?')
+    t.equal(fs.readFileSync(ugly, 'utf8'), '<|>?:')
     t.end()
   }
 
@@ -1663,4 +1664,36 @@ t.test('transmute chars on windows', t => {
   })
 
   t.end()
+})
+
+t.test('safely transmute chars on windows with absolutes', t => {
+  // don't actually make the directory
+  const poop = new Error('poop')
+  t.teardown(mutateFS.fail('mkdir', poop))
+
+  const data = makeTar([
+    {
+      path: 'c:/x/y/z/<|>?:.txt',
+      size: 5,
+      type: 'File'
+    },
+    '<|>?:',
+    '',
+    ''
+  ])
+
+  const hex = 'ef80bcef81bcef80beef80bfef80ba2e747874'
+  const uglyName = new Buffer(hex, 'hex').toString()
+  const uglyPath = 'c:/x/y/z/' + uglyName
+
+  const u = new Unpack({
+    win32: true,
+    preservePaths: true
+  })
+  u.on('entry', entry => {
+    t.equal(entry.path, uglyPath)
+    t.end()
+  })
+
+  u.end(data)
 })

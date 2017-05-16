@@ -657,7 +657,7 @@ It has the following fields:
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `win32` True if on a windows platform.  Causes behavior where paths
   replace `\` with `/` and filenames containing the windows-compatible
-  forms of `<|>?` characters are converted to actual `<|>?` characters
+  forms of `<|>?:` characters are converted to actual `<|>?:` characters
   in the archive.
 - `noPax` Suppress pax extended headers.  Note that this means that
   long paths and linkpaths will be truncated, and large or negative
