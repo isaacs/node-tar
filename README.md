@@ -585,6 +585,8 @@ The following options are supported:
   archive, or `false` to skip it.
 - `onentry` A function that gets called with `(entry)` for each entry
   that passes the filter.
+- `onwarn` A function that will get called with `(message, data)` for
+  any warnings encountered.
 
 #### abort(message, error)
 
