@@ -579,8 +579,6 @@ Returns an event emitter that emits `entry` events with
 
 The following options are supported:
 
-- `cwd` Extract files relative to the specified directory.  Defaults
-  to `process.cwd()`.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
 - `filter` A function that gets called with `(path, entry)` for each
   entry being listed.  Return `true` to emit the entry from the
