@@ -728,6 +728,42 @@ t.test('portable entries, nothing platform-specific', t => {
   })
 })
 
+t.test('portable dir entries, no mtime', t => {
+  const dir = 'long-path/'
+  const ws = new WriteEntry(dir, {
+    cwd: files,
+    portable: true
+  })
+
+  const hexpect = {
+    path: 'long-path/',
+    ctime: null,
+    atime: null,
+    uid: null,
+    uname: '',
+    gid: null,
+    gname: '',
+    mtime: null
+  }
+
+  const ps = new Parser()
+  const wss = new WriteEntry.Sync(dir, {
+    cwd: files,
+    portable: true
+  })
+  ps.on('entry', entry => {
+    t.match(entry.header, hexpect)
+  })
+  ps.end(wss.read())
+
+  const p = new Parser()
+  ws.pipe(p)
+  p.on('entry', entry => {
+    t.match(entry.header, hexpect)
+    t.end()
+  })
+})
+
 t.test('write entry from read entry', t => {
   const data = makeTar([
     {

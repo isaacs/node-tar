@@ -144,7 +144,7 @@ t.test('pack a dir', t => {
         path: 'dir/',
         mode: 0o755,
         size: 0,
-        mtime: mtime,
+        mtime: null,
         cksum: Number,
         linkpath: '',
         uname: '',
