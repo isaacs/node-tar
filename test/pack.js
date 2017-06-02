@@ -950,3 +950,23 @@ t.test('filter out everything', t => {
 
   t.end()
 })
+
+t.test('fs.open fails', t => {
+  const poop = new Error('poop')
+  t.teardown(mutateFS.fail('open', poop))
+
+  t.test('async', t => {
+    t.plan(1)
+    const p = new Pack({ cwd: files })
+      .on('error', er => t.equal(er, poop))
+      .end('one-byte.txt')
+  })
+
+  t.test('sync', t => {
+    t.plan(1)
+    t.throws(_ =>
+      new Pack.Sync({ cwd: files }).end('one-byte.txt'), poop)
+  })
+
+  t.end()
+})
