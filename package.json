@@ -32,7 +32,7 @@
   },
   "license": "ISC",
   "engines": {
-    "node": ">=4"
+    "node": ">=4.5"
   },
   "files": [
     "index.js",
