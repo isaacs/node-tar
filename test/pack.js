@@ -970,3 +970,33 @@ t.test('fs.open fails', t => {
 
   t.end()
 })
+
+t.test('padding works regardless of arite/add order', t => {
+  return Promise.all([write({before: true}), write({before: false})]).then(results => {
+    t.is(results[0], results[1], 'length is the same regardless of write/add order')
+  })
+})
+
+function write (opts) {
+  return new Promise((resolve, reject) => {
+    const p = new Pack()
+    let totalSize = 0
+    p.on('data', d => totalSize += d.length)
+    p.once('error', reject)
+    p.once('end', () => resolve(totalSize))
+
+    const file1 = new ReadEntry(new Header({
+      path: 'file1.txt',
+      size: 5,
+    }))
+    if (opts.before) {
+      file1.end('file1')
+      p.add(file1)
+    } else {
+      p.add(file1)
+      file1.end('file1')
+    }
+
+    p.end()
+  })
+}
