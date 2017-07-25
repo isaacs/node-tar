@@ -176,9 +176,20 @@ t.test('create tarball out of another tarball', t => {
       'dir/',
       'Ω.txt',
       '🌟.txt',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+      'hardlink-1',
+      'hardlink-2',
+      'symlink'
     ]
     list({ f: out, sync: true, onentry: entry => {
+      if (entry.path === 'hardlink-2')
+        t.equal(entry.type, 'Link')
+      else if (entry.path === 'symlink')
+        t.equal(entry.type, 'SymbolicLink')
+      else if (entry.path === 'dir/')
+        t.equal(entry.type, 'Directory')
+      else
+        t.equal(entry.type, 'File')
       t.equal(entry.path, expect.shift())
     }})
     t.same(expect, [])
@@ -190,7 +201,7 @@ t.test('create tarball out of another tarball', t => {
       f: out,
       cwd: tars,
       sync: true
-    }, ['@dir.tar', '@utf8.tar'])
+    }, ['@dir.tar', '@utf8.tar', '@links.tar'])
     check(t)
   })
 
@@ -198,7 +209,7 @@ t.test('create tarball out of another tarball', t => {
     c({
       f: out,
       cwd: tars
-    }, ['@dir.tar', '@utf8.tar'], _ => check(t))
+    }, ['@dir.tar', '@utf8.tar', '@links.tar'], _ => check(t))
   })
 
   t.end()
