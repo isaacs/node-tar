@@ -1,0 +1,50 @@
+[
+  [
+    "entry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": false,
+      "path": "empty-file",
+      "mode": 420,
+      "uid": 1000,
+      "gid": 1000,
+      "uname": "liam",
+      "gname": "liam",
+      "size": 0,
+      "mtime": "2016-07-17T21:23:46.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "empty-file",
+        "mode": 420,
+        "uid": 1000,
+        "gid": 1000,
+        "size": 0,
+        "mtime": "2016-07-17T21:23:46.000Z",
+        "cksum": 5621,
+        "linkpath": "",
+        "uname": "liam",
+        "gname": "liam",
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]
