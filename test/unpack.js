@@ -1434,9 +1434,13 @@ t.test('unpack big enough to pause/drain', t => {
 
 t.test('set owner', t => {
   // fake it on platforms that don't have getuid
+  const myUid = 501
+  const myGid = 1024
   const getuid = process.getuid
-  process.getuid = _ => 501
-  t.teardown(_ => process.getuid = getuid)
+  const getgid = process.getgid
+  process.getuid = _ => myUid
+  process.getgid = _ => myGid
+  t.teardown(_ => (process.getuid = getuid, process.getgid = getgid))
 
   // can't actually do this because it requires root, but we can
   // verify that chown gets called.
@@ -1466,21 +1470,47 @@ t.test('set owner', t => {
       type: 'Directory'
     },
     {
-      uid: 2456124561,
+      uid: myUid,
       gid: 5108675309,
-      path: 'foo/bar',
+      path: 'foo/my-uid-different-gid',
       type: 'File',
       size: 3
     },
     'qux',
     {
       uid: 2456124561,
-      path: 'foo/nogid',
+      path: 'foo/different-uid-nogid',
       type: 'Directory'
     },
     {
       uid: 2456124561,
-      path: 'foo/nogid/bar',
+      path: 'foo/different-uid-nogid/bar',
+      type: 'File',
+      size: 3
+    },
+    'qux',
+    {
+      uid: myUid,
+      gid: myGid,
+      path: 'foo-mine/',
+      type: 'Directory'
+    },
+    {
+      uid: myUid,
+      gid: myGid,
+      path: 'foo-mine/bar',
+      type: 'File',
+      size: 3
+    },
+    'qux',
+    {
+      uid: myUid,
+      path: 'foo-mine/nogid',
+      type: 'Directory'
+    },
+    {
+      uid: myUid,
+      path: 'foo-mine/nogid/bar',
       type: 'File',
       size: 3
     },
@@ -1549,12 +1579,12 @@ t.test('set owner', t => {
       const dirStat = fs.statSync(dir + '/foo')
       t.notEqual(dirStat.uid, 2456124561)
       t.notEqual(dirStat.gid, 5108675309)
-      const fileStat = fs.statSync(dir + '/foo/bar')
+      const fileStat = fs.statSync(dir + '/foo/my-uid-different-gid')
       t.notEqual(fileStat.uid, 2456124561)
       t.notEqual(fileStat.gid, 5108675309)
-      const dirStat2 = fs.statSync(dir + '/foo/nogid')
+      const dirStat2 = fs.statSync(dir + '/foo/different-uid-nogid')
       t.notEqual(dirStat2.uid, 2456124561)
-      const fileStat2 = fs.statSync(dir + '/foo/nogid/bar')
+      const fileStat2 = fs.statSync(dir + '/foo/different-uid-nogid/bar')
       t.notEqual(fileStat2.uid, 2456124561)
       t.end()
     }
