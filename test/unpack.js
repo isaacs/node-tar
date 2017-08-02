@@ -99,11 +99,13 @@ t.test('basic file unpack tests', t => {
         t.test('strict', t => {
           const unpack = new Unpack({ cwd: dir, strict: true })
           fs.createReadStream(tf).pipe(unpack)
+          unpack.on('end', _ => t.threw(new Error('no end')))
           unpack.on('close', _ => check(t))
         })
         t.test('loose', t => {
           const unpack = new Unpack({ cwd: dir })
           fs.createReadStream(tf).pipe(unpack)
+          unpack.on('end', _ => t.threw(new Error('no end')))
           unpack.on('close', _ => check(t))
         })
       })
