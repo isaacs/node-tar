@@ -19,6 +19,7 @@ const unpackdir = path.resolve(fixtures, 'unpack')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const mutateFS = require('mutate-fs')
+const eos = require('end-of-stream')
 
 t.teardown(_ => rimraf.sync(unpackdir))
 
@@ -100,13 +101,13 @@ t.test('basic file unpack tests', t => {
           const unpack = new Unpack({ cwd: dir, strict: true })
           fs.createReadStream(tf).pipe(unpack)
           unpack.on('end', _ => t.threw(new Error('no end')))
-          unpack.on('close', _ => check(t))
+          eos(unpack, _ => check(t))
         })
         t.test('loose', t => {
           const unpack = new Unpack({ cwd: dir })
           fs.createReadStream(tf).pipe(unpack)
           unpack.on('end', _ => t.threw(new Error('no end')))
-          unpack.on('close', _ => check(t))
+          eos(unpack, _ => check(t))
         })
       })
 
@@ -159,6 +160,9 @@ t.test('links!', t => {
 
   t.test('async', t => {
     const unpack = new Unpack({ cwd: dir })
+    let finished = false
+    unpack.on('finish', _ => finished = true)
+    unpack.on('close', _ => t.ok(finished, 'emitted finish before close'))
     unpack.on('close', _ => check(t))
     unpack.end(data)
   })
@@ -203,6 +207,10 @@ t.test('links without cleanup (exercise clobbering code)', t => {
 
   t.test('async', t => {
     const unpack = new Unpack({ cwd: dir })
+    let prefinished = false
+    unpack.on('prefinish', _ => prefinished = true)
+    unpack.on('finish', _ =>
+      t.ok(prefinished, 'emitted prefinish before finish'))
     unpack.on('close', _ => check(t))
     unpack.end(data)
   })
@@ -215,7 +223,7 @@ t.test('links without cleanup (exercise clobbering code)', t => {
 
   t.test('async again', t => {
     const unpack = new Unpack({ cwd: dir })
-    unpack.on('close', _ => check(t))
+    eos(unpack, _ => check(t))
     unpack.end(data)
   })
 
