@@ -32,19 +32,20 @@ t.test('basic extracting', t => {
     t.end()
   }
 
+  const files = [ '🌟.txt', 'Ω.txt' ]
   t.test('sync', t => {
-    x({ file: file, sync: true, C: dir }, [ '🌟.txt', 'Ω.txt' ])
+    x({ file: file, sync: true, C: dir }, files)
     check(t)
   })
 
   t.test('async promisey', t => {
-    return x({ file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ]).then(_ => {
+    return x({ file: file, cwd: dir }, files).then(_ => {
       check(t)
     })
   })
 
   t.test('async cb', t => {
-    return x({ file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ], er => {
+    return x({ file: file, cwd: dir }, files, er => {
       if (er)
         throw er
       check(t)

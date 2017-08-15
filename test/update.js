@@ -80,12 +80,13 @@ t.test('basic file add to archive (good or truncated)', t => {
     fileTruncBody
   ].forEach(file => {
     t.test(path.basename(file), t => {
+      const fileList = [path.basename(__filename)]
       t.test('sync', t => {
         u({
           sync: true,
           file: file,
           cwd: __dirname
-        }, [path.basename(__filename)])
+        }, fileList)
         check(file, t)
       })
 
@@ -93,7 +94,7 @@ t.test('basic file add to archive (good or truncated)', t => {
         u({
           file: file,
           cwd: __dirname
-        }, [path.basename(__filename)], er => {
+        }, fileList, er => {
           if (er)
             throw er
           check(file, t)
@@ -104,7 +105,7 @@ t.test('basic file add to archive (good or truncated)', t => {
         u({
           file: file,
           cwd: __dirname
-        }, [path.basename(__filename)]).then(_ => check(file, t))
+        }, fileList).then(_ => check(file, t))
       })
 
       t.end()
@@ -137,12 +138,13 @@ t.test('add to empty archive', t => {
     fileZeroByte
   ].forEach(file => {
     t.test(path.basename(file), t => {
+      const fileList = [path.basename(__filename)]
       t.test('sync', t => {
         u({
           sync: true,
           file: file,
           cwd: __dirname
-        }, [path.basename(__filename)])
+        }, fileList)
         check(file, t)
       })
 
@@ -150,7 +152,7 @@ t.test('add to empty archive', t => {
         u({
           file: file,
           cwd: __dirname
-        }, [path.basename(__filename)], er => {
+        }, fileList, er => {
           if (er)
             throw er
           check(file, t)
@@ -161,7 +163,7 @@ t.test('add to empty archive', t => {
         u({
           file: file,
           cwd: __dirname
-        }, [path.basename(__filename)]).then(_ => check(file, t))
+        }, fileList).then(_ => check(file, t))
       })
 
       t.end()

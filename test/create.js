@@ -38,13 +38,15 @@ t.test('no cb if sync or without file', t => {
 })
 
 t.test('create file', t => {
+  const files = [ path.basename(__filename) ]
+
   t.test('sync', t => {
     const file = path.resolve(dir, 'sync.tar')
     c({
       file: file,
       cwd: __dirname,
       sync: true
-    }, [path.basename(__filename)])
+    }, files)
     readtar(file, (code, signal, list) => {
       t.equal(code, 0)
       t.equal(signal, null)
@@ -58,7 +60,7 @@ t.test('create file', t => {
     c({
       file: file,
       cwd: __dirname
-    }, [path.basename(__filename)], er => {
+    }, files, er => {
       if (er)
         throw er
       readtar(file, (code, signal, list) => {
@@ -75,7 +77,7 @@ t.test('create file', t => {
     c({
       file: file,
       cwd: __dirname
-    }, [path.basename(__filename)]).then(_ => {
+    }, files).then(_ => {
       readtar(file, (code, signal, list) => {
         t.equal(code, 0)
         t.equal(signal, null)
@@ -94,7 +96,7 @@ t.test('create file', t => {
         file: file,
         cwd: __dirname,
         sync: true
-      }, [path.basename(__filename)])
+      }, files)
       readtar(file, (code, signal, list) => {
         t.equal(code, 0)
         t.equal(signal, null)
@@ -110,7 +112,7 @@ t.test('create file', t => {
         mode: mode,
         file: file,
         cwd: __dirname
-      }, [path.basename(__filename)], er => {
+      }, files, er => {
         if (er)
           throw er
         readtar(file, (code, signal, list) => {

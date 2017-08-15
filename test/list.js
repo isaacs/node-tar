@@ -118,7 +118,7 @@ t.test('basic', t => {
         }))
     })
 
-    return t.test('filter function', t => {
+    t.test('filter function', t => {
       const check = _ => t.same(actual, expect.slice(0, 1))
       const actual = []
       return list({
@@ -126,6 +126,14 @@ t.test('basic', t => {
         filter: path => path === expect[0],
         onentry: entry => actual.push(entry.path)
       }, fileList).then(check)
+    })
+
+    return t.test('list is unmunged', t => {
+      t.same(fileList, [
+        'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t',
+        '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc///'
+      ])
+      t.end()
     })
   })
 
