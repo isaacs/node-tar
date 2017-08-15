@@ -994,5 +994,63 @@ const write = opts => new Promise((resolve, reject) => {
 })
 
 t.test('padding works regardless of arite/add order', t =>
-  Promise.all([write({before: true}), write({before: false})]).then(res =>
+  Promise.all([
+    write({ before: true }),
+    write({ before: false })
+  ]).then(res =>
     t.is(res[0], res[1], 'length is the same regardless of write/add order')))
+
+t.test('prefix and subdirs', t => {
+  const dir = path.resolve(fixtures, 'pack-prefix-subdirs')
+  t.teardown(_ => rimraf.sync(dir))
+  mkdirp.sync(dir + '/in/a/b/c')
+  fs.writeFileSync(dir + '/in/a/b/c/d', 'ddd')
+  fs.writeFileSync(dir + '/in/a/b/d', 'ddd')
+  fs.writeFileSync(dir + '/in/a/d', 'ddd')
+  fs.writeFileSync(dir + '/in/d', 'ddd')
+
+  const expect = [
+    'out/x/\0',
+    'out/x/a/\0',
+    'out/x/d\0',
+    'ddd\0',
+    'out/x/a/b/\0',
+    'out/x/a/d\0',
+    'ddd\0',
+    'out/x/a/b/c/\0',
+    'out/x/a/b/d\0',
+    'ddd\0',
+    'out/x/a/b/c/d\0',
+    'ddd\0',
+    '\0',
+    '\0'
+  ]
+
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    expect.forEach((e, i) =>
+      t.equal(e, data.slice(i * 512, i * 512 + e.length).toString()))
+    t.end()
+  }
+
+  const runTest = (t, path, Class) => {
+    const p = new Class({
+      cwd: dir + '/in',
+      prefix: 'out/x'
+    })
+    const out = []
+    p.on('data', d => out.push(d))
+    p.on('end', _ => check(out, t))
+    p.end(path)
+  }
+
+  t.test('async', t => {
+    t.test('.', t => runTest(t, '.', Pack))
+    return t.test('./', t => runTest(t, './', Pack))
+  })
+
+  return t.test('sync', t => {
+    t.test('.', t => runTest(t, '.', Pack.Sync))
+    return t.test('./', t => runTest(t, './', Pack.Sync))
+  })
+})
