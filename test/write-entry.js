@@ -690,7 +690,7 @@ t.test('portable entries, nothing platform-specific', t => {
     gname: null,
     linkpath: null,
     path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
-    size: null,
+    size: 2,
     uid: null,
     uname: null,
     dev: null,
