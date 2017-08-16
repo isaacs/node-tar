@@ -1735,3 +1735,40 @@ t.test('safely transmute chars on windows with absolutes', t => {
 
   u.end(data)
 })
+
+t.test('use explicit chmod when required by umask', t => {
+  process.umask(0o022)
+
+  const basedir = path.resolve(unpackdir, 'umask-chmod')
+
+  const data = makeTar([
+    {
+      path: 'x/y/z',
+      mode: 0o775,
+      type: 'Directory'
+    },
+    '',
+    ''
+  ])
+
+  const check = t => {
+    const st = fs.statSync(basedir + '/x/y/z')
+    t.equal(st.mode & 0o777, 0o775)
+    rimraf.sync(basedir)
+    t.end()
+  }
+
+  t.test('async', t => {
+    mkdirp.sync(basedir)
+    const unpack = new Unpack({ cwd: basedir })
+    unpack.on('close', _ => check(t))
+    unpack.end(data)
+  })
+
+  return t.test('sync', t => {
+    mkdirp.sync(basedir)
+    const unpack = new Unpack.Sync({ cwd: basedir })
+    unpack.end(data)
+    check(t)
+  })
+})
