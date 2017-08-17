@@ -1498,6 +1498,13 @@ t.test('set owner', t => {
     },
     'qux',
     {
+      gid: 5108675309,
+      path: 'foo/different-gid-nouid/bar',
+      type: 'File',
+      size: 3
+    },
+    'qux',
+    {
       uid: myUid,
       gid: myGid,
       path: 'foo-mine/',
@@ -1552,7 +1559,7 @@ t.test('set owner', t => {
       called = 0
       const u = new Unpack.Sync({ cwd: dir, preserveOwner: true })
       u.end(data)
-      t.equal(called, 4, 'called chowns')
+      t.equal(called, 5, 'called chowns')
       t.end()
     })
 
@@ -1561,7 +1568,7 @@ t.test('set owner', t => {
       const u = new Unpack({ cwd: dir, preserveOwner: true })
       u.end(data)
       u.on('close', _ => {
-        t.equal(called, 4, 'called chowns')
+        t.equal(called, 5, 'called chowns')
         t.end()
       })
     })
@@ -1771,4 +1778,115 @@ t.test('use explicit chmod when required by umask', t => {
     unpack.end(data)
     check(t)
   })
+})
+
+t.test('chown implicit dirs and also the entries', t => {
+  const basedir = path.resolve(unpackdir, 'chownr')
+
+  // club these so that the test can run as non-root
+  const chown = fs.chown
+  const chownSync = fs.chownSync
+
+  const getuid = process.getuid
+  const getgid = process.getgid
+  t.teardown(_ => {
+    fs.chown = chown
+    fs.chownSync = chownSync
+    process.getgid = getgid
+  })
+
+  let chowns = 0
+
+  let currentTest = null
+  fs.chown = (path, uid, gid, cb) => {
+    currentTest.equal(uid, 420, 'chown(' + path + ') uid')
+    currentTest.equal(gid, 666, 'chown(' + path + ') gid')
+    chowns ++
+    cb()
+  }
+
+  fs.chownSync = (path, uid, gid) => {
+    currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
+    currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
+    chowns ++
+  }
+
+  fs.fchownSync = (path, uid, gid) => {
+    currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
+    currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
+    chowns ++
+  }
+
+  const data = makeTar([
+    {
+      path: 'a/b/c',
+      mode: 0o775,
+      type: 'File',
+      size: 1,
+      uid: null,
+      gid: null
+    },
+    '.',
+    {
+      path: 'x/y/z',
+      mode: 0o775,
+      uid: 12345,
+      gid: 54321,
+      type: 'File',
+      size: 1
+    },
+    '.',
+    '',
+    ''
+  ])
+
+  const check = t => {
+    currentTest = null
+    t.equal(chowns, 6)
+    chowns = 0
+    rimraf.sync(basedir)
+    t.end()
+  }
+
+  t.test('throws when setting uid/gid improperly', t => {
+    t.throws(_ => new Unpack({ uid: 420 }),
+      TypeError('cannot set owner without number uid and gid'))
+    t.throws(_ => new Unpack({ gid: 666 }),
+      TypeError('cannot set owner without number uid and gid'))
+    t.throws(_ => new Unpack({ uid: 1, gid: 2, preserveOwner: true }),
+      TypeError('cannot preserve owner in archive and also set owner explicitly'))
+    t.end()
+  })
+
+  const tests = () =>
+    t.test('async', t => {
+      currentTest = t
+      mkdirp.sync(basedir)
+      const unpack = new Unpack({ cwd: basedir, uid: 420, gid: 666 })
+      unpack.on('close', _ => check(t))
+      unpack.end(data)
+    }).then(t.test('sync', t => {
+      currentTest = t
+      mkdirp.sync(basedir)
+      const unpack = new Unpack.Sync({ cwd: basedir, uid: 420, gid: 666 })
+      unpack.end(data)
+      check(t)
+    }))
+
+  tests()
+
+  t.test('make it look like processUid is 420', t => {
+    process.getuid = () => 420
+    t.end()
+  })
+
+  tests()
+
+  t.test('make it look like processGid is 666', t => {
+    process.getuid = getuid
+    process.getgid = () => 666
+    t.end()
+  })
+
+  return tests()
 })

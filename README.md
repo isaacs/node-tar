@@ -295,6 +295,16 @@ The following options are supported:
   `tar(1)`, but ACLs and other system-specific data is never unpacked
   in this implementation, and modes are set by default already.
   [Alias: `p`]
+- `uid` Set to a number to force ownership of all extracted files and
+  folders, and all implicitly created directories, to be owned by the
+  specified user id, regardless of the `uid` field in the archive.
+  Cannot be used along with `preserveOwner`.  Requires also setting a
+  `gid` option.
+- `gid` Set to a number to force ownership of all extracted files and
+  folders, and all implicitly created directories, to be owned by the
+  specified group id, regardless of the `gid` field in the archive.
+  Cannot be used along with `preserveOwner`.  Requires also setting a
+  `uid` option.
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -554,6 +564,16 @@ mode.
 - `win32` True if on a windows platform.  Causes behavior where
   filenames containing `<|>?` chars are converted to
   windows-compatible values while being unpacked.
+- `uid` Set to a number to force ownership of all extracted files and
+  folders, and all implicitly created directories, to be owned by the
+  specified user id, regardless of the `uid` field in the archive.
+  Cannot be used along with `preserveOwner`.  Requires also setting a
+  `gid` option.
+- `gid` Set to a number to force ownership of all extracted files and
+  folders, and all implicitly created directories, to be owned by the
+  specified group id, regardless of the `gid` field in the archive.
+  Cannot be used along with `preserveOwner`.  Requires also setting a
+  `uid` option.
 
 ### class tar.Unpack.Sync
 
