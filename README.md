@@ -253,10 +253,15 @@ writable, readable, and listable by their owner, to avoid cases where
 a directory prevents extraction of child entries by virtue of its
 mode.
 
+Most extraction errors will cause a `warn` event to be emitted.  If
+the `cwd` is missing, or not a directory, then the extraction will
+fail completely.
+
 The following options are supported:
 
 - `cwd` Extract files relative to the specified directory.  Defaults
-  to `process.cwd()`. [Alias: `C`]
+  to `process.cwd()`.  If provided, this must exist and must be a
+  directory. [Alias: `C`]
 - `file` The archive file to extract.  If not specified, then a
   Writable stream is returned where the archive data should be
   written. [Alias: `f`]
@@ -522,10 +527,14 @@ mode.
 
 `'close'` is emitted when it's done writing stuff to the file system.
 
+Most unpack errors will cause a `warn` event to be emitted.  If the
+`cwd` is missing, or not a directory, then an error will be emitted.
+
 #### constructor(options)
 
 - `cwd` Extract files relative to the specified directory.  Defaults
-  to `process.cwd()`.
+  to `process.cwd()`.  If provided, this must exist and must be a
+  directory.
 - `filter` A function that gets called with `(path, entry)` for each
   entry being unpacked.  Return `true` to unpack the entry from the
   archive, or `false` to skip it.

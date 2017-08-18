@@ -1890,3 +1890,90 @@ t.test('chown implicit dirs and also the entries', t => {
 
   return tests()
 })
+
+t.test('bad cwd setting', t => {
+  const basedir = path.resolve(unpackdir, 'bad-cwd')
+  mkdirp.sync(basedir)
+  t.teardown(_ => rimraf.sync(basedir))
+
+  const cases = [
+    // the cwd itself
+    {
+      path: './',
+      type: 'Directory'
+    },
+    // a file directly in the cwd
+    {
+      path: 'a',
+      type: 'File'
+    },
+    // a file nested within a subdir of the cwd
+    {
+      path: 'a/b/c',
+      type: 'File'
+    }
+  ]
+
+  fs.writeFileSync(basedir + '/file', 'xyz')
+
+  cases.forEach(c => t.test(c.type + ' ' + c.path, t => {
+    const data = makeTar([
+      {
+        path: c.path,
+        mode: 0o775,
+        type: c.type,
+        size: 0,
+        uid: null,
+        gid: null
+      },
+      '',
+      ''
+    ])
+
+    t.test('cwd is a file', t => {
+      const cwd = basedir + '/file'
+      const opt = { cwd: cwd }
+
+      t.throws(_ => new Unpack.Sync(opt).end(data), {
+        name: 'CwdError',
+        message: 'ENOTDIR: Cannot cd into \'' + cwd + '\'',
+        path: cwd,
+        code: 'ENOTDIR'
+      })
+
+      new Unpack(opt).on('error', er => {
+        t.match(er, {
+          name: 'CwdError',
+          message: 'ENOTDIR: Cannot cd into \'' + cwd + '\'',
+          path: cwd,
+          code: 'ENOTDIR'
+        })
+        t.end()
+      }).end(data)
+    })
+
+    return t.test('cwd is missing', t => {
+      const cwd = basedir + '/asdf/asdf/asdf'
+      const opt = { cwd: cwd }
+
+      t.throws(_ => new Unpack.Sync(opt).end(data), {
+        name: 'CwdError',
+        message: 'ENOENT: Cannot cd into \'' + cwd + '\'',
+        path: cwd,
+        code: 'ENOENT'
+      })
+
+      new Unpack(opt).on('error', er => {
+        t.match(er, {
+          name: 'CwdError',
+          message: 'ENOENT: Cannot cd into \'' + cwd + '\'',
+          path: cwd,
+          code: 'ENOENT'
+        })
+        t.end()
+      }).end(data)
+    })
+  }))
+
+  t.end()
+})
