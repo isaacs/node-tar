@@ -209,11 +209,3 @@ t.test('read fail', t => {
   t.throws(_ => x({maxReadSize: 10, sync: true, file: __filename }), poop)
   t.end()
 })
-
-t.test('readFile fail', t => {
-  const poop = new Error('poop')
-  t.teardown(mutateFS.fail('readFile', poop))
-
-  t.throws(_ => x({ sync: true, file: __filename }), poop)
-  return x({ file: __filename }, er => t.match(er, poop))
-})

@@ -179,13 +179,13 @@ t.test('read fail', t => {
   })
   t.test('cb', t => {
     const poop = new Error('poop')
-    t.teardown(mutateFS.fail('readFile', poop))
+    t.teardown(mutateFS.fail('read', poop))
     t.plan(1)
     list({ file: __filename }, er => t.equal(er, poop))
   })
   t.test('promise', t => {
     const poop = new Error('poop')
-    t.teardown(mutateFS.fail('readFile', poop))
+    t.teardown(mutateFS.fail('read', poop))
     t.plan(1)
     list({ file: __filename }).catch(er => t.equal(er, poop))
   })

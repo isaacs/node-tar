@@ -1190,11 +1190,11 @@ t.test('fail mkdir', t => {
   t.end()
 })
 
-t.test('fail close', t => {
+t.test('fail write', t => {
   const poop = new Error('poop')
   poop.code = 'EPOOP'
-  const unmutate = mutateFS.fail('close', poop)
-  const dir = path.join(unpackdir, 'close-fail')
+  const unmutate = mutateFS.fail('write', poop)
+  const dir = path.join(unpackdir, 'write-fail')
   t.teardown(_ => (unmutate(), rimraf.sync(dir)))
 
   const warnings = []

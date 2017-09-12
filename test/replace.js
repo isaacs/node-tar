@@ -57,7 +57,7 @@ t.test('basic file add to archive (good or truncated)', t => {
   t.beforeEach(reset)
 
   const check = (file, t) => {
-    const c = spawn('tar', ['tf', file])
+    const c = spawn('tar', ['tf', file], { stdio: [ 0, 'pipe', 2 ] })
     const out = []
     c.stdout.on('data', chunk => out.push(chunk))
     c.on('close', (code, signal) => {
