@@ -100,7 +100,7 @@ t.test('basic file unpack tests', t => {
         t.test('strict', t => {
           const unpack = new Unpack({ cwd: dir, strict: true })
           fs.createReadStream(tf).pipe(unpack)
-          eos(unpack, _ => check(t))
+          eos(unpack, err => check(t))
         })
         t.test('loose', t => {
           const unpack = new Unpack({ cwd: dir })
