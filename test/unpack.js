@@ -1473,13 +1473,13 @@ t.test('set owner', t => {
   const data = makeTar([
     {
       uid: 2456124561,
-      gid: 5108675309,
+      gid: 813708013,
       path: 'foo/',
       type: 'Directory'
     },
     {
       uid: myUid,
-      gid: 5108675309,
+      gid: 813708013,
       path: 'foo/my-uid-different-gid',
       type: 'File',
       size: 3
@@ -1498,7 +1498,7 @@ t.test('set owner', t => {
     },
     'qux',
     {
-      gid: 5108675309,
+      gid: 813708013,
       path: 'foo/different-gid-nouid/bar',
       type: 'File',
       size: 3
@@ -1534,20 +1534,69 @@ t.test('set owner', t => {
     ''
   ])
 
+  t.test('chown failure results in unpack failure', t => {
+    const dir = path.resolve(unpackdir, 'chown')
+    const poop = new Error('expected chown failure')
+    const un = mutateFS.fail('chown', poop)
+    const unf = mutateFS.fail('fchown', poop)
+
+    t.teardown(_ => (un(), unf()))
+
+    t.test('sync', t => {
+      mkdirp.sync(dir)
+      t.teardown(_ => rimraf.sync(dir))
+      let warned = false
+      const u = new Unpack.Sync({
+        cwd: dir,
+        preserveOwner: true,
+        onwarn: (m, er) => {
+          if (!warned) {
+            warned = true
+            t.equal(er, poop)
+            t.end()
+          }
+        }
+      })
+      u.end(data)
+    })
+
+    t.test('async', t => {
+      mkdirp.sync(dir)
+      t.teardown(_ => rimraf.sync(dir))
+      let warned = false
+      const u = new Unpack({
+        cwd: dir,
+        preserveOwner: true,
+        onwarn: (m, er) => {
+          if (!warned) {
+            warned = true
+            t.equal(er, poop)
+            t.end()
+          }
+        }
+      })
+      u.end(data)
+    })
+
+    t.test('cleanup', t => {
+      rimraf.sync(dir)
+      t.end()
+    })
+
+    t.end()
+  })
+
   t.test('chown when true', t => {
     const dir = path.resolve(unpackdir, 'chown')
     const chown = fs.chown
     const chownSync = fs.chownSync
     const fchownSync = fs.fchownSync
     let called = 0
-    fs.chown = (path, owner, group, cb) => {
+    fs.fchown = fs.chown = (path, owner, group, cb) => {
       called ++
       cb()
     }
     fs.chownSync = fs.fchownSync = _ => called++
-
-    t.beforeEach(cb => mkdirp(dir, cb))
-    t.afterEach(cb => rimraf(dir, cb))
 
     t.teardown(_ => {
       fs.chown = chown
@@ -1556,6 +1605,8 @@ t.test('set owner', t => {
     })
 
     t.test('sync', t => {
+      mkdirp.sync(dir)
+      t.teardown(_ => rimraf.sync(dir))
       called = 0
       const u = new Unpack.Sync({ cwd: dir, preserveOwner: true })
       u.end(data)
@@ -1564,6 +1615,8 @@ t.test('set owner', t => {
     })
 
     t.test('async', t => {
+      mkdirp.sync(dir)
+      t.teardown(_ => rimraf.sync(dir))
       called = 0
       const u = new Unpack({ cwd: dir, preserveOwner: true })
       u.end(data)
@@ -1593,10 +1646,10 @@ t.test('set owner', t => {
     const check = t => {
       const dirStat = fs.statSync(dir + '/foo')
       t.notEqual(dirStat.uid, 2456124561)
-      t.notEqual(dirStat.gid, 5108675309)
+      t.notEqual(dirStat.gid, 813708013)
       const fileStat = fs.statSync(dir + '/foo/my-uid-different-gid')
       t.notEqual(fileStat.uid, 2456124561)
-      t.notEqual(fileStat.gid, 5108675309)
+      t.notEqual(fileStat.gid, 813708013)
       const dirStat2 = fs.statSync(dir + '/foo/different-uid-nogid')
       t.notEqual(dirStat2.uid, 2456124561)
       const fileStat2 = fs.statSync(dir + '/foo/different-uid-nogid/bar')
@@ -1798,20 +1851,14 @@ t.test('chown implicit dirs and also the entries', t => {
   let chowns = 0
 
   let currentTest = null
-  fs.chown = (path, uid, gid, cb) => {
+  fs.fchown = fs.chown = (path, uid, gid, cb) => {
     currentTest.equal(uid, 420, 'chown(' + path + ') uid')
     currentTest.equal(gid, 666, 'chown(' + path + ') gid')
     chowns ++
     cb()
   }
 
-  fs.chownSync = (path, uid, gid) => {
-    currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
-    currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
-    chowns ++
-  }
-
-  fs.fchownSync = (path, uid, gid) => {
+  fs.chownSync = fs.fchownSync = (path, uid, gid) => {
     currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
     currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
     chowns ++
