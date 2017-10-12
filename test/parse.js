@@ -508,10 +508,15 @@ t.test('truncated gzip input', t => {
     const p = new Parse({ onwarn: message => warnings.push(message) })
     let aborted = false
     p.on('abort', _ => aborted = true)
+    p.on('abort', onEnd)
+    p.on('error', onEnd)
+    p.on('end', onEnd)
     p.end(trunc)
-    t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, [ 'zlib error: unexpected end of file' ])
-    t.end()
+    function onEnd () {
+      t.equal(aborted, true, 'aborted writing')
+      t.same(warnings, [ 'zlib error: unexpected end of file' ])
+      t.end()
+    }
   })
 
   t.test('just wrong', t => {
@@ -519,13 +524,18 @@ t.test('truncated gzip input', t => {
     const p = new Parse({ onwarn: message => warnings.push(message) })
     let aborted = false
     p.on('abort', _ => aborted = true)
+    p.on('abort', onEnd)
+    p.on('error', onEnd)
+    p.on('end', onEnd)
     p.write(trunc)
     p.write(trunc)
     p.write(tgz.slice(split))
     p.end()
-    t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, [ 'zlib error: incorrect data check' ])
-    t.end()
+    function onEnd () {
+      t.equal(aborted, true, 'aborted writing')
+      t.same(warnings, [ 'zlib error: incorrect data check' ])
+      t.end()
+    }
   })
 
   t.end()
