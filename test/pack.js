@@ -11,7 +11,7 @@ const tars = path.resolve(fixtures, 'tars')
 const chmodr = require('chmodr')
 const Header = require('../lib/header.js')
 const zlib = require('zlib')
-const miniz = require('minizlib')
+const miniz = require('../lib/zlib.js')
 const mutateFS = require('mutate-fs')
 const MiniPass = require('minipass')
 process.env.USER = 'isaacs'
@@ -457,70 +457,81 @@ t.test('very deep gzip path, sync', t => {
   pack.pause()
   pack.resume()
 
-  const zipped = pack.read()
-  t.isa(zipped, Buffer)
-  const data = zlib.unzipSync(zipped)
-  const entries = []
-  for (var i = 0; i < data.length; i += 512) {
-    const slice = data.slice(i, i + 512)
-    const h = new Header(slice)
-    if (h.nullBlock)
-      entries.push('null block')
-    else if (h.cksumValid)
-      entries.push([h.type, h.path])
-    else if (entries[entries.length-1][0] === 'File')
-      entries[entries.length-1].push(slice.toString().replace(/\0.*$/, ''))
+  // these have to be declared before the on('data') call because
+  // on('data') is synchronous with minizlib. We have to use data
+  // events because zlib is NOT synchronous and it could be either type now.
+  pack.on('end', onEnd)
+  pack.on('error', onEnd)
+
+  const chunks = []
+  pack.on('data', data => chunks.push(data))
+
+  function onEnd () {
+    const zipped = Buffer.concat(chunks)
+    t.isa(zipped, Buffer)
+    const data = zlib.unzipSync(zipped)
+    const entries = []
+    for (var i = 0; i < data.length; i += 512) {
+      const slice = data.slice(i, i + 512)
+      const h = new Header(slice)
+      if (h.nullBlock)
+        entries.push('null block')
+      else if (h.cksumValid)
+        entries.push([h.type, h.path])
+      else if (entries[entries.length-1][0] === 'File')
+        entries[entries.length-1].push(slice.toString().replace(/\0.*$/, ''))
+    }
+
+    const expect = [
+      [ 'Directory', 'dir/' ],
+      [ 'File', 'dir/x' ],
+      [ 'Directory', 'long-path/' ],
+      [ 'Directory', 'long-path/r/' ],
+      [ 'Directory', 'long-path/r/e/' ],
+      [ 'Directory', 'long-path/r/e/a/' ],
+      [ 'Directory', 'long-path/r/e/a/l/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/' ],
+      [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/' ],
+      [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n' ],
+      [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111' ],
+      [ 'ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
+      [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222' ],
+      [ 'ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc' ],
+      [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
+      [ 'ExtendedHeader', 'PaxHeader/Ω.txt' ],
+      [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω' ],
+      'null block',
+      'null block'
+    ]
+
+    let ok = true
+    entries.forEach((entry, i) => {
+      ok = ok &&
+        t.equal(entry[0], expect[i][0]) &&
+        t.equal(entry[1], expect[i][1]) &&
+        (!entry[2] || t.equal(entry[2], expect[i][2]))
+    })
+
+    // t.match(entries, expect)
+    t.end()
   }
-
-  const expect = [
-    [ 'Directory', 'dir/' ],
-    [ 'File', 'dir/x' ],
-    [ 'Directory', 'long-path/' ],
-    [ 'Directory', 'long-path/r/' ],
-    [ 'Directory', 'long-path/r/e/' ],
-    [ 'Directory', 'long-path/r/e/a/' ],
-    [ 'Directory', 'long-path/r/e/a/l/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/' ],
-    [ 'Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/' ],
-    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n' ],
-    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111' ],
-    [ 'ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
-    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222' ],
-    [ 'ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc' ],
-    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' ],
-    [ 'ExtendedHeader', 'PaxHeader/Ω.txt' ],
-    [ 'File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω' ],
-    'null block',
-    'null block'
-  ]
-
-  let ok = true
-  entries.forEach((entry, i) => {
-    ok = ok &&
-      t.equal(entry[0], expect[i][0]) &&
-      t.equal(entry[1], expect[i][1]) &&
-      (!entry[2] || t.equal(entry[2], expect[i][2]))
-  })
-
-  // t.match(entries, expect)
-  t.end()
 })
 
 t.test('write after end', t => {

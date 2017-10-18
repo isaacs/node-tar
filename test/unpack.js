@@ -8,7 +8,7 @@ const t = require('tap')
 
 const makeTar = require('./make-tar.js')
 const Header = require('../lib/header.js')
-const z = require('minizlib')
+const z = require('../lib/zlib.js')
 const fs = require('fs')
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
