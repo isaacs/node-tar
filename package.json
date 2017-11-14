@@ -27,7 +27,7 @@
     "chmodr": "^1.0.2",
     "end-of-stream": "^1.4.0",
     "events-to-array": "^1.1.2",
-    "mutate-fs": "^2.1.0",
+    "mutate-fs": "^2.1.1",
     "rimraf": "^2.6.2",
     "tap": "^10.7.2",
     "tar-fs": "^1.16.0",
