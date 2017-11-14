@@ -320,7 +320,7 @@ t.test('drain event timings', t => {
   })
 
   data.forEach(d => {
-    if (!t.equal(p.write(d), false, 'write should return false: ' + d))
+    if (!t.equal(p.write(d), false, 'write should return false'))
       return t.end()
   })
 
