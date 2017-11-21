@@ -29,7 +29,7 @@
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
     "rimraf": "^2.6.2",
-    "tap": "^10.7.2",
+    "tap": "^11.0.0-rc.3",
     "tar-fs": "^1.16.0",
     "tar-stream": "^1.5.2"
   },
