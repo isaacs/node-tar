@@ -1610,7 +1610,7 @@ t.test('set owner', t => {
       called = 0
       const u = new Unpack.Sync({ cwd: dir, preserveOwner: true })
       u.end(data)
-      t.equal(called, 5, 'called chowns')
+      t.ok(called >= 5, 'called chowns')
       t.end()
     })
 
@@ -1621,7 +1621,7 @@ t.test('set owner', t => {
       const u = new Unpack({ cwd: dir, preserveOwner: true })
       u.end(data)
       u.on('close', _ => {
-        t.equal(called, 5, 'called chowns')
+        t.ok(called >= 5, 'called chowns')
         t.end()
       })
     })

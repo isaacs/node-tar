@@ -728,6 +728,64 @@ t.test('portable entries, nothing platform-specific', t => {
   })
 })
 
+t.test('no mtime', t => {
+  const om = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+  const ws = new WriteEntry(om, {
+    cwd: files,
+    noMtime: true,
+    portable: true
+  })
+
+  const pexpect = {
+    atime: null,
+    mtime: null,
+    charset: null,
+    comment: null,
+    ctime: null,
+    gid: null,
+    gname: null,
+    linkpath: null,
+    path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+    size: 2,
+    uid: null,
+    uname: null,
+    dev: null,
+    ino: null,
+    nlink: null
+  }
+
+  const hexpect = {
+    size: 2,
+    ctime: null,
+    atime: null,
+    mtime: null,
+    uid: null,
+    uname: '',
+    gid: null,
+    gname: ''
+  }
+
+  const ps = new Parser()
+  const wss = new WriteEntry.Sync(om, {
+    cwd: files,
+    portable: true,
+    noMtime: true
+  })
+  ps.on('entry', entry => {
+    t.match(entry.extended, pexpect)
+    t.match(entry.header, hexpect)
+  })
+  ps.end(wss.read())
+
+  const p = new Parser()
+  ws.pipe(p)
+  p.on('entry', entry => {
+    t.match(entry.extended, pexpect)
+    t.match(entry.header, hexpect)
+    t.end()
+  })
+})
+
 t.test('portable dir entries, no mtime', t => {
   const dir = 'long-path/'
   const ws = new WriteEntry(dir, {
@@ -805,6 +863,35 @@ t.test('write entry from read entry', t => {
     t.end()
   })
 
+  t.test('basic file', t => {
+    const data = makeTar([
+      {
+        path: '$',
+        type: 'Directory',
+        size: 0,
+        mode: 0o755,
+        uid: 123,
+        gid: 321,
+        ctime: new Date('1979-07-01'),
+        atime: new Date('1980-08-17'),
+        mtime: new Date('1997-06-21')
+      },
+      '',
+      ''
+    ])
+    const fileEntry = new ReadEntry(new Header(data))
+    const wetFile = new WriteEntry.Tar(fileEntry, { portable: true })
+    const out = []
+    let wetFileEnded = false
+    wetFile.on('data', c => out.push(c))
+    wetFile.on('end', _ => wetFileEnded = true)
+    fileEntry.end()
+    t.equal(wetFileEnded, true)
+    const result = Buffer.concat(out)
+    t.match(new Header(result), { mtime: null })
+    t.end()
+  })
+
   t.test('with pax header', t => {
     const fileEntryPax = new ReadEntry(new Header(data))
     fileEntryPax.path = new Array(200).join('$')
@@ -843,6 +930,37 @@ t.test('write entry from read entry', t => {
     t.match(result.slice(1024, 1124).toString(), /^\$+\0?$/)
     t.match(new Header(result), { type: 'ExtendedHeader' })
     t.match(new Header(result.slice(1024)), {
+      ctime: null,
+      atime: null,
+      uname: '',
+      gname: ''
+    })
+    const body = result.slice(1536).toString().replace(/\0*$/, '')
+    t.equal(body, '$$$$$$$$$$')
+    t.end()
+  })
+
+  t.test('pax, portable, and noMtime', t => {
+    const fileEntryPax = new ReadEntry(new Header(data))
+    fileEntryPax.path = new Array(200).join('$')
+    const wetPax = new WriteEntry.Tar(fileEntryPax, {
+      noMtime: true,
+      portable: true
+    })
+    let wetPaxEnded = false
+    const out = []
+    wetPax.on('data', c => out.push(c))
+    wetPax.on('end', _ => wetPaxEnded = true)
+    fileEntryPax.write(data.slice(512, 550))
+    fileEntryPax.write(data.slice(550, 1000))
+    fileEntryPax.end(data.slice(1000, 1024))
+    t.equal(wetPaxEnded, true)
+    const result = Buffer.concat(out)
+    t.equal(result.length, 2048)
+    t.match(result.slice(1024, 1124).toString(), /^\$+\0?$/)
+    t.match(new Header(result), { type: 'ExtendedHeader' })
+    t.match(new Header(result.slice(1024)), {
+      mtime: null,
       ctime: null,
       atime: null,
       uname: '',
