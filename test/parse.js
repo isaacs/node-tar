@@ -530,3 +530,66 @@ t.test('truncated gzip input', t => {
 
   t.end()
 })
+
+t.test('end while consuming', t => {
+  // https://github.com/npm/node-tar/issues/157
+  const data = zlib.gzipSync(makeTar([
+    {
+      path: 'package/package.json',
+      type: 'File',
+      size: 130
+    },
+    new Array(131).join('x'),
+    {
+      path: 'package/node_modules/@c/d/node_modules/e/package.json',
+      type: 'File',
+      size: 30
+    },
+    new Array(31).join('e'),
+    {
+      path: 'package/node_modules/@c/d/package.json',
+      type: 'File',
+      size: 33
+    },
+    new Array(34).join('d'),
+    {
+      path: 'package/node_modules/a/package.json',
+      type: 'File',
+      size: 59
+    },
+    new Array(60).join('a'),
+    {
+      path: 'package/node_modules/b/package.json',
+      type: 'File',
+      size: 30
+    },
+    new Array(31).join('b'),
+    '',
+    ''
+  ]))
+
+  const actual = []
+  const expect = [
+    'package/package.json',
+    'package/node_modules/@c/d/node_modules/e/package.json',
+    'package/node_modules/@c/d/package.json',
+    'package/node_modules/a/package.json',
+    'package/node_modules/b/package.json'
+  ]
+
+  const mp = new MiniPass()
+  const p = new Parse({
+    onentry: entry => {
+      actual.push(entry.path)
+      entry.resume()
+    },
+    onwarn: er => t.fail(er),
+    onerror: er => t.threw(er)
+  })
+  p.on('end', () => {
+    t.same(actual, expect)
+    t.end()
+  })
+  mp.end(data)
+  mp.pipe(p)
+})
