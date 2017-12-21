@@ -209,3 +209,27 @@ t.test('read fail', t => {
   t.throws(_ => x({maxReadSize: 10, sync: true, file: __filename }), poop)
   t.end()
 })
+
+t.test('sync gzip error edge case test', t => {
+  const zlib = require('minizlib')
+  const file = path.resolve(__dirname, 'fixtures/sync-gzip-fail.tgz')
+  const dir = path.resolve(__dirname, 'sync-gzip-fail')
+  const cwd = process.cwd()
+  mkdirp.sync(dir + '/x')
+  process.chdir(dir)
+  t.teardown(() => {
+    process.chdir(cwd)
+    rimraf.sync(dir)
+  })
+
+  x({
+    sync: true,
+    file: file,
+    onwarn: (m, er) => { throw er }
+  })
+
+  t.same(fs.readdirSync(dir + '/x').sort(),
+    [ '1', '10', '2', '3', '4', '5', '6', '7', '8', '9' ])
+
+  t.end()
+})
