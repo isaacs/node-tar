@@ -505,18 +505,20 @@ t.test('truncated gzip input', t => {
     skip: skipEarlyEnd ? 'not a zlib error on v4' : false
   }, t => {
     const warnings = []
-    const p = new Parse({ onwarn: message => warnings.push(message) })
+    const p = new Parse()
+    p.on('error', er => warnings.push(er.message))
     let aborted = false
     p.on('abort', _ => aborted = true)
     p.end(trunc)
     t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, [ 'zlib error: unexpected end of file' ])
+    t.same(warnings, [ 'zlib: unexpected end of file' ])
     t.end()
   })
 
   t.test('just wrong', t => {
     const warnings = []
-    const p = new Parse({ onwarn: message => warnings.push(message) })
+    const p = new Parse()
+    p.on('error', er => warnings.push(er.message))
     let aborted = false
     p.on('abort', _ => aborted = true)
     p.write(trunc)
@@ -524,7 +526,7 @@ t.test('truncated gzip input', t => {
     p.write(tgz.slice(split))
     p.end()
     t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, [ 'zlib error: incorrect data check' ])
+    t.same(warnings, [ 'zlib: incorrect data check' ])
     t.end()
   })
 
