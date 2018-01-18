@@ -5,6 +5,7 @@ process.umask(0o022)
 const Unpack = require('../lib/unpack.js')
 const UnpackSync = Unpack.Sync
 const t = require('tap')
+const MiniPass = require('minipass')
 
 const makeTar = require('./make-tar.js')
 const Header = require('../lib/header.js')
@@ -2023,4 +2024,102 @@ t.test('bad cwd setting', t => {
   }))
 
   t.end()
+})
+
+t.test('transform', t => {
+  const basedir = path.resolve(unpackdir, 'transform')
+  t.teardown(_ => rimraf.sync(basedir))
+
+  const cases = {
+    'emptypax.tar': {
+      '🌟.txt': '🌟✧✩⭐︎✪✫✬✭✮⚝✯✰✵✶✷✸✹❂⭑⭒★☆✡☪✴︎✦✡️🔯✴️🌠\n',
+      'one-byte.txt': '[a]'
+    },
+    'body-byte-counts.tar': {
+      '1024-bytes.txt': new Array(1024).join('[x]') + '[\n]',
+      '512-bytes.txt': new Array(512).join('[x]') + '[\n]',
+      'one-byte.txt': '[a]',
+      'zero-byte.txt': ''
+    },
+    'utf8.tar': {
+      '🌟.txt': '🌟✧✩⭐︎✪✫✬✭✮⚝✯✰✵✶✷✸✹❂⭑⭒★☆✡☪✴︎✦✡️🔯✴️🌠\n',
+      'Ω.txt': '[Ω]',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': '[Ω]'
+    }
+  }
+
+  const txFn = entry => {
+    switch (path.basename(entry.path)) {
+      case 'zero-bytes.txt':
+        return entry
+
+      case 'one-byte.txt':
+      case '1024-bytes.txt':
+      case '512-bytes.txt':
+      case 'Ω.txt':
+        return new Bracer()
+    }
+  }
+
+  class Bracer extends MiniPass {
+    write (data) {
+      const d = data.toString().split('').map(c => '[' + c + ']').join('')
+      return super.write(d)
+    }
+  }
+
+  const tarfiles = Object.keys(cases)
+  t.plan(tarfiles.length)
+  t.jobs = tarfiles.length
+
+  tarfiles.forEach(tarfile => {
+    t.test(tarfile, t => {
+      const tf = path.resolve(tars, tarfile)
+      const dir = path.resolve(basedir, tarfile)
+      t.beforeEach(cb => {
+        rimraf.sync(dir)
+        mkdirp.sync(dir)
+        cb()
+      })
+
+      const check = t => {
+        const expect = cases[tarfile]
+        Object.keys(expect).forEach(file => {
+          const f = path.resolve(dir, file)
+          t.equal(fs.readFileSync(f, 'utf8'), expect[file], file)
+        })
+        t.end()
+      }
+
+      t.plan(2)
+
+      t.test('async unpack', t => {
+        t.plan(2)
+        t.test('strict', t => {
+          const unpack = new Unpack({ cwd: dir, strict: true, transform: txFn })
+          fs.createReadStream(tf).pipe(unpack)
+          eos(unpack, _ => check(t))
+        })
+        t.test('loose', t => {
+          const unpack = new Unpack({ cwd: dir, transform: txFn })
+          fs.createReadStream(tf).pipe(unpack)
+          eos(unpack, _ => check(t))
+        })
+      })
+
+      t.test('sync unpack', t => {
+        t.plan(2)
+        t.test('strict', t => {
+          const unpack = new UnpackSync({ cwd: dir, transform: txFn })
+          unpack.end(fs.readFileSync(tf))
+          check(t)
+        })
+        t.test('loose', t => {
+          const unpack = new UnpackSync({ cwd: dir, transform: txFn })
+          unpack.end(fs.readFileSync(tf))
+          check(t)
+        })
+      })
+    })
+  })
 })
