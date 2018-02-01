@@ -2124,46 +2124,106 @@ t.test('transform', t => {
   })
 })
 
-t.test('futimes failures', t => {
+t.test('futimes/fchown failures', t => {
   const archive = path.resolve(tars, 'utf8.tar')
-  const dir = path.resolve(unpackdir, 'futimes-fails')
-  mkdirp.sync(dir)
+  const dir = path.resolve(unpackdir, 'futimes-fchown-fails')
   const tardata = fs.readFileSync(archive)
+
   const poop = new Error('poop')
-  const unmutate = mutateFS.fail('futimes', poop)
-  t.teardown(() => {
-    unmutate()
+  const second = new Error('second error')
+
+  const reset = cb => {
     rimraf.sync(dir)
+    mkdirp.sync(dir)
+  }
+
+  reset()
+  t.teardown(() => rimraf.sync(dir))
+
+  const methods = ['utimes', 'chown']
+  methods.forEach(method => {
+    const fc = method === 'chown'
+    t.test(method +' fallback', t => {
+      t.teardown(mutateFS.fail('f' + method, poop))
+      t.plan(2)
+      t.test('async unpack', t => {
+        t.plan(2)
+        t.test('strict', t => {
+          reset()
+          const unpack = new Unpack({ cwd: dir, strict: true, forceChown: fc })
+          unpack.on('finish', t.end)
+          unpack.end(tardata)
+        })
+        t.test('loose', t => {
+          reset()
+          const unpack = new Unpack({ cwd: dir, forceChown: fc })
+          unpack.on('finish', t.end)
+          unpack.on('warn', t.fail)
+          unpack.end(tardata)
+        })
+      })
+      t.test('sync unpack', t => {
+        t.plan(2)
+        t.test('strict', t => {
+          reset()
+          const unpack = new Unpack.Sync({ cwd: dir, strict: true, forceChown: fc })
+          unpack.end(tardata)
+          t.end()
+        })
+        t.test('loose', t => {
+          reset()
+          const unpack = new Unpack.Sync({ cwd: dir, forceChown: fc })
+          unpack.on('warn', t.fail)
+          unpack.end(tardata)
+          t.end()
+        })
+      })
+    })
+
+    t.test('also fail ' + method, t => {
+      const unmutate = mutateFS.fail('f' + method, poop)
+      const unmutate2 = mutateFS.fail(method, second)
+      t.teardown(() => {
+        unmutate()
+        unmutate2()
+      })
+      t.plan(2)
+      t.test('async unpack', t => {
+        t.plan(2)
+        t.test('strict', t => {
+          reset()
+          const unpack = new Unpack({ cwd: dir, strict: true, forceChown: fc })
+          t.plan(3)
+          unpack.on('error', er => t.equal(er, poop))
+          unpack.end(tardata)
+        })
+        t.test('loose', t => {
+          reset()
+          const unpack = new Unpack({ cwd: dir, forceChown: fc })
+          t.plan(3)
+          unpack.on('warn', (m, er) => t.equal(er, poop))
+          unpack.end(tardata)
+        })
+      })
+      t.test('sync unpack', t => {
+        t.plan(2)
+        t.test('strict', t => {
+          reset()
+          const unpack = new Unpack.Sync({ cwd: dir, strict: true, forceChown: fc })
+          t.plan(3)
+          unpack.on('error', er => t.equal(er, poop))
+          unpack.end(tardata)
+        })
+        t.test('loose', t => {
+          reset()
+          const unpack = new Unpack.Sync({ cwd: dir, forceChown: fc })
+          t.plan(3)
+          unpack.on('warn', (m, er) => t.equal(er, poop))
+          unpack.end(tardata)
+        })
+      })
+    })
   })
-  t.plan(2)
-  t.test('async unpack', t => {
-    t.plan(2)
-    t.test('strict', t => {
-      const unpack = new Unpack({ cwd: dir, strict: true })
-      t.plan(3)
-      unpack.on('error', er => t.equal(er, poop))
-      unpack.end(tardata)
-    })
-    t.test('loose', t => {
-      const unpack = new Unpack({ cwd: dir })
-      t.plan(3)
-      unpack.on('warn', (m, er) => t.equal(er, poop))
-      unpack.end(tardata)
-    })
-  })
-  t.test('sync unpack', t => {
-    t.plan(2)
-    t.test('strict', t => {
-      const unpack = new Unpack.Sync({ cwd: dir, strict: true })
-      t.plan(3)
-      unpack.on('error', er => t.equal(er, poop))
-      unpack.end(tardata)
-    })
-    t.test('loose', t => {
-      const unpack = new Unpack.Sync({ cwd: dir })
-      t.plan(3)
-      unpack.on('warn', (m, er) => t.equal(er, poop))
-      unpack.end(tardata)
-    })
-  })
+
+  t.end()
 })
