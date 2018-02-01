@@ -2123,3 +2123,47 @@ t.test('transform', t => {
     })
   })
 })
+
+t.test('futimes failures', t => {
+  const archive = path.resolve(tars, 'utf8.tar')
+  const dir = path.resolve(unpackdir, 'futimes-fails')
+  mkdirp.sync(dir)
+  const tardata = fs.readFileSync(archive)
+  const poop = new Error('poop')
+  const unmutate = mutateFS.fail('futimes', poop)
+  t.teardown(() => {
+    unmutate()
+    rimraf.sync(dir)
+  })
+  t.plan(2)
+  t.test('async unpack', t => {
+    t.plan(2)
+    t.test('strict', t => {
+      const unpack = new Unpack({ cwd: dir, strict: true })
+      t.plan(3)
+      unpack.on('error', er => t.equal(er, poop))
+      unpack.end(tardata)
+    })
+    t.test('loose', t => {
+      const unpack = new Unpack({ cwd: dir })
+      t.plan(3)
+      unpack.on('warn', (m, er) => t.equal(er, poop))
+      unpack.end(tardata)
+    })
+  })
+  t.test('sync unpack', t => {
+    t.plan(2)
+    t.test('strict', t => {
+      const unpack = new Unpack.Sync({ cwd: dir, strict: true })
+      t.plan(3)
+      unpack.on('error', er => t.equal(er, poop))
+      unpack.end(tardata)
+    })
+    t.test('loose', t => {
+      const unpack = new Unpack.Sync({ cwd: dir })
+      t.plan(3)
+      unpack.on('warn', (m, er) => t.equal(er, poop))
+      unpack.end(tardata)
+    })
+  })
+})
