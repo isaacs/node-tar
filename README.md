@@ -322,6 +322,8 @@ The following options are supported:
   the archive entry.  If a falsey value is provided, then the entry is
   written to disk as normal.  (To exclude items from extraction, use
   the `filter` option described above.)
+- `onentry` A function that gets called with `(entry)` for each entry
+  that passes the filter.
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -621,6 +623,11 @@ Most unpack errors will cause a `warn` event to be emitted.  If the
   the archive entry.  If a falsey value is provided, then the entry is
   written to disk as normal.  (To exclude items from extraction, use
   the `filter` option described above.)
+- `strict` Treat warnings as crash-worthy errors.  Default false.
+- `onentry` A function that gets called with `(entry)` for each entry
+  that passes the filter.
+- `onwarn` A function that will get called with `(message, data)` for
+  any warnings encountered.
 
 ### class tar.Unpack.Sync
 

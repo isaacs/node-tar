@@ -2227,3 +2227,58 @@ t.test('futimes/fchown failures', t => {
 
   t.end()
 })
+
+t.test('onentry option is preserved', t => {
+  const basedir = path.resolve(unpackdir, 'onentry-method')
+  mkdirp.sync(basedir)
+  t.teardown(() => rimraf.sync(basedir))
+
+  let oecalls = 0
+  const onentry = entry => oecalls++
+  const data = makeTar([
+    {
+      path: 'd/i',
+      type: 'Directory'
+    },
+    {
+      path: 'd/i/r/dir',
+      type: 'Directory',
+      mode: 0o751,
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    },
+    {
+      path: 'd/i/r/file',
+      type: 'File',
+      size: 1,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z')
+    },
+    'a',
+    '',
+    ''
+  ])
+
+  const check = t => {
+    t.equal(oecalls, 3)
+    oecalls = 0
+    t.end()
+  }
+
+  t.test('sync', t => {
+    const dir = path.join(basedir, 'sync')
+    mkdirp.sync(dir)
+    const unpack = new UnpackSync({ cwd: dir, onentry })
+    unpack.end(data)
+    check(t)
+  })
+
+  t.test('async', t => {
+    const dir = path.join(basedir, 'async')
+    mkdirp.sync(dir)
+    const unpack = new Unpack({ cwd: dir, onentry })
+    unpack.on('finish', () => check(t))
+    unpack.end(data)
+  })
+
+  t.end()
+})
