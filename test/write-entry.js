@@ -786,6 +786,65 @@ t.test('no mtime', t => {
   })
 })
 
+t.test('force mtime', t => {
+  const om = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+  const date = new Date('1979-07-01T19:10:00.000Z')
+  const ws = new WriteEntry(om, {
+    cwd: files,
+    mtime: date,
+    portable: true
+  })
+
+  const pexpect = {
+    atime: null,
+    mtime: new Date('1979-07-01T19:10:00.000Z'),
+    charset: null,
+    comment: null,
+    ctime: null,
+    gid: null,
+    gname: null,
+    linkpath: null,
+    path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+    size: 2,
+    uid: null,
+    uname: null,
+    dev: null,
+    ino: null,
+    nlink: null
+  }
+
+  const hexpect = {
+    size: 2,
+    ctime: null,
+    atime: null,
+    mtime: new Date('1979-07-01T19:10:00.000Z'),
+    uid: null,
+    uname: '',
+    gid: null,
+    gname: ''
+  }
+
+  const ps = new Parser()
+  const wss = new WriteEntry.Sync(om, {
+    cwd: files,
+    portable: true,
+    mtime: new Date('1979-07-01T19:10:00.000Z'),
+  })
+  ps.on('entry', entry => {
+    t.match(entry.extended, pexpect)
+    t.match(entry.header, hexpect)
+  })
+  ps.end(wss.read())
+
+  const p = new Parser()
+  ws.pipe(p)
+  p.on('entry', entry => {
+    t.match(entry.extended, pexpect)
+    t.match(entry.header, hexpect)
+    t.end()
+  })
+})
+
 t.test('portable dir entries, no mtime', t => {
   const dir = 'long-path/'
   const ws = new WriteEntry(dir, {
