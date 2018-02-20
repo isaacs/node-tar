@@ -2145,6 +2145,10 @@ t.test('futimes/fchown failures', t => {
     const fc = method === 'chown'
     t.test(method +' fallback', t => {
       t.teardown(mutateFS.fail('f' + method, poop))
+      // forceChown will fail on systems where the user is not root
+      // and/or the uid/gid in the archive aren't valid. We're just
+      // verifying coverage here, so make the method auto-pass.
+      t.teardown(mutateFS.pass(method))
       t.plan(2)
       t.test('async unpack', t => {
         t.plan(2)
