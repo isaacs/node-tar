@@ -20,7 +20,7 @@ t.test('parse', t => {
   ])
   t.plan(cases.size)
   cases.forEach((value, hex) =>
-    t.equal(parse(new Buffer(hex, 'hex')), value))
+    t.equal(parse(Buffer.from(hex, 'hex')), value))
 })
 
 t.test('encode', t => {

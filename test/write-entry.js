@@ -608,7 +608,7 @@ t.test('win32 <|>? in paths', {
   skip: isWindows && 'do not create annoying junk on windows systems'
 }, t => {
   const file = path.resolve(fixtures, '<|>?.txt')
-  const uglyName = new Buffer('ef80bcef81bcef80beef80bf2e747874', 'hex').toString()
+  const uglyName = Buffer.from('ef80bcef81bcef80beef80bf2e747874', 'hex').toString()
   const ugly = path.resolve(fixtures, uglyName)
   t.teardown(_ => {
     rimraf.sync(file)
@@ -1074,7 +1074,7 @@ t.test('write entry from read entry', t => {
     let wetEnded = false
     wet.on('end', _ => wetEnded = true)
     t.equal(wetEnded, false)
-    readEntry.end(new Buffer(new Array(513).join('@')))
+    readEntry.end(Buffer.from(new Array(513).join('@')))
     t.equal(wetEnded, true)
     const res = Buffer.concat(out)
     t.equal(res.length, 1024)
@@ -1089,7 +1089,7 @@ t.test('write entry from read entry', t => {
       size: '1'
     }))
     const wet = new WriteEntry.Tar(readEntry)
-    t.throws(_ => wet.write(new Buffer(new Array(1024).join('x'))))
+    t.throws(_ => wet.write(Buffer.from(new Array(1024).join('x'))))
     t.end()
   })
 

@@ -471,7 +471,7 @@ t.test('truncated input', t => {
     const warnings = []
     const p = new Parse({ onwarn: message => warnings.push(message) })
     p.write(data)
-    p.end(new Buffer('not a full block'))
+    p.end(Buffer.from('not a full block'))
     t.same(warnings, [
       'Truncated input (needed 512 more bytes, only 16 available)'
     ])

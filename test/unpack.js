@@ -1735,7 +1735,7 @@ t.test('transmute chars on windows', t => {
   t.afterEach(cb => rimraf(dir, cb))
 
   const hex = 'ef80bcef81bcef80beef80bfef80ba2e747874'
-  const uglyName = new Buffer(hex, 'hex').toString()
+  const uglyName = Buffer.from(hex, 'hex').toString()
   const ugly = path.resolve(dir, uglyName)
 
   const check = t => {
@@ -1782,7 +1782,7 @@ t.test('safely transmute chars on windows with absolutes', t => {
   ])
 
   const hex = 'ef80bcef81bcef80beef80bfef80ba2e747874'
-  const uglyName = new Buffer(hex, 'hex').toString()
+  const uglyName = Buffer.from(hex, 'hex').toString()
   const uglyPath = 'c:/x/y/z/' + uglyName
 
   const u = new Unpack({

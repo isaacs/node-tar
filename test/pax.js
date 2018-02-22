@@ -20,7 +20,7 @@ t.test('create a pax', t => {
 
   // console.log(p.encode().toString('hex').split('').reduce((s,c)=>{if(s[s.length-1].length<64)s[s.length-1]+=c;else s.push(c);return s},['']))
 
-  const buf = new Buffer(
+  const buf = Buffer.from(
     // pax entry header
     '5061784865616465722f666f6f2e747874000000000000000000000000000000' +
     '0000000000000000000000000000000000000000000000000000000000000000' +
@@ -77,7 +77,7 @@ t.test('tiny pax', t => {
   // console.log(actual.toString('hex').split('').reduce((s,c)=>{if(s[s.length-1].length<64)s[s.length-1]+=c;else s.push(c);return s},['']))
   // return Promise.resolve()
 
-  const buf = new Buffer(
+  const buf = Buffer.from(
     // header
     '5061784865616465722f61620000000000000000000000000000000000000000' +
     '0000000000000000000000000000000000000000000000000000000000000000' +
