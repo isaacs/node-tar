@@ -1,4 +1,5 @@
 'use strict'
+const Buffer = require('../lib/buffer.js')
 // a little utility to create virtual tar data
 if (module === require.main)
   return require('tap').pass('this is fine')

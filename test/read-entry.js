@@ -1,4 +1,5 @@
 'use strict'
+const Buffer = require('../lib/buffer.js')
 const t = require('tap')
 const ReadEntry = require('../lib/read-entry.js')
 const Header = require('../lib/header.js')

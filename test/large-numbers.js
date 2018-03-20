@@ -1,4 +1,5 @@
 'use strict'
+const Buffer = require('../lib/buffer.js')
 const large = require('../lib/large-numbers.js')
 const encode = large.encode
 const parse = large.parse

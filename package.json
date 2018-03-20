@@ -21,6 +21,7 @@
     "minipass": "^2.2.1",
     "minizlib": "^1.1.0",
     "mkdirp": "^0.5.0",
+    "safe-buffer": "^5.1.1",
     "yallist": "^3.0.2"
   },
   "devDependencies": {
