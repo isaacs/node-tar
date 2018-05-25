@@ -63,7 +63,7 @@ t.test('100 byte filename', t => {
       const wss = new WriteEntry.Sync(f, {
         cwd: files,
         linkCache: linkCache,
-        statCache: statCache
+        statCache: statCache,
       })
       linkCache = ws.linkCache
       statCache = ws.statCache
