@@ -38,7 +38,8 @@ t.test('100 byte filename', t => {
     const ws = new WriteEntry(f, {
       cwd: files,
       linkCache: linkCache,
-      statCache: statCache
+      statCache: statCache,
+      umask: 0o27
     })
 
     let out = []
@@ -50,7 +51,7 @@ t.test('100 byte filename', t => {
           cksumValid: true,
           needPax: false,
           path: '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-          mode: 0o644,
+          mode: 0o640,
           size: 100,
           linkpath: null,
           uname: 'isaacs',
@@ -63,7 +64,8 @@ t.test('100 byte filename', t => {
       const wss = new WriteEntry.Sync(f, {
         cwd: files,
         linkCache: linkCache,
-        statCache: statCache
+        statCache: statCache,
+        umask: 0o27
       })
       linkCache = ws.linkCache
       statCache = ws.statCache
@@ -78,7 +80,7 @@ t.test('100 byte filename', t => {
         cksumValid: true,
         needPax: false,
         path: '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        mode: 0o644,
+        mode: 0o640,
         size: 100,
         linkpath: '',
         uname: 'isaacs',

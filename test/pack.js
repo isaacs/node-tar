@@ -90,7 +90,7 @@ t.test('pack a file', t => {
 
 t.test('pack a file with a prefix', t => {
   const out = []
-  new Pack({ cwd: files, prefix: 'package/' })
+  new Pack({ umask: 0o27, cwd: files, prefix: 'package/' })
     .end('.dotfile')
     .on('data', c => out.push(c))
     .on('end', _ => {
@@ -102,7 +102,7 @@ t.test('pack a file with a prefix', t => {
         cksumValid: true,
         needPax: false,
         path: 'package/.dotfile',
-        mode: 0o644,
+        mode: 0o640,
         size: 2,
         mtime: mtime,
         cksum: Number,
@@ -117,7 +117,7 @@ t.test('pack a file with a prefix', t => {
         type: 'File'
       }
       t.match(h, expect)
-      const sync = new PackSync({ cwd: files, prefix: 'package' })
+      const sync = new PackSync({ umask: 0o27, cwd: files, prefix: 'package' })
         .add('.dotfile').end().read()
       t.equal(sync.slice(512).toString(), data.slice(512).toString())
       const hs = new Header(sync)

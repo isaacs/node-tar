@@ -230,6 +230,9 @@ The following options are supported:
   Note that this prevents using other mtime-based features like
   `tar.update` or the `keepNewer` option with the resulting tar archive.
   [Alias: `m`, `no-mtime`]
+- `umask` Set to restrict the modes on the entries in the archive,
+  somewhat like how umask works on file creation.  Defaults to
+  `process.umask()` on unix systems, or `0o22` on Windows.
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -533,7 +536,9 @@ The following options are supported:
   `tar.update` or the `keepNewer` option with the resulting tar archive.
 - `mtime` Set to a `Date` object to force a specific `mtime` for
   everything added to the archive.  Overridden by `noMtime`.
-
+- `umask` Set to restrict the modes on the entries in the archive,
+  somewhat like how umask works on file creation.  Defaults to
+  `process.umask()` on unix systems, or `0o22` on Windows.
 
 #### add(path)
 
@@ -784,6 +789,9 @@ The following options are supported:
 - `noMtime` Set to true to omit writing `mtime` values for entries.
   Note that this prevents using other mtime-based features like
   `tar.update` or the `keepNewer` option with the resulting tar archive.
+- `umask` Set to restrict the modes on the entries in the archive,
+  somewhat like how umask works on file creation.  Defaults to
+  `process.umask()` on unix systems, or `0o22` on Windows.
 
 #### warn(message, data)
 
