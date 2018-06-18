@@ -1,0 +1,161 @@
+[
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "Directory",
+      "meta": false,
+      "ignore": true,
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+      "mode": 493,
+      "uid": 501,
+      "gid": 20,
+      "uname": null,
+      "gname": null,
+      "size": 0,
+      "mtime": "2018-06-19T00:03:11.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "mode": 493,
+        "uid": 501,
+        "gid": 20,
+        "size": 0,
+        "mtime": "2018-06-19T00:03:11.000Z",
+        "cksum": 13612,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "meta",
+    "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt\u0000"
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": {
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt"
+      },
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": true,
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": null,
+      "gname": null,
+      "size": 560,
+      "mtime": "2018-06-19T00:03:11.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 560,
+        "mtime": "2018-06-19T00:03:11.000Z",
+        "cksum": 13611,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "meta",
+    "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt\u0000"
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": {
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt"
+      },
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": true,
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": null,
+      "gname": null,
+      "size": 560,
+      "mtime": "2018-06-18T23:49:44.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 560,
+        "mtime": "2018-06-18T23:49:44.000Z",
+        "cksum": 13602,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]

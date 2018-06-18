@@ -1,0 +1,227 @@
+[
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "Directory",
+      "meta": false,
+      "ignore": true,
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+      "mode": 493,
+      "uid": 501,
+      "gid": 20,
+      "uname": null,
+      "gname": null,
+      "size": 0,
+      "mtime": "2018-06-19T00:03:11.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "mode": 493,
+        "uid": 501,
+        "gid": 20,
+        "size": 0,
+        "mtime": "2018-06-19T00:03:11.000Z",
+        "cksum": 13612,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "NextFileHasLongPath",
+      "meta": true,
+      "ignore": true,
+      "path": "././@LongLink",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0,
+      "uname": null,
+      "gname": null,
+      "size": 153,
+      "mtime": "1970-01-01T00:00:00.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "././@LongLink",
+        "mode": 420,
+        "uid": 0,
+        "gid": 0,
+        "size": 153,
+        "mtime": "1970-01-01T00:00:00.000Z",
+        "cksum": 5072,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": true,
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": null,
+      "gname": null,
+      "size": 560,
+      "mtime": "2018-06-19T00:03:11.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 560,
+        "mtime": "2018-06-19T00:03:11.000Z",
+        "cksum": 13611,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "NextFileHasLongPath",
+      "meta": true,
+      "ignore": true,
+      "path": "././@LongLink",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0,
+      "uname": null,
+      "gname": null,
+      "size": 122,
+      "mtime": "1970-01-01T00:00:00.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "././@LongLink",
+        "mode": 420,
+        "uid": 0,
+        "gid": 0,
+        "size": 122,
+        "mtime": "1970-01-01T00:00:00.000Z",
+        "cksum": 5076,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": true,
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+      "mode": 420,
+      "uid": 501,
+      "gid": 20,
+      "uname": null,
+      "gname": null,
+      "size": 560,
+      "mtime": "2018-06-18T23:49:44.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "mode": 420,
+        "uid": 501,
+        "gid": 20,
+        "size": 560,
+        "mtime": "2018-06-18T23:49:44.000Z",
+        "cksum": 13602,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]
