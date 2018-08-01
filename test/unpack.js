@@ -2110,7 +2110,7 @@ t.test('transform', t => {
       t.test('sync unpack', t => {
         t.plan(2)
         t.test('strict', t => {
-          const unpack = new UnpackSync({ cwd: dir, transform: txFn })
+          const unpack = new UnpackSync({ cwd: dir, strict: true, transform: txFn })
           unpack.end(fs.readFileSync(tf))
           check(t)
         })
@@ -2122,6 +2122,74 @@ t.test('transform', t => {
       })
     })
   })
+})
+
+t.test('transform error', t => {
+  const dir = path.resolve(unpackdir, 'transform-error')
+  mkdirp.sync(dir)
+  t.teardown(_ => rimraf.sync(dir))
+
+  const tarfile = path.resolve(tars, 'body-byte-counts.tar')
+  const tardata = fs.readFileSync(tarfile)
+  const poop = new Error('poop')
+
+  const txFn = () => {
+    const tx = new MiniPass()
+    tx.write = () => tx.emit('error', poop)
+    tx.resume()
+    return tx
+  }
+
+  t.test('sync unpack', t => {
+    t.test('strict', t => {
+      const unpack = new UnpackSync({ cwd: dir, strict: true, transform: txFn })
+      const expect = 3
+      let actual = 0
+      unpack.on('error', er => {
+        t.equal(er, poop)
+        actual ++
+      })
+      unpack.end(tardata)
+      t.equal(actual, expect, 'error count')
+      t.end()
+    })
+    t.test('loose', t => {
+      const unpack = new UnpackSync({ cwd: dir, transform: txFn })
+      const expect = 3
+      let actual = 0
+      unpack.on('warn', (msg, er) => {
+        t.equal(er, poop)
+        actual ++
+      })
+      unpack.end(tardata)
+      t.equal(actual, expect, 'error count')
+      t.end()
+    })
+    t.end()
+  })
+  t.test('async unpack', t => {
+    // the last error is about the folder being deleted, just ignore that one
+    t.test('strict', t => {
+      const unpack = new Unpack({ cwd: dir, strict: true, transform: txFn })
+      t.plan(3)
+      t.teardown(() => {
+        unpack.removeAllListeners('error')
+        unpack.on('error', () => {})
+      })
+      unpack.on('error', er => t.equal(er, poop))
+      unpack.end(tardata)
+    })
+    t.test('loose', t => {
+      const unpack = new Unpack({ cwd: dir, transform: txFn })
+      t.plan(3)
+      t.teardown(() => unpack.removeAllListeners('warn'))
+      unpack.on('warn', (msg, er) => t.equal(er, poop))
+      unpack.end(tardata)
+    })
+    t.end()
+  })
+
+  t.end()
 })
 
 t.test('futimes/fchown failures', t => {
