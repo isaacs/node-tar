@@ -39,53 +39,20 @@
     }
   ],
   [
-    "ignoredEntry",
-    {
-      "extended": null,
-      "globalExtended": null,
-      "type": "NextFileHasLongPath",
-      "meta": true,
-      "ignore": true,
-      "path": "././@LongLink",
-      "mode": 420,
-      "uid": 0,
-      "gid": 0,
-      "uname": null,
-      "gname": null,
-      "size": 153,
-      "mtime": "1970-01-01T00:00:00.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
-      "header": {
-        "cksumValid": true,
-        "needPax": false,
-        "path": "././@LongLink",
-        "mode": 420,
-        "uid": 0,
-        "gid": 0,
-        "size": 153,
-        "mtime": "1970-01-01T00:00:00.000Z",
-        "cksum": 5072,
-        "linkpath": "",
-        "uname": null,
-        "gname": null,
-        "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
-      }
-    }
+    "meta",
+    "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt\u0000"
   ],
   [
     "entry",
     {
-      "extended": null,
+      "extended": {
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt"
+      },
       "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
-      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt",
       "mode": 420,
       "uid": 501,
       "gid": 20,
@@ -99,7 +66,7 @@
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt",
         "mode": 420,
         "uid": 501,
         "gid": 20,
@@ -117,53 +84,20 @@
     }
   ],
   [
-    "ignoredEntry",
-    {
-      "extended": null,
-      "globalExtended": null,
-      "type": "NextFileHasLongPath",
-      "meta": true,
-      "ignore": true,
-      "path": "././@LongLink",
-      "mode": 420,
-      "uid": 0,
-      "gid": 0,
-      "uname": null,
-      "gname": null,
-      "size": 122,
-      "mtime": "1970-01-01T00:00:00.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
-      "header": {
-        "cksumValid": true,
-        "needPax": false,
-        "path": "././@LongLink",
-        "mode": 420,
-        "uid": 0,
-        "gid": 0,
-        "size": 122,
-        "mtime": "1970-01-01T00:00:00.000Z",
-        "cksum": 5076,
-        "linkpath": "",
-        "uname": null,
-        "gname": null,
-        "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
-      }
-    }
+    "meta",
+    "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt\u0000"
   ],
   [
     "entry",
     {
-      "extended": null,
+      "extended": {
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt"
+      },
       "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
-      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+      "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt",
       "mode": 420,
       "uid": 501,
       "gid": 20,
@@ -177,7 +111,7 @@
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt",
         "mode": 420,
         "uid": 501,
         "gid": 20,

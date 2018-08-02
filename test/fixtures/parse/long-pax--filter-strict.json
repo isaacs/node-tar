@@ -42,7 +42,7 @@
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "120-byte-filename-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "mode": 420,
         "uid": 501,
         "gid": 20,

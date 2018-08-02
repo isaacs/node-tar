@@ -66,7 +66,7 @@
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_",
+        "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_lot_of_characters.tgz",
         "mode": 436,
         "uid": 1000,
         "gid": 1000,

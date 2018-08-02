@@ -58,7 +58,7 @@ t.test('fixture tests', t => {
   const tardir = path.resolve(__dirname, 'fixtures/tars')
   const parsedir = path.resolve(__dirname, 'fixtures/parse')
   const files = fs.readdirSync(tardir)
-  const maxMetaOpt = [50, null]
+  const maxMetaOpt = [250, null]
   const filterOpt = [ true, false ]
   const strictOpt = [ true, false ]
   const runTest = (file, maxMeta, filter, strict) => {

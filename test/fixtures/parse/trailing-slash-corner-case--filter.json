@@ -66,7 +66,7 @@
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/a-truly-unlucky-file-beyond-130-byte-path-length.txt",
         "mode": 420,
         "uid": 501,
         "gid": 20,
@@ -111,7 +111,7 @@
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/",
+        "path": "99-byte-dirname-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/some-unlucky-file.txt",
         "mode": 420,
         "uid": 501,
         "gid": 20,

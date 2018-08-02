@@ -1,12 +1,12 @@
 [
   [
-    "ignoredEntry",
+    "entry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": true,
+      "ignore": false,
       "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/",
       "mode": 509,
       "uid": 1000,
@@ -39,53 +39,20 @@
     }
   ],
   [
-    "ignoredEntry",
-    {
-      "extended": null,
-      "globalExtended": null,
-      "type": "NextFileHasLongPath",
-      "meta": true,
-      "ignore": true,
-      "path": "././@LongLink",
-      "mode": 420,
-      "uid": 0,
-      "gid": 0,
-      "uname": null,
-      "gname": null,
-      "size": 122,
-      "mtime": "1970-01-01T00:00:00.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
-      "header": {
-        "cksumValid": true,
-        "needPax": false,
-        "path": "././@LongLink",
-        "mode": 420,
-        "uid": 0,
-        "gid": 0,
-        "size": 122,
-        "mtime": "1970-01-01T00:00:00.000Z",
-        "cksum": 4995,
-        "linkpath": "",
-        "uname": null,
-        "gname": null,
-        "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
-      }
-    }
+    "meta",
+    "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_lot_of_characters.tgz\u0000"
   ],
   [
-    "ignoredEntry",
+    "entry",
     {
-      "extended": null,
+      "extended": {
+        "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_lot_of_characters.tgz"
+      },
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": true,
-      "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_",
+      "ignore": false,
+      "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_lot_of_characters.tgz",
       "mode": 436,
       "uid": 1000,
       "gid": 1000,
@@ -99,7 +66,7 @@
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_",
+        "path": "this_is_a_really_long_directory_name_with_a_lot_of_characters/this_is_a_really_long_tgz_file_with_a_lot_of_characters.tgz",
         "mode": 436,
         "uid": 1000,
         "gid": 1000,

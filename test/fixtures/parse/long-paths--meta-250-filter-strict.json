@@ -1,12 +1,12 @@
 [
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "mode": 420,
       "uid": 501,
@@ -39,53 +39,35 @@
     }
   ],
   [
-    "ignoredEntry",
-    {
-      "extended": null,
-      "globalExtended": null,
-      "type": "ExtendedHeader",
-      "meta": true,
-      "ignore": true,
-      "path": "PaxHeader/120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "mode": 420,
-      "uid": 501,
-      "gid": 20,
-      "uname": "isaacs",
-      "gname": "staff",
-      "size": 233,
-      "mtime": "2017-04-10T16:54:12.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
-      "header": {
-        "cksumValid": true,
-        "needPax": false,
-        "path": "PaxHeader/120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "mode": 420,
-        "uid": 501,
-        "gid": 20,
-        "size": 233,
-        "mtime": "2017-04-10T16:54:12.000Z",
-        "cksum": 14407,
-        "linkpath": "",
-        "uname": "isaacs",
-        "gname": "staff",
-        "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
-      }
-    }
+    "meta",
+    "130 path=120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n20 ctime=1491843252\n20 atime=1491843717\n23 SCHILY.dev=16777220\n22 SCHILY.ino=9836297\n18 SCHILY.nlink=1\n"
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
-      "extended": null,
+      "extended": {
+        "atime": "2017-04-10T17:01:57.000Z",
+        "charset": null,
+        "comment": null,
+        "ctime": "2017-04-10T16:54:12.000Z",
+        "gid": null,
+        "gname": null,
+        "linkpath": null,
+        "mtime": null,
+        "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "size": null,
+        "uid": null,
+        "uname": null,
+        "dev": 16777220,
+        "ino": 9836297,
+        "nlink": 1,
+        "global": false
+      },
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
-      "path": "120-byte-filename-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "ignore": true,
+      "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "mode": 420,
       "uid": 501,
       "gid": 20,
@@ -93,13 +75,13 @@
       "gname": "staff",
       "size": 100,
       "mtime": "2017-04-10T16:54:12.000Z",
-      "atime": null,
-      "ctime": null,
+      "atime": "2017-04-10T17:01:57.000Z",
+      "ctime": "2017-04-10T16:54:12.000Z",
       "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
-        "path": "120-byte-filename-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "mode": 420,
         "uid": 501,
         "gid": 20,
@@ -156,13 +138,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "170-byte-filename-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "mode": 420,
       "uid": 501,
@@ -195,13 +177,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/",
       "mode": 493,
       "uid": 501,
@@ -234,13 +216,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/",
       "mode": 493,
       "uid": 501,
@@ -273,13 +255,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/",
       "mode": 493,
       "uid": 501,
@@ -312,13 +294,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/",
       "mode": 493,
       "uid": 501,
@@ -351,13 +333,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/",
       "mode": 493,
       "uid": 501,
@@ -390,13 +372,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/",
       "mode": 493,
       "uid": 501,
@@ -429,13 +411,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/",
       "mode": 493,
       "uid": 501,
@@ -468,13 +450,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/",
       "mode": 493,
       "uid": 501,
@@ -507,13 +489,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/",
       "mode": 493,
       "uid": 501,
@@ -546,13 +528,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/",
       "mode": 493,
       "uid": 501,
@@ -585,13 +567,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/",
       "mode": 493,
       "uid": 501,
@@ -624,13 +606,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/",
       "mode": 493,
       "uid": 501,
@@ -663,13 +645,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/",
       "mode": 493,
       "uid": 501,
@@ -702,13 +684,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/",
       "mode": 493,
       "uid": 501,
@@ -741,13 +723,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/",
       "mode": 493,
       "uid": 501,
@@ -780,13 +762,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/",
       "mode": 493,
       "uid": 501,
@@ -819,13 +801,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/",
       "mode": 493,
       "uid": 501,
@@ -858,13 +840,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/",
       "mode": 493,
       "uid": 501,
@@ -897,13 +879,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/",
       "mode": 493,
       "uid": 501,
@@ -936,13 +918,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/",
       "mode": 493,
       "uid": 501,
@@ -975,13 +957,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/",
       "mode": 493,
       "uid": 501,
@@ -1014,13 +996,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/",
       "mode": 493,
       "uid": 501,
@@ -1053,13 +1035,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/",
       "mode": 493,
       "uid": 501,
@@ -1092,13 +1074,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "Directory",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/",
       "mode": 493,
       "uid": 501,
@@ -1131,13 +1113,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt",
       "mode": 420,
       "uid": 501,
@@ -1170,13 +1152,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "mode": 420,
       "uid": 501,
@@ -1248,13 +1230,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "mode": 420,
       "uid": 501,
@@ -1326,13 +1308,13 @@
     }
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
       "extended": null,
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc",
       "mode": 420,
       "uid": 501,
@@ -1365,52 +1347,34 @@
     }
   ],
   [
-    "ignoredEntry",
-    {
-      "extended": null,
-      "globalExtended": null,
-      "type": "ExtendedHeader",
-      "meta": true,
-      "ignore": true,
-      "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/PaxHeader/Ω.txt",
-      "mode": 420,
-      "uid": 501,
-      "gid": 20,
-      "uname": "isaacs",
-      "gname": "staff",
-      "size": 174,
-      "mtime": "2017-04-10T16:58:47.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
-      "header": {
-        "cksumValid": true,
-        "needPax": false,
-        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/PaxHeader/Ω.txt",
-        "mode": 420,
-        "uid": 501,
-        "gid": 20,
-        "size": 174,
-        "mtime": "2017-04-10T16:58:47.000Z",
-        "cksum": 11002,
-        "linkpath": "",
-        "uname": "isaacs",
-        "gname": "staff",
-        "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
-      }
-    }
+    "meta",
+    "71 path=long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt\n20 ctime=1491843527\n20 atime=1491844045\n23 SCHILY.dev=16777220\n22 SCHILY.ino=9836396\n18 SCHILY.nlink=1\n"
   ],
   [
-    "entry",
+    "ignoredEntry",
     {
-      "extended": null,
+      "extended": {
+        "atime": "2017-04-10T17:07:25.000Z",
+        "charset": null,
+        "comment": null,
+        "ctime": "2017-04-10T16:58:47.000Z",
+        "gid": null,
+        "gname": null,
+        "linkpath": null,
+        "mtime": null,
+        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt",
+        "size": null,
+        "uid": null,
+        "uname": null,
+        "dev": 16777220,
+        "ino": 9836396,
+        "nlink": 1,
+        "global": false
+      },
       "globalExtended": null,
       "type": "File",
       "meta": false,
-      "ignore": false,
+      "ignore": true,
       "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt",
       "mode": 420,
       "uid": 501,
@@ -1419,8 +1383,8 @@
       "gname": "staff",
       "size": 2,
       "mtime": "2017-04-10T16:58:47.000Z",
-      "atime": null,
-      "ctime": null,
+      "atime": "2017-04-10T17:07:25.000Z",
+      "ctime": "2017-04-10T16:58:47.000Z",
       "linkpath": "",
       "header": {
         "cksumValid": true,
