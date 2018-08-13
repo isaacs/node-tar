@@ -1,0 +1,206 @@
+[
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "Directory",
+      "meta": false,
+      "ignore": true,
+      "path": "strip-dir/",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "uname": null,
+      "gname": null,
+      "size": 0,
+      "mtime": "2018-08-13T04:10:48.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "strip-dir/",
+        "mode": 493,
+        "uid": 0,
+        "gid": 0,
+        "size": 0,
+        "mtime": "2018-08-13T04:10:48.000Z",
+        "cksum": 4912,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "File",
+      "meta": false,
+      "ignore": true,
+      "path": "strip-dir/hardlink-1",
+      "mode": 420,
+      "uid": 501,
+      "gid": 50,
+      "uname": null,
+      "gname": null,
+      "size": 26,
+      "mtime": "2017-04-10T19:27:05.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "strip-dir/hardlink-1",
+        "mode": 420,
+        "uid": 501,
+        "gid": 50,
+        "size": 26,
+        "mtime": "2017-04-10T19:27:05.000Z",
+        "cksum": 5515,
+        "linkpath": "",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "Link",
+      "meta": false,
+      "ignore": true,
+      "path": "strip-dir/hardlink-2",
+      "mode": 420,
+      "uid": 501,
+      "gid": 50,
+      "uname": null,
+      "gname": null,
+      "size": 0,
+      "mtime": "2017-04-10T19:27:05.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "strip-dir/hardlink-1",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "strip-dir/hardlink-2",
+        "mode": 420,
+        "uid": 501,
+        "gid": 50,
+        "size": 0,
+        "mtime": "2017-04-10T19:27:05.000Z",
+        "cksum": 7424,
+        "linkpath": "strip-dir/hardlink-1",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "ignoredEntry",
+    {
+      "extended": null,
+      "globalExtended": null,
+      "type": "SymbolicLink",
+      "meta": false,
+      "ignore": true,
+      "path": "strip-dir/symlink",
+      "mode": 511,
+      "uid": 501,
+      "gid": 50,
+      "uname": null,
+      "gname": null,
+      "size": 0,
+      "mtime": "2017-04-10T19:27:33.000Z",
+      "atime": null,
+      "ctime": null,
+      "linkpath": "hardlink-2",
+      "header": {
+        "cksumValid": true,
+        "needPax": false,
+        "path": "strip-dir/symlink",
+        "mode": 511,
+        "uid": 501,
+        "gid": 50,
+        "size": 0,
+        "mtime": "2017-04-10T19:27:33.000Z",
+        "cksum": 6302,
+        "linkpath": "hardlink-2",
+        "uname": null,
+        "gname": null,
+        "devmaj": 0,
+        "devmin": 0,
+        "atime": null,
+        "ctime": null
+      }
+    }
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "nullBlock"
+  ],
+  [
+    "end"
+  ]
+]

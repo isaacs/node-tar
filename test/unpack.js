@@ -140,7 +140,7 @@ t.test('links!', t => {
   const dir = path.resolve(unpackdir, 'links')
   const data = fs.readFileSync(tars + '/links.tar')
 
-  t.plan(2)
+  t.plan(3)
   t.beforeEach(cb => mkdirp(dir, cb))
   t.afterEach(cb => rimraf(dir, cb))
 
@@ -169,6 +169,12 @@ t.test('links!', t => {
   t.test('sync', t => {
     const unpack = new UnpackSync({ cwd: dir })
     unpack.end(data)
+    check(t)
+  })
+
+  t.test('sync strip', t => {
+    const unpack = new UnpackSync({ cwd: dir, strip: 1 })
+    unpack.end(fs.readFileSync(tars + '/links-strip.tar'))
     check(t)
   })
 })
