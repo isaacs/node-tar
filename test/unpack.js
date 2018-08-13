@@ -139,8 +139,9 @@ t.test('cwd default to process cwd', t => {
 t.test('links!', t => {
   const dir = path.resolve(unpackdir, 'links')
   const data = fs.readFileSync(tars + '/links.tar')
+  const stripData = fs.readFileSync(tars + '/links-strip.tar')
 
-  t.plan(2)
+  t.plan(6)
   t.beforeEach(cb => mkdirp(dir, cb))
   t.afterEach(cb => rimraf(dir, cb))
 
@@ -154,6 +155,33 @@ t.test('links!', t => {
     const sym = fs.lstatSync(dir + '/symlink')
     t.ok(sym.isSymbolicLink())
     t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    t.end()
+  }
+  const checkForStrip = t => {
+    const hl1 = fs.lstatSync(dir + '/hardlink-1')
+    const hl2 = fs.lstatSync(dir + '/hardlink-2')
+    const hl3 = fs.lstatSync(dir + '/1/2/3/hardlink-3')
+    t.equal(hl1.dev, hl2.dev)
+    t.equal(hl1.ino, hl2.ino)
+    t.equal(hl1.dev, hl3.dev)
+    t.equal(hl1.ino, hl3.ino)
+    t.equal(hl1.nlink, 3)
+    t.equal(hl2.nlink, 3)
+    const sym = fs.lstatSync(dir + '/symlink')
+    t.ok(sym.isSymbolicLink())
+    t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    t.end()
+  }
+  const checkForStrip3 = t => {
+    t.ok(fs.lstatSync(dir + '/3').isDirectory())
+    let err = null
+    try {
+      fs.lstatSync(dir + '/3/hardlink-3')
+    } catch(e) {
+      err = e
+    }
+    // can't be extracted because we've passed it in the tar (specially crafted tar for this not to work)
+    t.equal(err.code, 'ENOENT')
     t.end()
   }
 
@@ -170,6 +198,36 @@ t.test('links!', t => {
     const unpack = new UnpackSync({ cwd: dir })
     unpack.end(data)
     check(t)
+  })
+
+  t.test('sync strip', t => {
+    const unpack = new UnpackSync({ cwd: dir, strip: 1 })
+    unpack.end(fs.readFileSync(tars + '/links-strip.tar'))
+    checkForStrip(t)
+  })
+
+  t.test('async strip', t => {
+    const unpack = new Unpack({ cwd: dir, strip: 1 })
+    let finished = false
+    unpack.on('finish', _ => finished = true)
+    unpack.on('close', _ => t.ok(finished, 'emitted finish before close'))
+    unpack.on('close', _ => checkForStrip(t))
+    unpack.end(stripData)
+  })
+
+  t.test('sync strip 3', t => {
+    const unpack = new UnpackSync({ cwd: dir, strip: 3 })
+    unpack.end(fs.readFileSync(tars + '/links-strip.tar'))
+    checkForStrip3(t)
+  })
+
+  t.test('async strip 3', t => {
+    const unpack = new Unpack({ cwd: dir, strip: 3 })
+    let finished = false
+    unpack.on('finish', _ => finished = true)
+    unpack.on('close', _ => t.ok(finished, 'emitted finish before close'))
+    unpack.on('close', _ => checkForStrip3(t))
+    unpack.end(stripData)
   })
 })
 
