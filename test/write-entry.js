@@ -554,6 +554,25 @@ t.test('read invalid EOF', t => {
   })
 })
 
+t.test('read overflow expectation', t => {
+  t.tearDown(mutateFS.statMutate((er, st) => {
+    if (st)
+      st.size = 3
+  }));
+  const f = '512-bytes.txt'
+  const expect = {
+    message: 'expected EOF',
+    path: path.resolve(files, f),
+    syscall: 'read',
+    code: 'EOF'
+  }
+  t.throws(_ => new WriteEntry.Sync(f, { cwd: files, maxReadSize: 2 }), expect)
+  new WriteEntry(f, { cwd: files, maxReadSize: 2 }).on('error', er => {
+    t.match(er, expect)
+    t.end()
+  })
+})
+
 t.test('short reads', t => {
   t.tearDown(mutateFS.zenoRead())
   const cases = {
