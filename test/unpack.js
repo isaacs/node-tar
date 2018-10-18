@@ -1539,9 +1539,10 @@ t.test('set owner', t => {
     const dir = path.resolve(unpackdir, 'chown')
     const poop = new Error('expected chown failure')
     const un = mutateFS.fail('chown', poop)
+    const unl = mutateFS.fail('lchown', poop)
     const unf = mutateFS.fail('fchown', poop)
 
-    t.teardown(_ => (un(), unf()))
+    t.teardown(_ => (un(), unf(), unl()))
 
     t.test('sync', t => {
       mkdirp.sync(dir)
@@ -1635,10 +1636,12 @@ t.test('set owner', t => {
     const poop = new Error('poop')
     const un = mutateFS.fail('chown', poop)
     const unf = mutateFS.fail('fchown', poop)
+    const unl = mutateFS.fail('lchown', poop)
     t.teardown(_ => {
       rimraf.sync(dir)
       un()
       unf()
+      unl()
     })
 
     t.beforeEach(cb => mkdirp(dir, cb))
@@ -1840,12 +1843,20 @@ t.test('chown implicit dirs and also the entries', t => {
   // club these so that the test can run as non-root
   const chown = fs.chown
   const chownSync = fs.chownSync
+  const lchown = fs.lchown
+  const lchownSync = fs.lchownSync
+  const fchown = fs.fchown
+  const fchownSync = fs.fchownSync
 
   const getuid = process.getuid
   const getgid = process.getgid
   t.teardown(_ => {
     fs.chown = chown
     fs.chownSync = chownSync
+    fs.lchown = lchown
+    fs.lchownSync = lchownSync
+    fs.fchown = fchown
+    fs.fchownSync = fchownSync
     process.getgid = getgid
   })
 
@@ -1858,12 +1869,16 @@ t.test('chown implicit dirs and also the entries', t => {
     chowns ++
     cb()
   }
+  if (fs.lchown)
+    fs.lchown = fs.fchown
 
   fs.chownSync = fs.fchownSync = (path, uid, gid) => {
     currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
     currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
     chowns ++
   }
+  if (fs.lchownSync)
+    fs.lchownSync = fs.fchownSync
 
   const data = makeTar([
     {
@@ -1890,7 +1905,7 @@ t.test('chown implicit dirs and also the entries', t => {
 
   const check = t => {
     currentTest = null
-    t.equal(chowns, 6)
+    t.equal(chowns, 8)
     chowns = 0
     rimraf.sync(basedir)
     t.end()
