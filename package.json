@@ -16,23 +16,23 @@
     "bench": "for i in benchmarks/*/*.js; do echo $i; for j in {1..5}; do node $i || break; done; done"
   },
   "dependencies": {
-    "chownr": "^1.0.1",
+    "chownr": "^1.1.1",
     "fs-minipass": "^1.2.5",
-    "minipass": "^2.3.3",
-    "minizlib": "^1.1.0",
+    "minipass": "^2.3.4",
+    "minizlib": "^1.1.1",
     "mkdirp": "^0.5.0",
     "safe-buffer": "^5.1.2",
     "yallist": "^3.0.2"
   },
   "devDependencies": {
-    "chmodr": "^1.0.2",
+    "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.1",
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
     "rimraf": "^2.6.2",
     "tap": "^12.0.1",
-    "tar-fs": "^1.16.2",
-    "tar-stream": "^1.6.0"
+    "tar-fs": "^1.16.3",
+    "tar-stream": "^1.6.2"
   },
   "license": "ISC",
   "engines": {
