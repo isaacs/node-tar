@@ -541,7 +541,7 @@ t.test('read fail', t => {
 t.test('read invalid EOF', t => {
   t.tearDown(mutateFS.mutate('read', (er, br) => [er, 0]))
   const expect = {
-    message: 'unexpected EOF',
+    message: 'encountered unexpected EOF',
     path: __filename,
     syscall: 'read',
     code: 'EOF'
@@ -561,7 +561,7 @@ t.test('read overflow expectation', t => {
   }));
   const f = '512-bytes.txt'
   const expect = {
-    message: 'expected EOF',
+    message: 'did not encounter expected EOF',
     path: path.resolve(files, f),
     syscall: 'read',
     code: 'EOF'
