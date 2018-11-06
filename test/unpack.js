@@ -174,6 +174,14 @@ t.test('links!', t => {
   }
   const checkForStrip3 = t => {
     t.ok(fs.lstatSync(dir + '/3').isDirectory())
+    let err = null
+    try {
+      fs.lstatSync(dir + '/3/hardlink-3')
+    } catch(e) {
+      err = e
+    }
+    // can't be extracted because we've passed it in the tar (specially crafted tar for this not to work)
+    t.equal(err.code, 'ENOENT')
     t.end()
   }
 
