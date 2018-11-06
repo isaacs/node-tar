@@ -190,7 +190,7 @@ t.test('links!', t => {
   t.test('sync strip 3', t => {
     const unpack = new UnpackSync({ cwd: dir, strip: 3 })
     unpack.end(fs.readFileSync(tars + '/links-strip.tar'))
-    check(t)
+    t.end()
   })
 
   t.test('async strip 3', t => {
@@ -198,7 +198,7 @@ t.test('links!', t => {
     let finished = false
     unpack.on('finish', _ => finished = true)
     unpack.on('close', _ => t.ok(finished, 'emitted finish before close'))
-    unpack.on('close', _ => check(t))
+    unpack.on('close', _ => t.end())
     unpack.end(data)
   })
 })
