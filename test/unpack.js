@@ -141,7 +141,7 @@ t.test('links!', t => {
   const data = fs.readFileSync(tars + '/links.tar')
   const stripData = fs.readFileSync(tars + '/links-strip.tar')
 
-  t.plan(3)
+  t.plan(6)
   t.beforeEach(cb => mkdirp(dir, cb))
   t.afterEach(cb => rimraf(dir, cb))
 
