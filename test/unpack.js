@@ -177,6 +177,15 @@ t.test('links!', t => {
     unpack.end(fs.readFileSync(tars + '/links-strip.tar'))
     check(t)
   })
+
+  t.test('async strip', t => {
+    const unpack = new Unpack({ cwd: dir, strip: 1 })
+    let finished = false
+    unpack.on('finish', _ => finished = true)
+    unpack.on('close', _ => t.ok(finished, 'emitted finish before close'))
+    unpack.on('close', _ => check(t))
+    unpack.end(data)
+  })
 })
 
 t.test('links without cleanup (exercise clobbering code)', t => {
