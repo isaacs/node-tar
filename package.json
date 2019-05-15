@@ -30,7 +30,7 @@
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
     "rimraf": "^2.6.3",
-    "tap": "^13.0.0-rc.10",
+    "tap": "^13.1.9",
     "tar-fs": "^1.16.3",
     "tar-stream": "^1.6.2"
   },
