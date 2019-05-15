@@ -1,0 +1,7 @@
+const t = require('tap')
+const map = require('../map.js')
+t.equal(map('test/index.js'), 'index.js')
+t.same(map('test/unpack.js'), ['lib/unpack.js', 'lib/mkdir.js'])
+t.same(map('test/load-all.js'), [])
+t.equal(map(__filename), 'map.js')
+t.equal(map('test/asdf'), 'lib/asdf')

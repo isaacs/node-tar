@@ -43,6 +43,7 @@
     "lib/"
   ],
   "tap": {
+    "coverage-map": "map.js",
     "check-coverage": true
   }
 }

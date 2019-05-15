@@ -172,6 +172,15 @@ t.test('onentry gets added to entry event', t => {
 })
 
 t.test('drain event timings', t => {
+  let sawOndone = false
+  const ondone = function () {
+    sawOndone = true
+    this.emit('prefinish')
+    this.emit('finish')
+    this.emit('end')
+    this.emit('close')
+  }
+
   // write 1 header and body, write 2 header, verify false return
   // wait for drain event before continuing.
   // write 2 body, 3 header and body, 4 header, verify false return
@@ -311,6 +320,7 @@ t.test('drain event timings', t => {
   let currentEntry
   let autoPipe = true
   const p = new Parse({
+    ondone,
     onentry: entry => {
       t.equal(entry.path, expect.shift())
       currentEntry = entry
@@ -361,6 +371,7 @@ t.test('drain event timings', t => {
   p.once('drain', go)
   p.on('end', _ => {
     clearInterval(interval)
+    t.ok(sawOndone)
     t.end()
   })
   go()

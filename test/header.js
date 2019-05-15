@@ -557,3 +557,36 @@ t.test('dir with long body', t => {
   t.equal(h.size, 0)
   t.end()
 })
+
+t.test('null block, global extended header', t => {
+  const h = new Header(Buffer.alloc(512), 0, {
+    undef: undefined,
+    blerg: 'bloo',
+  }, {
+    path: '/global.path',
+    foo: 'global foo'
+  })
+  t.match(h, {
+    cksumValid: false,
+    needPax: false,
+    path: '',
+    type: 'File',
+    mode: null,
+    uid: null,
+    gid: null,
+    size: null,
+    mtime: null,
+    cksum: null,
+    linkpath: '',
+    uname: null,
+    gname: null,
+    devmaj: 0,
+    devmin: 0,
+    atime: null,
+    ctime: null,
+    nullBlock: true,
+    blerg: 'bloo',
+    foo: 'global foo',
+  })
+  t.end()
+})
