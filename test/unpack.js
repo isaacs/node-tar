@@ -79,9 +79,12 @@ t.test('basic file unpack tests', t => {
     t.test(tarfile, t => {
       const tf = path.resolve(tars, tarfile)
       const dir = path.resolve(basedir, tarfile)
+      const linkdir = path.resolve(basedir, tarfile + '.link')
       t.beforeEach(cb => {
         rimraf.sync(dir)
+        rimraf.sync(linkdir)
         mkdirp.sync(dir)
+        fs.symlinkSync(dir, linkdir)
         cb()
       })
 
@@ -99,12 +102,12 @@ t.test('basic file unpack tests', t => {
       t.test('async unpack', t => {
         t.plan(2)
         t.test('strict', t => {
-          const unpack = new Unpack({ cwd: dir, strict: true })
+          const unpack = new Unpack({ cwd: linkdir, strict: true })
           fs.createReadStream(tf).pipe(unpack)
           eos(unpack, _ => check(t))
         })
         t.test('loose', t => {
-          const unpack = new Unpack({ cwd: dir })
+          const unpack = new Unpack({ cwd: linkdir })
           fs.createReadStream(tf).pipe(unpack)
           eos(unpack, _ => check(t))
         })
@@ -113,12 +116,12 @@ t.test('basic file unpack tests', t => {
       t.test('sync unpack', t => {
         t.plan(2)
         t.test('strict', t => {
-          const unpack = new UnpackSync({ cwd: dir })
+          const unpack = new UnpackSync({ cwd: linkdir })
           unpack.end(fs.readFileSync(tf))
           check(t)
         })
         t.test('loose', t => {
-          const unpack = new UnpackSync({ cwd: dir })
+          const unpack = new UnpackSync({ cwd: linkdir })
           unpack.end(fs.readFileSync(tf))
           check(t)
         })
