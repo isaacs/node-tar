@@ -33,7 +33,7 @@ t.test('parse out of range', t => {
   t.plan(cases.length)
   cases.forEach((hex) =>
     t.throws(_ => parse(Buffer.from(hex, 'hex')),
-      TypeError('parsed number outside of javascript javascript safe integer range')))
+      TypeError('parsed number outside of javascript safe integer range')))
 })
 
 t.test('parse invalid base256 encoding', t => {
