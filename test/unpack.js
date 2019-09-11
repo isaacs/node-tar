@@ -11,6 +11,7 @@ const makeTar = require('./make-tar.js')
 const Header = require('../lib/header.js')
 const z = require('minizlib')
 const fs = require('fs')
+const { O_CREAT, O_TRUNC, O_WRONLY, UV_FS_O_FILEMAP } = fs.constants
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
@@ -100,7 +101,7 @@ t.test('basic file unpack tests', t => {
       t.plan(2)
 
       t.test('async unpack', t => {
-        t.plan(2)
+        t.plan(3)
         t.test('strict', t => {
           const unpack = new Unpack({ cwd: linkdir, strict: true })
           fs.createReadStream(tf).pipe(unpack)
@@ -111,10 +112,16 @@ t.test('basic file unpack tests', t => {
           fs.createReadStream(tf).pipe(unpack)
           eos(unpack, _ => check(t))
         })
+        t.test('fmap', t => {
+          const mw = UV_FS_O_FILEMAP | O_TRUNC | O_CREAT | O_WRONLY
+          const unpack = new Unpack({ cwd: linkdir, fflag: mw })
+          fs.createReadStream(tf).pipe(unpack)
+          eos(unpack, _ => check(t))
+        })
       })
 
       t.test('sync unpack', t => {
-        t.plan(2)
+        t.plan(3)
         t.test('strict', t => {
           const unpack = new UnpackSync({ cwd: linkdir })
           unpack.end(fs.readFileSync(tf))
@@ -122,6 +129,12 @@ t.test('basic file unpack tests', t => {
         })
         t.test('loose', t => {
           const unpack = new UnpackSync({ cwd: linkdir })
+          unpack.end(fs.readFileSync(tf))
+          check(t)
+        })
+        t.test('fmap', t => {
+          const mw = UV_FS_O_FILEMAP | O_TRUNC | O_CREAT | O_WRONLY
+          const unpack = new UnpackSync({ cwd: linkdir, fflag: mw })
           unpack.end(fs.readFileSync(tf))
           check(t)
         })

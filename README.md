@@ -335,6 +335,7 @@ advanced use cases, such as re-using caches between runs.
   Defaults to 16 MB.
 - `umask` Filter the modes of entries like `process.umask()`.
 - `dmode` Default mode for directories
+- `fflag` Default flag for files
 - `fmode` Default mode for files
 - `dirCache` A Map object of which directories exist.
 - `maxMetaEntrySize` The maximum size of meta entries that is
@@ -599,6 +600,7 @@ Most unpack errors will cause a `warn` event to be emitted.  If the
   any warnings encountered.
 - `umask` Filter the modes of entries like `process.umask()`.
 - `dmode` Default mode for directories
+- `fflag` Default flag for files
 - `fmode` Default mode for files
 - `dirCache` A Map object of which directories exist.
 - `maxMetaEntrySize` The maximum size of meta entries that is
