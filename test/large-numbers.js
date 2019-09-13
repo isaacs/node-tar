@@ -33,7 +33,7 @@ t.test('parse out of range', t => {
   t.plan(cases.length)
   cases.forEach((hex) =>
     t.throws(_ => parse(Buffer.from(hex, 'hex')),
-      TypeError('parsed number outside of javascript safe integer range')))
+      Error('parsed number outside of javascript safe integer range')))
 })
 
 t.test('parse invalid base256 encoding', t => {
@@ -44,7 +44,7 @@ t.test('parse invalid base256 encoding', t => {
   t.plan(cases.length)
   cases.forEach((hex) =>
     t.throws(_ => parse(Buffer.from(hex, 'hex')),
-      TypeError('invalid base256 encoding')))
+      Error('invalid base256 encoding')))
 })
 
 t.test('encode', t => {
@@ -82,6 +82,6 @@ t.test('encode unsafe numbers', t => {
   t.plan(cases.length)
   cases.forEach((value) =>
     t.throws(_ => encode(value),
-      TypeError('cannot encode number outside of javascript safe integer range')))
+      Error('cannot encode number outside of javascript safe integer range')))
 })
 
