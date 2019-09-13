@@ -2,20 +2,22 @@
   [
     "error",
     {
-      "message": "invalid: path is required"
+      "message": "TAR_ENTRY_INVALID: path is required",
+      "code": "TAR_ENTRY_INVALID"
     }
   ],
   [
     "error",
     {
-      "message": "invalid entry"
+      "message": "TAR_ENTRY_INVALID: checksum failure",
+      "code": "TAR_ENTRY_INVALID"
     }
   ],
   [
     "nullBlock"
   ],
   [
-    "nullBlock"
+    "eof"
   ],
   [
     "end"

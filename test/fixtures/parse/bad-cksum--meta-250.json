@@ -40,17 +40,19 @@
   ],
   [
     "warn",
-    "invalid entry"
+    "TAR_ENTRY_INVALID",
+    "checksum failure"
   ],
   [
     "warn",
-    "invalid entry"
+    "TAR_ENTRY_INVALID",
+    "checksum failure"
   ],
   [
     "nullBlock"
   ],
   [
-    "nullBlock"
+    "eof"
   ],
   [
     "end"

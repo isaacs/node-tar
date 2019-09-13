@@ -35,8 +35,8 @@ t.test('fixture tests', t => {
       ok = ok && t.match(['ignoredEntry', entry], expect[cursor++],
                          'ignored: ' + entry.path)
     })
-    p.on('warn', (message, data) => {
-      ok = ok && t.match(['warn', message], expect[cursor++], 'warn')
+    p.on('warn', (c, message, data) => {
+      ok = ok && t.match(['warn', c, message], expect[cursor++], 'warn')
     })
     p.on('nullBlock', _ => {
       ok = ok && t.match(['nullBlock'], expect[cursor++], 'null')
@@ -46,6 +46,9 @@ t.test('fixture tests', t => {
     })
     p.on('meta', meta => {
       ok = ok && t.match(['meta', meta], expect[cursor++], 'meta')
+    })
+    p.on('eof', _ => {
+      ok = ok && t.match(['eof'], expect[cursor++], 'eof')
     })
     p.on('end', _ => {
       ok = ok && t.match(['end'], expect[cursor++], 'end')
@@ -148,19 +151,21 @@ t.test('fixture tests', t => {
 })
 
 t.test('strict warn with an error emits that error', t => {
-  const p = new Parse({ strict: true })
-  const er = new Error('yolo')
-  p.on('error', emitted => {
-    t.equal(emitted, er)
-    t.end()
+  t.plan(1)
+  const p = new Parse({
+    strict: true,
   })
-  p.warn(er.message, er)
+  p.on('error', emitted => t.equal(emitted, er))
+  const er = new Error('yolo')
+  p.warn('TAR_TEST', er)
 })
 
 t.test('onwarn gets added to the warn event', t => {
   t.plan(1)
-  const p = new Parse({ onwarn: message => t.equal(message, 'this is fine') })
-  p.warn('this is fine')
+  const p = new Parse({
+    onwarn (code, message) { t.equal(message, 'this is fine') },
+  })
+  p.warn('TAR_TEST', 'this is fine')
 })
 
 t.test('onentry gets added to entry event', t => {
@@ -470,7 +475,7 @@ t.test('truncated input', t => {
 
   t.test('truncated at block boundary', t => {
     const warnings = []
-    const p = new Parse({ onwarn: message => warnings.push(message) })
+    const p = new Parse({ onwarn: (c, message) => warnings.push(message) })
     p.end(data)
     t.same(warnings, [
       'Truncated input (needed 512 more bytes, only 0 available)'
@@ -480,7 +485,7 @@ t.test('truncated input', t => {
 
   t.test('truncated mid-block', t => {
     const warnings = []
-    const p = new Parse({ onwarn: message => warnings.push(message) })
+    const p = new Parse({ onwarn: (c, message) => warnings.push(message) })
     p.write(data)
     p.end(Buffer.from('not a full block'))
     t.same(warnings, [
@@ -596,8 +601,7 @@ t.test('end while consuming', t => {
       actual.push(entry.path)
       entry.resume()
     },
-    onwarn: er => t.fail(er),
-    onerror: er => t.threw(er)
+    onwarn: (c, m, data) => t.fail(`${c}: ${m}`, data),
   })
   p.on('end', () => {
     t.same(actual, expect)
@@ -605,4 +609,81 @@ t.test('end while consuming', t => {
   })
   mp.end(data)
   mp.pipe(p)
+})
+
+t.test('bad archives', t => {
+  const p = new Parse()
+  const warnings = []
+  p.on('warn', (code, msg, data) => {
+    warnings.push([code, msg, data])
+  })
+  p.on('end', () => {
+    // last one should be 'this archive sucks'
+    t.match(warnings.pop(), [
+      'TAR_BAD_ARCHIVE',
+      'Unrecognized archive format',
+      { code: 'TAR_BAD_ARCHIVE', tarCode: 'TAR_BAD_ARCHIVE' }
+    ])
+    t.end()
+  })
+  // javascript test is not a tarball.
+  p.end(fs.readFileSync(__filename))
+})
+
+t.test('header that throws', t => {
+  const p = new Parse()
+  p.on('warn', (c, m, d) => {
+    t.equal(m, 'invalid base256 encoding')
+    t.match(d, {
+      code: 'TAR_ENTRY_INVALID',
+    })
+    t.end()
+  })
+  const h = new Header({
+    path: 'path',
+    mode: 0o07777, // gonna make this one invalid
+    uid: 1234,
+    gid: 4321,
+    size: 99,
+    type: 'File',
+    size: 1,
+  })
+  h.encode()
+  const buf = h.block
+  const bad = Buffer.from([0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
+  bad.copy(buf, 100)
+  t.throws(() => new Header(buf), 'the header with that buffer throws')
+  p.write(buf)
+})
+
+t.test('warnings that are not so bad', t => {
+  const p = new Parse()
+  const warnings = []
+  p.on('warn', (code, m, d) => {
+    warnings.push([code, m, d])
+    t.fail('should get no warnings')
+  })
+  // the parser doesn't actually decide what's "ok" or "supported",
+  // it just parses.  So we have to set it ourselves like unpack does
+  p.once('entry', entry => entry.invalid = true)
+  p.on('entry', entry => entry.resume())
+  const data = makeTar([
+    {
+      path: '/a/b/c',
+      type: 'File',
+      size: 1,
+    },
+    'a',
+    {
+      path: 'a/b/c',
+      type: 'Directory'
+    },
+    '',
+    ''
+  ])
+  p.on('end', () => {
+    t.same(warnings, [])
+    t.end()
+  })
+  p.end(data)
 })

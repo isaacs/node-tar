@@ -225,7 +225,7 @@ t.test('sync gzip error edge case test', t => {
   x({
     sync: true,
     file: file,
-    onwarn: (m, er) => { throw er }
+    onwarn: (c, m, er) => { throw er }
   })
 
   t.same(fs.readdirSync(dir + '/x').sort(),
