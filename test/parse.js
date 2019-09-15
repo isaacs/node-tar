@@ -606,3 +606,27 @@ t.test('end while consuming', t => {
   mp.end(data)
   mp.pipe(p)
 })
+
+t.test('header that throws', t => {
+  const expect = { message: 'invalid base256 encoding' }
+  const p = new Parse()
+  p.on('warn', (m, d) => {
+    t.match(d, expect)
+    t.end()
+  })
+  const h = new Header({
+    path: 'path',
+    mode: 0o07777, // gonna make this one invalid
+    uid: 1234,
+    gid: 4321,
+    size: 99,
+    type: 'File',
+    size: 1,
+  })
+  h.encode()
+  const buf = h.block
+  const bad = Buffer.from([0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
+  bad.copy(buf, 100)
+  t.throws(() => new Header(buf), expect, 'the header with that buffer throws')
+  p.write(buf)
+})
