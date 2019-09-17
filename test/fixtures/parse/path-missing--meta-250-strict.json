@@ -20,6 +20,13 @@
     "eof"
   ],
   [
+    "error",
+    {
+      "message": "TAR_BAD_ARCHIVE: Unrecognized archive format",
+      "code": "TAR_BAD_ARCHIVE"
+    }
+  ],
+  [
     "end"
   ]
 ]

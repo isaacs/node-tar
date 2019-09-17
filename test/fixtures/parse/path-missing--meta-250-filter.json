@@ -16,6 +16,11 @@
     "eof"
   ],
   [
+    "warn",
+    "TAR_BAD_ARCHIVE",
+    "Unrecognized archive format"
+  ],
+  [
     "end"
   ]
 ]
