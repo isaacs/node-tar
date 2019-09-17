@@ -407,7 +407,6 @@ t.test('symlink in dir path', t => {
       t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
       t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
       t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
-      t.equal(warnings.length, 1)
       t.equal(warnings[0][0], 'TAR_ENTRY_ERROR')
       t.equal(warnings[0][1], 'Cannot extract through symbolic link')
       t.match(warnings[0][2], {
@@ -415,6 +414,7 @@ t.test('symlink in dir path', t => {
         path: dir + '/d/i/r/symlink/',
         symlink: dir + '/d/i/r/symlink'
       })
+      t.equal(warnings.length, 1)
       t.end()
     })
     u.end(data)
