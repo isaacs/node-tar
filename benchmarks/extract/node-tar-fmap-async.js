@@ -6,7 +6,7 @@ process.on('exit', _ => rimraf.sync(cwd))
 const path = require('path')
 const file = process.argv[2] || path.resolve(__dirname, '../npm.tar')
 const fs = require('fs')
-const { O_CREAT, O_TRUNC, O_WRONLY, UV_FS_O_FILEMAP } = fs.constants
+const { O_CREAT, O_TRUNC, O_WRONLY, UV_FS_O_FILEMAP = 0 } = fs.constants
 
 const tar = require('../..')
 const timer = require('../timer.js')()

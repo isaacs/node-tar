@@ -11,7 +11,7 @@ const makeTar = require('./make-tar.js')
 const Header = require('../lib/header.js')
 const z = require('minizlib')
 const fs = require('fs')
-const { O_CREAT, O_TRUNC, O_WRONLY, UV_FS_O_FILEMAP } = fs.constants
+const { O_CREAT, O_TRUNC, O_WRONLY, UV_FS_O_FILEMAP = 0 } = fs.constants
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
