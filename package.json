@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "chownr": "^1.1.1",
-    "fs-minipass": "^1.2.5",
-    "minipass": "^2.3.5",
+    "fs-minipass": "^1.2.7",
+    "minipass": "^2.6.4",
     "minizlib": "^1.2.2",
     "mkdirp": "^0.5.0",
     "safe-buffer": "^5.1.2",
