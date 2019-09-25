@@ -25,10 +25,10 @@
   },
   "devDependencies": {
     "chmodr": "^1.2.0",
-    "end-of-stream": "^1.4.1",
+    "end-of-stream": "^1.4.3",
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
-    "rimraf": "^2.6.3",
+    "rimraf": "^2.7.1",
     "tap": "^14.6.5",
     "tar-fs": "^1.16.3",
     "tar-stream": "^1.6.2"
