@@ -1663,19 +1663,25 @@ t.test('set owner', t => {
   t.test('chown when true', t => {
     const dir = path.resolve(unpackdir, 'chown')
     const chown = fs.chown
+    const lchown = fs.lchown
+    const fchown = fs.fchown
     const chownSync = fs.chownSync
     const fchownSync = fs.fchownSync
+    const lchownSync = fs.lchownSync
     let called = 0
-    fs.fchown = fs.chown = (path, owner, group, cb) => {
+    fs.fchown = fs.chown = fs.lchown = (path, owner, group, cb) => {
       called ++
       cb()
     }
-    fs.chownSync = fs.fchownSync = _ => called++
+    fs.chownSync = fs.lchownSync = fs.fchownSync = _ => called++
 
     t.teardown(_ => {
       fs.chown = chown
+      fs.fchown = fchown
+      fs.lchown = lchown
       fs.chownSync = chownSync
       fs.fchownSync = fchownSync
+      fs.lchownSync = lchownSync
     })
 
     t.test('sync', t => {
@@ -1935,22 +1941,18 @@ t.test('chown implicit dirs and also the entries', t => {
   let chowns = 0
 
   let currentTest = null
-  fs.fchown = fs.chown = (path, uid, gid, cb) => {
+  fs.lchown = fs.fchown = fs.chown = (path, uid, gid, cb) => {
     currentTest.equal(uid, 420, 'chown(' + path + ') uid')
     currentTest.equal(gid, 666, 'chown(' + path + ') gid')
     chowns ++
     cb()
   }
-  if (fs.lchown)
-    fs.lchown = fs.fchown
 
-  fs.chownSync = fs.fchownSync = (path, uid, gid) => {
+  fs.lchownSync = fs.chownSync = fs.fchownSync = (path, uid, gid) => {
     currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
     currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
     chowns ++
   }
-  if (fs.lchownSync)
-    fs.lchownSync = fs.fchownSync
 
   const data = makeTar([
     {
