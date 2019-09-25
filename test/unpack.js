@@ -397,20 +397,24 @@ t.test('symlink in dir path', t => {
 
   t.test('no clobbering', t => {
     const warnings = []
-    const u = new Unpack({ cwd: dir, onwarn: (w,d) => warnings.push([w,d]) })
+    const u = new Unpack({
+      cwd: dir,
+      onwarn: (c,w,d) => warnings.push([c,w,d]),
+    })
     u.on('close', _ => {
       t.equal(fs.lstatSync(dir + '/d/i').mode & 0o7777, 0o755)
       t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
       t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
       t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
       t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
-      t.equal(warnings.length, 1)
-      t.equal(warnings[0][0], 'Cannot extract through symbolic link')
-      t.match(warnings[0][1], {
+      t.equal(warnings[0][0], 'TAR_ENTRY_ERROR')
+      t.equal(warnings[0][1], 'Cannot extract through symbolic link')
+      t.match(warnings[0][2], {
         name: 'SylinkError',
         path: dir + '/d/i/r/symlink/',
         symlink: dir + '/d/i/r/symlink'
       })
+      t.equal(warnings.length, 1)
       t.end()
     })
     u.end(data)
@@ -420,7 +424,7 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (w,d) => warnings.push([w,d])
+      onwarn: (c,w,d) => warnings.push([c,w,d])
     })
     u.end(data)
     t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -428,8 +432,9 @@ t.test('symlink in dir path', t => {
     t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
     t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
     t.equal(warnings.length, 1)
-    t.equal(warnings[0][0], 'Cannot extract through symbolic link')
-    t.match(warnings[0][1], {
+    t.equal(warnings[0][0], 'TAR_ENTRY_ERROR')
+    t.equal(warnings[0][1], 'Cannot extract through symbolic link')
+    t.match(warnings[0][2], {
       name: 'SylinkError',
       path: dir + '/d/i/r/symlink/',
       symlink: dir + '/d/i/r/symlink'
@@ -441,7 +446,7 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (w,d) => warnings.push([w,d]),
+      onwarn: (c,w,d) => warnings.push([c,w,d]),
       preservePaths: true
     })
     u.on('close', _ => {
@@ -460,7 +465,7 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (w,d) => warnings.push([w,d]),
+      onwarn: (c,w,d) => warnings.push([c,w,d]),
       preservePaths: true
     })
     u.end(data)
@@ -477,7 +482,7 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (w,d) => warnings.push([w,d]),
+      onwarn: (c,w,d) => warnings.push([c,w,d]),
       unlink: true
     })
     u.on('close', _ => {
@@ -498,11 +503,11 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (w,d) => warnings.push([w,d]),
+      onwarn: (c,w,d) => warnings.push([c,w,d]),
       unlink: true
     })
     u.on('close', _ => {
-      t.same(warnings, [[ 'poop', poop ]])
+      t.same(warnings, [[ 'TAR_ENTRY_ERROR', 'poop', poop ]])
       t.end()
     })
     u.end(data)
@@ -512,7 +517,7 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (w,d) => warnings.push([w,d]),
+      onwarn: (c,w,d) => warnings.push([c,w,d]),
       unlink: true
     })
     u.end(data)
@@ -532,8 +537,8 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (w, d) => {
-        warnings.push([w,d])
+      onwarn: (c, w, d) => {
+        warnings.push([c,w,d])
       }
     })
     u.on('close', _ => {
@@ -542,8 +547,9 @@ t.test('symlink in dir path', t => {
       t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
       t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
       t.equal(warnings.length, 1)
-      t.equal(warnings[0][0], 'Cannot extract through symbolic link')
-      t.match(warnings[0][1], {
+      t.equal(warnings[0][0], 'TAR_ENTRY_ERROR')
+      t.equal(warnings[0][1], 'Cannot extract through symbolic link')
+      t.match(warnings[0][2], {
         name: 'SylinkError',
         path: dir + '/d/i/r/symlink/',
         symlink: dir + '/d/i/r/symlink'
@@ -561,8 +567,8 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (w, d) => {
-        warnings.push([w,d])
+      onwarn: (c, w, d) => {
+        warnings.push([c,w,d])
       }
     })
     u.end(data)
@@ -571,8 +577,9 @@ t.test('symlink in dir path', t => {
     t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
     t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
     t.equal(warnings.length, 1)
-    t.equal(warnings[0][0], 'Cannot extract through symbolic link')
-    t.match(warnings[0][1], {
+    t.equal(warnings[0][0], 'TAR_ENTRY_ERROR')
+    t.equal(warnings[0][1], 'Cannot extract through symbolic link')
+    t.match(warnings[0][2], {
       name: 'SylinkError',
       path: dir + '/d/i/r/symlink/',
       symlink: dir + '/d/i/r/symlink'
@@ -611,11 +618,15 @@ t.test('unsupported entries', t => {
 
   t.test('basic, warns', t => {
     const warnings = []
-    const u = new Unpack({ cwd: dir, onwarn: (w,d) => warnings.push([w,d]) })
+    const u = new Unpack({ cwd: dir, onwarn: (c,w,d) => warnings.push([c,w,d]) })
+    const c = 'TAR_ENTRY_UNSUPPORTED'
     const expect = [
-      ['unsupported entry type: CharacterDevice', { path: 'dev/random' }],
-      ['unsupported entry type: BlockDevice', { path: 'dev/hd0' }],
-      ['unsupported entry type: FIFO', { path: 'dev/fifo0' }]
+      [c, 'unsupported entry type: CharacterDevice', {
+        entry: { path: 'dev/random' }}],
+      [c, 'unsupported entry type: BlockDevice', {
+        entry: { path: 'dev/hd0' }}],
+      [c, 'unsupported entry type: FIFO', {
+        entry: { path: 'dev/fifo0' }}],
     ]
     u.on('close', _ => {
       t.equal(fs.readdirSync(dir).length, 0)
@@ -631,7 +642,7 @@ t.test('unsupported entries', t => {
     const u = new Unpack({
       cwd: dir,
       strict: true,
-      onwarn: (w,d) => warnings.push([w,d])
+      onwarn: (c,w,d) => warnings.push([c,w,d])
     })
     u.on('error', e => errors.push(e))
     u.on('close', _ => {
@@ -640,15 +651,15 @@ t.test('unsupported entries', t => {
       t.match(errors, [
         {
           message: 'unsupported entry type: CharacterDevice',
-          data: { path: 'dev/random' }
+          entry: { path: 'dev/random' }
         },
         {
           message: 'unsupported entry type: BlockDevice',
-          data: { path: 'dev/hd0' }
+          entry: { path: 'dev/hd0' }
         },
         {
           message: 'unsupported entry type: FIFO',
-          data: { path: 'dev/fifo0' }
+          entry: { path: 'dev/fifo0' }
         }
       ])
       t.end()
@@ -790,9 +801,9 @@ t.test('absolute paths', t => {
 
   t.test('warn and correct', t => {
     const check = t => {
-      t.same(warnings, [[
+      t.match(warnings, [[
         'stripping / from absolute path',
-        absolute
+        { path: absolute, code: 'TAR_ENTRY_INFO' },
       ]])
       t.ok(fs.lstatSync(path.resolve(dir, relative)).isFile(), 'is file')
       t.end()
@@ -804,7 +815,7 @@ t.test('absolute paths', t => {
       warnings.length = 0
       new Unpack({
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).on('close', _=> check(t)).end(data)
     })
 
@@ -812,7 +823,7 @@ t.test('absolute paths', t => {
       warnings.length = 0
       new UnpackSync({
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).end(data)
       check(t)
     })
@@ -834,7 +845,7 @@ t.test('absolute paths', t => {
       new Unpack({
         preservePaths: true,
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).on('close', _=> check(t)).end(data)
     })
 
@@ -843,7 +854,7 @@ t.test('absolute paths', t => {
       new UnpackSync({
         preservePaths: true,
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).end(data)
       check(t)
     })
@@ -883,9 +894,9 @@ t.test('.. paths', t => {
 
   t.test('warn and skip', t => {
     const check = t => {
-      t.same(warnings, [[
+      t.match(warnings, [[
         'path contains \'..\'',
-        dotted
+        { path: dotted, code: 'TAR_ENTRY_ERROR' }
       ]])
       t.throws(_=>fs.lstatSync(resolved))
       t.end()
@@ -898,7 +909,7 @@ t.test('.. paths', t => {
       new Unpack({
         fmode: fmode,
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).on('close', _=> check(t)).end(data)
     })
 
@@ -907,7 +918,7 @@ t.test('.. paths', t => {
       new UnpackSync({
         fmode: fmode,
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).end(data)
       check(t)
     })
@@ -931,7 +942,7 @@ t.test('.. paths', t => {
         fmode: fmode,
         preservePaths: true,
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).on('close', _=> check(t)).end(data)
     })
 
@@ -941,7 +952,7 @@ t.test('.. paths', t => {
         fmode: fmode,
         preservePaths: true,
         cwd: dir,
-        onwarn: (w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d])
       }).end(data)
       check(t)
     })
@@ -1029,7 +1040,7 @@ t.test('fail all stats', t => {
     ]
     new Unpack({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).on('close', _ => check(t, expect)).end(data)
   })
 
@@ -1054,7 +1065,7 @@ t.test('fail all stats', t => {
     ]
     new UnpackSync({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).end(data)
     check(t, expect)
   })
@@ -1108,7 +1119,7 @@ t.test('fail symlink', t => {
     const expect = [['poop', poop]]
     new Unpack({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).on('close', _ => check(t, expect)).end(data)
   })
 
@@ -1116,7 +1127,7 @@ t.test('fail symlink', t => {
     const expect = [['poop', poop]]
     new UnpackSync({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).end(data)
     check(t, expect)
   })
@@ -1169,7 +1180,7 @@ t.test('fail chmod', t => {
     const expect = [['poop', poop]]
     new Unpack({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).on('close', _ => check(t, expect)).end(data)
   })
 
@@ -1177,7 +1188,7 @@ t.test('fail chmod', t => {
     const expect = [['poop', poop]]
     new UnpackSync({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).end(data)
     check(t, expect)
   })
@@ -1237,14 +1248,14 @@ t.test('fail mkdir', t => {
   t.test('async', t => {
     new Unpack({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).on('close', _ => check(t)).end(data)
   })
 
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).end(data)
     check(t)
   })
@@ -1291,14 +1302,14 @@ t.test('fail write', t => {
   t.test('async', t => {
     new Unpack({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).on('close', _ => check(t)).end(data)
   })
 
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
-      onwarn: (w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d])
     }).end(data)
     check(t)
   })
@@ -1612,7 +1623,7 @@ t.test('set owner', t => {
       const u = new Unpack.Sync({
         cwd: dir,
         preserveOwner: true,
-        onwarn: (m, er) => {
+        onwarn: (c, m, er) => {
           if (!warned) {
             warned = true
             t.equal(er, poop)
@@ -1630,7 +1641,7 @@ t.test('set owner', t => {
       const u = new Unpack({
         cwd: dir,
         preserveOwner: true,
-        onwarn: (m, er) => {
+        onwarn: (c, m, er) => {
           if (!warned) {
             warned = true
             t.equal(er, poop)
@@ -1652,19 +1663,25 @@ t.test('set owner', t => {
   t.test('chown when true', t => {
     const dir = path.resolve(unpackdir, 'chown')
     const chown = fs.chown
+    const lchown = fs.lchown
+    const fchown = fs.fchown
     const chownSync = fs.chownSync
     const fchownSync = fs.fchownSync
+    const lchownSync = fs.lchownSync
     let called = 0
-    fs.fchown = fs.chown = (path, owner, group, cb) => {
+    fs.fchown = fs.chown = fs.lchown = (path, owner, group, cb) => {
       called ++
       cb()
     }
-    fs.chownSync = fs.fchownSync = _ => called++
+    fs.chownSync = fs.lchownSync = fs.fchownSync = _ => called++
 
     t.teardown(_ => {
       fs.chown = chown
+      fs.fchown = fchown
+      fs.lchown = lchown
       fs.chownSync = chownSync
       fs.fchownSync = fchownSync
+      fs.lchownSync = lchownSync
     })
 
     t.test('sync', t => {
@@ -1924,22 +1941,18 @@ t.test('chown implicit dirs and also the entries', t => {
   let chowns = 0
 
   let currentTest = null
-  fs.fchown = fs.chown = (path, uid, gid, cb) => {
+  fs.lchown = fs.fchown = fs.chown = (path, uid, gid, cb) => {
     currentTest.equal(uid, 420, 'chown(' + path + ') uid')
     currentTest.equal(gid, 666, 'chown(' + path + ') gid')
     chowns ++
     cb()
   }
-  if (fs.lchown)
-    fs.lchown = fs.fchown
 
-  fs.chownSync = fs.fchownSync = (path, uid, gid) => {
+  fs.lchownSync = fs.chownSync = fs.fchownSync = (path, uid, gid) => {
     currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
     currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
     chowns ++
   }
-  if (fs.lchownSync)
-    fs.lchownSync = fs.fchownSync
 
   const data = makeTar([
     {
@@ -2233,7 +2246,7 @@ t.test('transform error', t => {
       const unpack = new UnpackSync({ cwd: dir, transform: txFn })
       const expect = 3
       let actual = 0
-      unpack.on('warn', (msg, er) => {
+      unpack.on('warn', (code, msg, er) => {
         t.equal(er, poop)
         actual ++
       })
@@ -2259,7 +2272,7 @@ t.test('transform error', t => {
       const unpack = new Unpack({ cwd: dir, transform: txFn })
       t.plan(3)
       t.teardown(() => unpack.removeAllListeners('warn'))
-      unpack.on('warn', (msg, er) => t.equal(er, poop))
+      unpack.on('warn', (code, msg, er) => t.equal(er, poop))
       unpack.end(tardata)
     })
     t.end()
@@ -2349,7 +2362,7 @@ t.test('futimes/fchown failures', t => {
           reset()
           const unpack = new Unpack({ cwd: dir, forceChown: fc })
           t.plan(3)
-          unpack.on('warn', (m, er) => t.equal(er, poop))
+          unpack.on('warn', (code, m, er) => t.equal(er, poop))
           unpack.end(tardata)
         })
       })
@@ -2366,7 +2379,7 @@ t.test('futimes/fchown failures', t => {
           reset()
           const unpack = new Unpack.Sync({ cwd: dir, forceChown: fc })
           t.plan(3)
-          unpack.on('warn', (m, er) => t.equal(er, poop))
+          unpack.on('warn', (c, m, er) => t.equal(er, poop))
           unpack.end(tardata)
         })
       })
@@ -2492,4 +2505,74 @@ t.test('do not reuse hardlinks, only nlink=1 files', t => {
   })
 
   t.end()
+})
+
+t.test('trying to unpack a javascript file should fail', t => {
+  const data = fs.readFileSync(__filename)
+  const dataGzip = Buffer.concat([Buffer.from([0x1f, 0x8b]), data])
+  const basedir = path.resolve(unpackdir, 'bad-archive')
+  t.test('abort if gzip has an error', t => {
+    t.plan(2)
+    const expect = {
+      message: /^zlib/,
+      errno: Number,
+      code: /^Z/,
+      recoverable: false,
+      cwd: basedir,
+      tarCode: 'TAR_ABORT',
+    }
+    const opts = {
+      cwd: basedir,
+      gzip: true,
+    }
+    new Unpack(opts)
+      .once('error', er => t.match(er, expect, 'async emits'))
+      .on('error', () => { /* zlib emits a few times here */ })
+      .end(dataGzip)
+    t.throws(() => new UnpackSync(opts).end(dataGzip), expect, 'sync throws')
+  })
+
+  t.test('bad archive if no gzip', t => {
+    t.plan(2)
+    const expect = {
+      tarCode: 'TAR_BAD_ARCHIVE',
+      recoverable: false,
+    }
+    const opts = { cwd: basedir }
+    new Unpack(opts)
+      .on('error', er => t.match(er, expect, 'async emits'))
+      .end(data)
+    t.throws(() => new UnpackSync(opts).end(data), expect, 'sync throws')
+  })
+
+  t.end()
+})
+
+t.test('handle errors on fs.close', t => {
+  const poop = new Error('poop')
+  t.teardown(mutateFS.fail('close', poop))
+  const dir = path.resolve(unpackdir, 'close-fail')
+  mkdirp.sync(dir + '/sync')
+  mkdirp.sync(dir + '/async')
+  const data = makeTar([
+    {
+      path: 'file',
+      type: 'File',
+      size: 1,
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z')
+    },
+    'a',
+    '',
+    '',
+  ])
+
+  t.plan(2)
+  new Unpack({ cwd: dir + '/async', strict: true })
+    .on('error', er => t.equal(er, poop, 'async'))
+    .end(data)
+  t.throws(() => new UnpackSync({
+    cwd: dir + '/sync', strict: true,
+  }).end(data), poop, 'sync')
 })

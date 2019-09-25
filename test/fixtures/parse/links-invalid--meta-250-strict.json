@@ -2,19 +2,22 @@
   [
     "error",
     {
-      "message": "invalid: linkpath forbidden"
+      "message": "TAR_ENTRY_INVALID: linkpath forbidden",
+      "code": "TAR_ENTRY_INVALID"
     }
   ],
   [
     "error",
     {
-      "message": "invalid entry"
+      "message": "TAR_ENTRY_INVALID: checksum failure",
+      "code": "TAR_ENTRY_INVALID"
     }
   ],
   [
     "error",
     {
-      "message": "invalid: linkpath required"
+      "message": "TAR_ENTRY_INVALID: linkpath required",
+      "code": "TAR_ENTRY_INVALID"
     }
   ],
   [
@@ -60,7 +63,7 @@
     "nullBlock"
   ],
   [
-    "nullBlock"
+    "eof"
   ],
   [
     "end"

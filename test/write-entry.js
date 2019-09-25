@@ -229,6 +229,21 @@ t.test('zero-byte file', t => {
   })
 })
 
+t.test('zero-byte file, but close fails', t => {
+  const poop = new Error('poop')
+  t.tearDown(mutateFS.fail('close', poop))
+
+  const ws = new WriteEntry('files/1024-bytes.txt', { cwd: fixtures })
+
+  ws.on('end', _ =>
+   t.fail('should not get an end, because the close fails'))
+
+  ws.on('error', er => {
+    t.match(er, { message: 'poop' })
+    t.end()
+  })
+})
+
 t.test('hardlinks', t => {
   const h1 = 'hardlink-1'
   const h2 = 'hardlink-2'
@@ -367,7 +382,7 @@ t.test('absolute path', t => {
     const warnings = []
     const ws = new WriteEntry(f, {
       cwd: files,
-      onwarn: (m, p) => warnings.push([m, p])
+      onwarn: (c, m, p) => warnings.push([c, m, p])
     })
     let out = []
     ws.on('data', c => out.push(c))
@@ -375,7 +390,7 @@ t.test('absolute path', t => {
       out = Buffer.concat(out)
       t.equal(out.length, 1024)
       t.match(warnings, [[
-        /stripping .* from absolute path/, f
+        'TAR_ENTRY_INFO', /stripping .* from absolute path/, { path: f }
       ]])
 
       t.match(ws.header, {
@@ -405,7 +420,7 @@ t.test('absolute path', t => {
           cwd: files,
           strict: strict,
           preservePaths: true,
-          onwarn: (m, p) => warnings.push([m, p])
+          onwarn: (c, m, p) => warnings.push([c, m, p])
         })
         let out = []
         ws.on('data', c => out.push(c))
@@ -437,7 +452,7 @@ t.test('absolute path', t => {
         strict: true,
         cwd: files
       })
-    }, { message: /stripping .* from absolute path/, data: f })
+    }, { message: /stripping .* from absolute path/, path: f })
     t.end()
   })
 
@@ -532,7 +547,9 @@ t.test('read fail', t => {
   t.tearDown(mutateFS.statType('File'))
   t.throws(_ => new WriteEntry.Sync('fixtures', { cwd: __dirname }),
            expect)
+  let prev
   new WriteEntry('fixtures', { cwd: __dirname }).on('error', er => {
+    prev = er
     t.match(er, expect)
     t.end()
   })
@@ -566,10 +583,10 @@ t.test('read overflow expectation', t => {
     syscall: 'read',
     code: 'EOF'
   }
+  t.plan(2)
   t.throws(_ => new WriteEntry.Sync(f, { cwd: files, maxReadSize: 2 }), expect)
   new WriteEntry(f, { cwd: files, maxReadSize: 2 }).on('error', er => {
     t.match(er, expect)
-    t.end()
   })
 })
 
@@ -1056,16 +1073,18 @@ t.test('write entry from read entry', t => {
     t.test('warn', t => {
       const warnings = []
       const wetFile = new WriteEntry.Tar(fileEntry, {
-        onwarn: (msg, data) => warnings.push(msg, data)
+        onwarn: (code, msg, data) => warnings.push(code, msg, data)
       })
-      t.same(warnings, ['stripping / from absolute path', '/a/b/c'])
+      t.match(warnings, ['TAR_ENTRY_INFO', 'stripping / from absolute path', {
+        path: '/a/b/c'
+      }])
       t.end()
     })
 
     t.test('preserve', t => {
       const warnings = []
       const wetFile = new WriteEntry.Tar(fileEntry, {
-        onwarn: (msg, data) => warnings.push(msg, data),
+        onwarn: (code, msg, data) => warnings.push(code, msg, data),
         preservePaths: true
       })
       t.same(warnings, [])

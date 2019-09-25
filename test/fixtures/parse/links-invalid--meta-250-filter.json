@@ -1,15 +1,18 @@
 [
   [
     "warn",
-    "invalid: linkpath forbidden"
+    "TAR_ENTRY_INVALID",
+    "linkpath forbidden"
   ],
   [
     "warn",
-    "invalid entry"
+    "TAR_ENTRY_INVALID",
+    "checksum failure"
   ],
   [
     "warn",
-    "invalid: linkpath required"
+    "TAR_ENTRY_INVALID",
+    "linkpath required"
   ],
   [
     "ignoredEntry",
@@ -54,7 +57,7 @@
     "nullBlock"
   ],
   [
-    "nullBlock"
+    "eof"
   ],
   [
     "end"

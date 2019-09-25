@@ -1,5 +1,4 @@
 'use strict'
-const Buffer = require('../lib/buffer.js')
 const t = require('tap')
 const u = require('../lib/update.js')
 const path = require('path')

@@ -70,10 +70,14 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
 
   p.on('entry', pushEntry('entry'))
   p.on('ignoredEntry', pushEntry('ignoredEntry'))
-  p.on('warn', (message, data) => events.push(['warn', message]))
-  p.on('error', er => events.push(['error', { message: er.message }]))
+  p.on('warn', (code, message, data) => events.push(['warn', code, message]))
+  p.on('error', er => events.push(['error', {
+    message: er.message,
+    code: er.code
+  }]))
   p.on('end', _ => events.push(['end']))
   p.on('nullBlock', _ => events.push(['nullBlock']))
+  p.on('eof', _ => events.push(['eof']))
   p.on('meta', meta => events.push(['meta', meta]))
 
   p.end(tardata)

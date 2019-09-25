@@ -1,5 +1,4 @@
 'use strict'
-const Buffer = require('../lib/buffer.js')
 const t = require('tap')
 const Pack = require('../lib/pack.js')
 const PackSync = Pack.Sync
@@ -687,7 +686,7 @@ t.test('warnings', t => {
     const warnings = []
     const p = new Pack({
       cwd: files,
-      onwarn: (m, p) => warnings.push([m, p])
+      onwarn: (c, m, p) => warnings.push([c, m, p])
     }).end(f).on('data', c => out.push(c))
 
     const out = []
@@ -695,7 +694,7 @@ t.test('warnings', t => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
       t.match(warnings, [[
-        /stripping .* from absolute path/, f
+        'TAR_ENTRY_INFO', /stripping .* from absolute path/, { path: f },
       ]])
 
       t.match(new Header(data), {
@@ -717,7 +716,7 @@ t.test('warnings', t => {
           cwd: files,
           strict: strict,
           preservePaths: true,
-          onwarn: (m, p) => warnings.push([m, p])
+          onwarn: (c, m, p) => warnings.push([c, m, p])
         }).end(f).on('data', c => out.push(c))
         p.on('end', _ => {
           const data = Buffer.concat(out)
@@ -737,7 +736,7 @@ t.test('warnings', t => {
       strict: true,
       cwd: files
     }).end(f).on('error', e => {
-      t.match(e, { message: /stripping .* from absolute path/, data: f })
+      t.match(e, { message: /stripping .* from absolute path/, path: f })
       t.end()
     })
   })
