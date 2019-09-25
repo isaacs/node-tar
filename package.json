@@ -21,7 +21,6 @@
     "minipass": "^2.9.0",
     "minizlib": "^1.2.2",
     "mkdirp": "^0.5.0",
-    "safe-buffer": "^5.1.2",
     "yallist": "^3.0.3"
   },
   "devDependencies": {
@@ -36,7 +35,7 @@
   },
   "license": "ISC",
   "engines": {
-    "node": ">=4.5"
+    "node": ">=8"
   },
   "files": [
     "index.js",

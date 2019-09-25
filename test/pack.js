@@ -1,5 +1,4 @@
 'use strict'
-const Buffer = require('../lib/buffer.js')
 const t = require('tap')
 const Pack = require('../lib/pack.js')
 const PackSync = Pack.Sync
