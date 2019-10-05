@@ -8,12 +8,19 @@ const t = require('tap')
 const fs = require('fs')
 const hasFmap = !!fs.constants.UV_FS_O_FILEMAP
 const platform = process.platform
+const UV_FS_O_FILEMAP = 0x20000000
 
 switch (process.argv[2]) {
   case 'win32-fmap': {
-    if (!hasFmap)
-      fs.constants.UV_FS_O_FILEMAP = 0x20000000
-    const { O_CREAT, O_TRUNC, O_WRONLY, UV_FS_O_FILEMAP } = fs.constants
+    if (!hasFmap) {
+      global.__FAKE_TESTING_FS__ = {
+        constants: {
+          ...fs.constants,
+          ...{ UV_FS_O_FILEMAP },
+        }
+      }
+    }
+    const { O_CREAT, O_TRUNC, O_WRONLY } = fs.constants
     if (platform !== 'win32')
       process.env.__FAKE_PLATFORM__ = 'win32'
     const getFlag = require('../lib/get-write-flag.js')
@@ -23,8 +30,14 @@ switch (process.argv[2]) {
   }
 
   case 'win32-nofmap': {
-    if (hasFmap)
-      fs.constants.UV_FS_O_FILEMAP = 0
+    if (hasFmap) {
+      global.__FAKE_TESTING_FS__ = {
+        constants: {
+          ...fs.constants,
+          ...{ UV_FS_O_FILEMAP: 0 },
+        }
+      }
+    }
     if (platform !== 'win32')
       process.env.__FAKE_PLATFORM__ = 'win32'
     const getFlag = require('../lib/get-write-flag.js')
