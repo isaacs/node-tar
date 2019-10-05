@@ -39,7 +39,7 @@
   },
   "files": [
     "index.js",
-    "lib/"
+    "lib/*.js"
   ],
   "tap": {
     "coverage-map": "map.js",
