@@ -284,8 +284,9 @@ The following options are supported:
   or `false` to omit it.
 - `portable` Omit metadata that is system-specific: `ctime`, `atime`,
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
-  that `mtime` is still included, because this is necessary other
-  time-based operations.
+  that `mtime` is still included, because this is necessary for other
+  time-based operations.  Additionally, `mode` is set to a "reasonable
+  default" for most unix systems, based on a `umask` value of `0o22`.
 - `preservePaths` Allow absolute paths.  By default, `/` is stripped
   from absolute paths. [Alias: `P`]
 - `mode` The mode to set on the created file archive
@@ -484,8 +485,9 @@ The following options are supported:
   or `false` to omit it.
 - `portable` Omit metadata that is system-specific: `ctime`, `atime`,
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
-  that `mtime` is still included, because this is necessary other
-  time-based operations.
+  that `mtime` is still included, because this is necessary for other
+  time-based operations.  Additionally, `mode` is set to a "reasonable
+  default" for most unix systems, based on a `umask` value of `0o22`.
 - `preservePaths` Allow absolute paths.  By default, `/` is stripped
   from absolute paths. [Alias: `P`]
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
@@ -535,8 +537,9 @@ The following options are supported:
   or `false` to omit it.
 - `portable` Omit metadata that is system-specific: `ctime`, `atime`,
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
-  that `mtime` is still included, because this is necessary other
-  time-based operations.
+  that `mtime` is still included, because this is necessary for other
+  time-based operations.  Additionally, `mode` is set to a "reasonable
+  default" for most unix systems, based on a `umask` value of `0o22`.
 - `preservePaths` Allow absolute paths.  By default, `/` is stripped
   from absolute paths. [Alias: `P`]
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
@@ -582,8 +585,9 @@ The following options are supported:
   or `false` to omit it.
 - `portable` Omit metadata that is system-specific: `ctime`, `atime`,
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
-  that `mtime` is still included, because this is necessary other
-  time-based operations.
+  that `mtime` is still included, because this is necessary for other
+  time-based operations.  Additionally, `mode` is set to a "reasonable
+  default" for most unix systems, based on a `umask` value of `0o22`.
 - `preservePaths` Allow absolute paths.  By default, `/` is stripped
   from absolute paths.
 - `linkCache` A Map object containing the device and inode value for
@@ -795,8 +799,9 @@ It has the following fields:
   object.
 - `portable` Omit metadata that is system-specific: `ctime`, `atime`,
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
-  that `mtime` is still included, because this is necessary other
-  time-based operations.
+  that `mtime` is still included, because this is necessary for other
+  time-based operations.  Additionally, `mode` is set to a "reasonable
+  default" for most unix systems, based on a `umask` value of `0o22`.
 - `myuid` If supported, the uid of the user running the current
   process.
 - `myuser` The `env.USER` string if set, or `''`.  Set as the entry
@@ -834,8 +839,9 @@ The following options are supported:
 
 - `portable` Omit metadata that is system-specific: `ctime`, `atime`,
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
-  that `mtime` is still included, because this is necessary other
-  time-based operations.
+  that `mtime` is still included, because this is necessary for other
+  time-based operations.  Additionally, `mode` is set to a "reasonable
+  default" for most unix systems, based on a `umask` value of `0o22`.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 1 MB.
 - `linkCache` A Map object containing the device and inode value for
@@ -883,8 +889,9 @@ The following options are supported:
 
 - `portable` Omit metadata that is system-specific: `ctime`, `atime`,
   `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and `nlink`.  Note
-  that `mtime` is still included, because this is necessary other
-  time-based operations.
+  that `mtime` is still included, because this is necessary for other
+  time-based operations.  Additionally, `mode` is set to a "reasonable
+  default" for most unix systems, based on a `umask` value of `0o22`.
 - `preservePaths` Allow absolute paths.  By default, `/` is stripped
   from absolute paths.
 - `strict` Treat warnings as crash-worthy errors.  Default false.
