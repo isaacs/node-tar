@@ -125,15 +125,17 @@ t.test('pack a file with a prefix', t => {
     })
 })
 
-t.test('pack a dir', t => {
+t.test('portable pack a dir', t => {
   const out = []
 
-  new Pack({ cwd: files, portable: true })
+  new Pack({ cwd: files, portable: true, gzip: true })
     .add('dir')
     .on('data', c => out.push(c))
     .end()
     .on('end', _ => {
-      const data = Buffer.concat(out)
+      const zipped = Buffer.concat(out)
+      t.equal(zipped[9], 255, 'gzip OS flag set to "unknown"')
+      const data = new miniz.Gunzip().end(zipped).read()
       // dir/, dir/x, and the nulls
       // neither the dir or the file have any body bits
       const h = new Header(data)
@@ -159,8 +161,12 @@ t.test('pack a dir', t => {
       t.equal(data.length, 2048)
       t.match(data.slice(1024).toString(), /^\0{1024}$/)
 
-      const sync = new PackSync({ cwd: files, portable: true })
+      const syncgz = new PackSync({ cwd: files, portable: true, gzip: true })
         .add('dir').end().read()
+
+      t.equal(syncgz[9], 255, 'gzip OS flag set to "unknown"')
+      const sync = new miniz.Gunzip().end(zipped).read()
+
       t.equal(sync.slice(512).toString(), data.slice(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
