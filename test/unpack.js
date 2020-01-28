@@ -145,7 +145,7 @@ t.test('links!', t => {
   const stripData = fs.readFileSync(tars + '/links-strip.tar')
 
   t.plan(6)
-  t.beforeEach(cb => mkdirp(dir, cb))
+  t.beforeEach(cb => mkdirp(dir).then(() => cb(), cb))
   t.afterEach(cb => rimraf(dir, cb))
 
   const check = t => {
@@ -1722,7 +1722,7 @@ t.test('set owner', t => {
       unl()
     })
 
-    t.beforeEach(cb => mkdirp(dir, cb))
+    t.beforeEach(cb => mkdirp(dir).then(() => cb(), cb))
     t.afterEach(cb => rimraf(dir, cb))
 
     const check = t => {
@@ -1775,7 +1775,7 @@ t.test('unpack when dir is not writable', t => {
   ])
 
   const dir = path.resolve(unpackdir, 'nowrite-dir')
-  t.beforeEach(cb => mkdirp(dir, cb))
+  t.beforeEach(cb => mkdirp(dir).then(() => cb(), cb))
   t.afterEach(cb => rimraf(dir, cb))
 
   const check = t => {
@@ -1812,7 +1812,7 @@ t.test('transmute chars on windows', t => {
   ])
 
   const dir = path.resolve(unpackdir, 'winchars')
-  t.beforeEach(cb => mkdirp(dir, cb))
+  t.beforeEach(cb => mkdirp(dir).then(() => cb(), cb))
   t.afterEach(cb => rimraf(dir, cb))
 
   const hex = 'ef80bcef81bcef80beef80bfef80ba2e747874'
