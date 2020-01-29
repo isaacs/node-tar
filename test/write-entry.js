@@ -1,9 +1,22 @@
 'use strict'
 const t = require('tap')
+
+// make our tests verify that windows link targets get turned into / paths
+const fs = require('fs')
+const {readlink, readlinkSync} = fs
+fs.readlink = (path, cb) => {
+  readlink(path, (er, path) => {
+    if (er)
+      return cb(er)
+    else
+      cb(null, path.replace(/\//g, '\\'))
+  })
+}
+fs.readlinkSync = path => readlinkSync(path).replace(/\//g, '\\')
+
 const ReadEntry = require('../lib/read-entry.js')
 const makeTar = require('./make-tar.js')
 const WriteEntry = require('../lib/write-entry.js')
-const fs = require('fs')
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
