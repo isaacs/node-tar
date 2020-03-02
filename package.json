@@ -20,13 +20,13 @@
     "fs-minipass": "^2.0.0",
     "minipass": "^3.0.0",
     "minizlib": "^2.1.0",
-    "mkdirp": "^1.0.3",
     "yallist": "^4.0.0"
   },
   "devDependencies": {
     "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.3",
     "events-to-array": "^1.1.2",
+    "mkdirp": "^1.0.3",
     "mutate-fs": "^2.1.1",
     "rimraf": "^2.7.1",
     "tap": "^14.9.2",
