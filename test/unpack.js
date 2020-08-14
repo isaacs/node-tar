@@ -2527,7 +2527,6 @@ t.test('trying to unpack a javascript file should fail', t => {
     }
     new Unpack(opts)
       .once('error', er => t.match(er, expect, 'async emits'))
-      .on('error', () => { /* zlib emits a few times here */ })
       .end(dataGzip)
     t.throws(() => new UnpackSync(opts).end(dataGzip), expect, 'sync throws')
   })
