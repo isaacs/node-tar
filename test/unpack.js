@@ -1916,6 +1916,48 @@ t.test('use explicit chmod when required by umask', t => {
   })
 })
 
+t.test('dont use explicit chmod if noChmod flag set', t => {
+  process.umask(0o022)
+  const { umask } = process
+  t.teardown(() => process.umask = umask)
+  process.umask = () => {
+    throw new Error('should not call process.umask()')
+  }
+
+  const basedir = path.resolve(unpackdir, 'umask-no-chmod')
+
+  const data = makeTar([
+    {
+      path: 'x/y/z',
+      mode: 0o775,
+      type: 'Directory',
+    },
+    '',
+    '',
+  ])
+
+  const check = t => {
+    const st = fs.statSync(basedir + '/x/y/z')
+    t.equal(st.mode & 0o777, 0o755)
+    rimraf.sync(basedir)
+    t.end()
+  }
+
+  t.test('async', t => {
+    mkdirp.sync(basedir)
+    const unpack = new Unpack({ cwd: basedir, noChmod: true })
+    unpack.on('close', _ => check(t))
+    unpack.end(data)
+  })
+
+  return t.test('sync', t => {
+    mkdirp.sync(basedir)
+    const unpack = new Unpack.Sync({ cwd: basedir, noChmod: true})
+    unpack.end(data)
+    check(t)
+  })
+})
+
 t.test('chown implicit dirs and also the entries', t => {
   const basedir = path.resolve(unpackdir, 'chownr')
 
