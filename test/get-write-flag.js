@@ -17,7 +17,7 @@ switch (process.argv[2]) {
         constants: {
           ...fs.constants,
           ...{ UV_FS_O_FILEMAP },
-        }
+        },
       }
     }
     const { O_CREAT, O_TRUNC, O_WRONLY } = fs.constants
@@ -35,7 +35,7 @@ switch (process.argv[2]) {
         constants: {
           ...fs.constants,
           ...{ UV_FS_O_FILEMAP: 0 },
-        }
+        },
       }
     }
     if (platform !== 'win32')

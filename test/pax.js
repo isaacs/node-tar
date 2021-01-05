@@ -142,7 +142,7 @@ t.test('parse', t => {
     dev: null,
     ino: null,
     nlink: null,
-    global: true
+    global: true,
   })
 
   t.same(Pax.parse('11 path=ab\n', null, false), {
@@ -161,7 +161,7 @@ t.test('parse', t => {
     dev: null,
     ino: null,
     nlink: null,
-    global: false
+    global: false,
   })
 
   t.same(Pax.parse('9 gid=20\n9 path=x\n', null, false), {
@@ -180,7 +180,7 @@ t.test('parse', t => {
     dev: null,
     ino: null,
     nlink: null,
-    global: false
+    global: false,
   })
 
   t.same(Pax.parse('9 gid=20\n9 path=x\n', null, false), {
@@ -199,7 +199,7 @@ t.test('parse', t => {
     dev: null,
     ino: null,
     nlink: null,
-    global: false
+    global: false,
   })
 
   t.same(Pax.parse('20 mtime=1491436800\n', null, false), {
@@ -218,7 +218,7 @@ t.test('parse', t => {
     dev: null,
     ino: null,
     nlink: null,
-    global: false
+    global: false,
   })
 
   const breaky =
@@ -230,7 +230,7 @@ t.test('parse', t => {
 
   const noKey = '10 =pathx\n'
 
-  t.same(Pax.parse(breaky + '9 gid=20\n10 path=x\n'+noKey, null, false), {
+  t.same(Pax.parse(breaky + '9 gid=20\n10 path=x\n' + noKey, null, false), {
     atime: null,
     charset: null,
     comment: null,
@@ -246,10 +246,8 @@ t.test('parse', t => {
     dev: null,
     ino: null,
     nlink: null,
-    global: false
+    global: false,
   })
-
-
 
   t.end()
 })

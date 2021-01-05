@@ -25,7 +25,7 @@ t.test('basic', t => {
           file: file,
           sync: true,
           onentry: onentry,
-          maxReadSize: maxReadSize
+          maxReadSize: maxReadSize,
         })
         return check(actual, t)
       })
@@ -36,7 +36,7 @@ t.test('basic', t => {
         return list({
           file: file,
           onentry: onentry,
-          maxReadSize: maxReadSize
+          maxReadSize: maxReadSize,
         }).then(_ => check(actual, t))
       })
 
@@ -46,7 +46,7 @@ t.test('basic', t => {
         list({
           file: file,
           onentry: onentry,
-          maxReadSize: maxReadSize
+          maxReadSize: maxReadSize,
         }, er => {
           if (er)
             throw er
@@ -83,7 +83,7 @@ t.test('basic', t => {
   t.test('limit to specific files', t => {
     const fileList = [
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t',
-      '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc///'
+      '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc///',
     ]
 
     const expect = [
@@ -94,7 +94,7 @@ t.test('basic', t => {
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
     ]
 
     t.test('no filter function', t => {
@@ -102,7 +102,7 @@ t.test('basic', t => {
       const actual = []
       return list({
         file: file,
-        onentry: entry => actual.push(entry.path)
+        onentry: entry => actual.push(entry.path),
       }, fileList).then(check)
     })
 
@@ -124,14 +124,14 @@ t.test('basic', t => {
       return list({
         file: file,
         filter: path => path === expect[0],
-        onentry: entry => actual.push(entry.path)
+        onentry: entry => actual.push(entry.path),
       }, fileList).then(check)
     })
 
     return t.test('list is unmunged', t => {
       t.same(fileList, [
         'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t',
-        '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc///'
+        '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc///',
       ])
       t.end()
     })
@@ -142,9 +142,9 @@ t.test('basic', t => {
 
 t.test('bad args', t => {
   t.throws(_ => list({ file: __filename, sync: true }, _ => _),
-           new TypeError('callback not supported for sync tar functions'))
-  t.throws(_ => list(_=>_),
-           new TypeError('callback only supported with file option'))
+    new TypeError('callback not supported for sync tar functions'))
+  t.throws(_ => list(_ => _),
+    new TypeError('callback only supported with file option'))
   t.end()
 })
 
@@ -174,7 +174,7 @@ t.test('read fail', t => {
     t.throws(_ => list({
       file: __filename,
       sync: true,
-      maxReadSize: 10
+      maxReadSize: 10,
     }), poop)
   })
   t.test('cb', t => {
@@ -206,26 +206,23 @@ t.test('noResume option', t => {
         })
       },
       sync: true,
-      noResume: true
+      noResume: true,
     })
     t.ok(e)
     t.notOk(e.flowing)
     e.on('end', _ => t.end())
   })
 
-  t.test('async', t => {
-    let e
-    return list({
-      file: file,
-      onentry: entry => {
-        process.nextTick(_ => {
-          t.notOk(entry.flowing)
-          entry.resume()
-        })
-      },
-      noResume: true
-    })
-  })
+  t.test('async', t => list({
+    file: file,
+    onentry: entry => {
+      process.nextTick(_ => {
+        t.notOk(entry.flowing)
+        entry.resume()
+      })
+    },
+    noResume: true,
+  }))
 
   t.end()
 })

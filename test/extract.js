@@ -32,7 +32,7 @@ t.test('basic extracting', t => {
     t.end()
   }
 
-  const files = [ '🌟.txt', 'Ω.txt' ]
+  const files = ['🌟.txt', 'Ω.txt']
   t.test('sync', t => {
     x({ file: file, sync: true, C: dir }, files)
     check(t)
@@ -78,18 +78,18 @@ t.test('file list and filter', t => {
   const filter = path => path === 'Ω.txt'
 
   t.test('sync', t => {
-    x({ filter: filter, file: file, sync: true, C: dir }, [ '🌟.txt', 'Ω.txt' ])
+    x({ filter: filter, file: file, sync: true, C: dir }, ['🌟.txt', 'Ω.txt'])
     check(t)
   })
 
   t.test('async promisey', t => {
-    return x({ filter: filter, file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ]).then(_ => {
+    return x({ filter: filter, file: file, cwd: dir }, ['🌟.txt', 'Ω.txt']).then(_ => {
       check(t)
     })
   })
 
   t.test('async cb', t => {
-    return x({ filter: filter, file: file, cwd: dir }, [ '🌟.txt', 'Ω.txt' ], er => {
+    return x({ filter: filter, file: file, cwd: dir }, ['🌟.txt', 'Ω.txt'], er => {
       if (er)
         throw er
       check(t)
@@ -183,9 +183,9 @@ t.test('read in itty bits', t => {
 })
 
 t.test('bad calls', t => {
-  t.throws(_=> x(_=>_))
-  t.throws(_=> x({sync: true}, _=>_))
-  t.throws(_=> x({sync: true}, [], _=>_))
+  t.throws(_ => x(_ => _))
+  t.throws(_ => x({sync: true}, _ => _))
+  t.throws(_ => x({sync: true}, [], _ => _))
   t.end()
 })
 
@@ -193,7 +193,7 @@ t.test('no file', t => {
   const Unpack = require('../lib/unpack.js')
   t.isa(x(), Unpack)
   t.isa(x(['asdf']), Unpack)
-  t.isa(x({sync:true}), Unpack.Sync)
+  t.isa(x({sync: true}), Unpack.Sync)
   t.end()
 })
 
@@ -211,7 +211,6 @@ t.test('read fail', t => {
 })
 
 t.test('sync gzip error edge case test', t => {
-  const zlib = require('minizlib')
   const file = path.resolve(__dirname, 'fixtures/sync-gzip-fail.tgz')
   const dir = path.resolve(__dirname, 'sync-gzip-fail')
   const cwd = process.cwd()
@@ -225,11 +224,13 @@ t.test('sync gzip error edge case test', t => {
   x({
     sync: true,
     file: file,
-    onwarn: (c, m, er) => { throw er }
+    onwarn: (c, m, er) => {
+      throw er
+    },
   })
 
   t.same(fs.readdirSync(dir + '/x').sort(),
-    [ '1', '10', '2', '3', '4', '5', '6', '7', '8', '9' ])
+    ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9'])
 
   t.end()
 })

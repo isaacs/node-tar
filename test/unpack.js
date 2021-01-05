@@ -13,7 +13,6 @@ const z = require('minizlib')
 const fs = require('fs')
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
-const files = path.resolve(fixtures, 'files')
 const tars = path.resolve(fixtures, 'tars')
 const parses = path.resolve(fixtures, 'parse')
 const unpackdir = path.resolve(fixtures, 'unpack')
@@ -37,27 +36,27 @@ t.test('basic file unpack tests', t => {
   const cases = {
     'emptypax.tar': {
       '🌟.txt': '🌟✧✩⭐︎✪✫✬✭✮⚝✯✰✵✶✷✸✹❂⭑⭒★☆✡☪✴︎✦✡️🔯✴️🌠\n',
-      'one-byte.txt': 'a'
+      'one-byte.txt': 'a',
     },
     'body-byte-counts.tar': {
       '1024-bytes.txt': new Array(1024).join('x') + '\n',
       '512-bytes.txt': new Array(512).join('x') + '\n',
       'one-byte.txt': 'a',
-      'zero-byte.txt': ''
+      'zero-byte.txt': '',
     },
     'utf8.tar': {
       '🌟.txt': '🌟✧✩⭐︎✪✫✬✭✮⚝✯✰✵✶✷✸✹❂⭑⭒★☆✡☪✴︎✦✡️🔯✴️🌠\n',
       'Ω.txt': 'Ω',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω'
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω',
     },
     'file.tar': {
-      'one-byte.txt': 'a'
+      'one-byte.txt': 'a',
     },
     'global-header.tar': {
-      'one-byte.txt': 'a'
+      'one-byte.txt': 'a',
     },
     'long-pax.tar': {
-      '120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+      '120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
     },
     'long-paths.tar': {
       '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
@@ -67,8 +66,8 @@ t.test('basic file unpack tests', t => {
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω'
-    }
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω',
+    },
   }
 
   const tarfiles = Object.keys(cases)
@@ -180,7 +179,7 @@ t.test('links!', t => {
     let err = null
     try {
       fs.lstatSync(dir + '/3/hardlink-3')
-    } catch(e) {
+    } catch (e) {
       err = e
     }
     // can't be extracted because we've passed it in the tar (specially crafted tar for this not to work)
@@ -315,7 +314,7 @@ t.test('nested dir dupe', t => {
     'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
     'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
     'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-    'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω'
+    'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω',
   }
 
   const check = t => {
@@ -351,20 +350,20 @@ t.test('symlink in dir path', t => {
   const data = makeTar([
     {
       path: 'd/i',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       path: 'd/i/r/dir',
       type: 'Directory',
       mode: 0o751,
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/file',
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
-      ctime: new Date('2011-03-27T22:16:31.000Z')
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'a',
     {
@@ -373,7 +372,7 @@ t.test('symlink in dir path', t => {
       linkpath: 'd/i/r/file',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/symlink',
@@ -381,7 +380,7 @@ t.test('symlink in dir path', t => {
       linkpath: './dir',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/symlink/x',
@@ -389,17 +388,17 @@ t.test('symlink in dir path', t => {
       size: 0,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     '',
-    ''
+    '',
   ])
 
   t.test('no clobbering', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (c,w,d) => warnings.push([c,w,d]),
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
     })
     u.on('close', _ => {
       t.equal(fs.lstatSync(dir + '/d/i').mode & 0o7777, 0o755)
@@ -412,7 +411,7 @@ t.test('symlink in dir path', t => {
       t.match(warnings[0][2], {
         name: 'SylinkError',
         path: dir + '/d/i/r/symlink/',
-        symlink: dir + '/d/i/r/symlink'
+        symlink: dir + '/d/i/r/symlink',
       })
       t.equal(warnings.length, 1)
       t.end()
@@ -424,7 +423,7 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (c,w,d) => warnings.push([c,w,d])
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
     })
     u.end(data)
     t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -437,7 +436,7 @@ t.test('symlink in dir path', t => {
     t.match(warnings[0][2], {
       name: 'SylinkError',
       path: dir + '/d/i/r/symlink/',
-      symlink: dir + '/d/i/r/symlink'
+      symlink: dir + '/d/i/r/symlink',
     })
     t.end()
   })
@@ -446,8 +445,8 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (c,w,d) => warnings.push([c,w,d]),
-      preservePaths: true
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
+      preservePaths: true,
     })
     u.on('close', _ => {
       t.same(warnings, [])
@@ -465,8 +464,8 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (c,w,d) => warnings.push([c,w,d]),
-      preservePaths: true
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
+      preservePaths: true,
     })
     u.end(data)
     t.same(warnings, [])
@@ -482,8 +481,8 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (c,w,d) => warnings.push([c,w,d]),
-      unlink: true
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
+      unlink: true,
     })
     u.on('close', _ => {
       t.same(warnings, [])
@@ -503,11 +502,11 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new Unpack({
       cwd: dir,
-      onwarn: (c,w,d) => warnings.push([c,w,d]),
-      unlink: true
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
+      unlink: true,
     })
     u.on('close', _ => {
-      t.same(warnings, [[ 'TAR_ENTRY_ERROR', 'poop', poop ]])
+      t.same(warnings, [['TAR_ENTRY_ERROR', 'poop', poop]])
       t.end()
     })
     u.end(data)
@@ -517,8 +516,8 @@ t.test('symlink in dir path', t => {
     const warnings = []
     const u = new UnpackSync({
       cwd: dir,
-      onwarn: (c,w,d) => warnings.push([c,w,d]),
-      unlink: true
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
+      unlink: true,
     })
     u.end(data)
     t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -538,8 +537,8 @@ t.test('symlink in dir path', t => {
     const u = new Unpack({
       cwd: dir,
       onwarn: (c, w, d) => {
-        warnings.push([c,w,d])
-      }
+        warnings.push([c, w, d])
+      },
     })
     u.on('close', _ => {
       t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -552,7 +551,7 @@ t.test('symlink in dir path', t => {
       t.match(warnings[0][2], {
         name: 'SylinkError',
         path: dir + '/d/i/r/symlink/',
-        symlink: dir + '/d/i/r/symlink'
+        symlink: dir + '/d/i/r/symlink',
       })
       t.end()
     })
@@ -568,8 +567,8 @@ t.test('symlink in dir path', t => {
     const u = new UnpackSync({
       cwd: dir,
       onwarn: (c, w, d) => {
-        warnings.push([c,w,d])
-      }
+        warnings.push([c, w, d])
+      },
     })
     u.end(data)
     t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -582,7 +581,7 @@ t.test('symlink in dir path', t => {
     t.match(warnings[0][2], {
       name: 'SylinkError',
       path: dir + '/d/i/r/symlink/',
-      symlink: dir + '/d/i/r/symlink'
+      symlink: dir + '/d/i/r/symlink',
     })
     t.end()
   })
@@ -600,25 +599,28 @@ t.test('unsupported entries', t => {
   const data = makeTar([
     {
       path: 'dev/random',
-      type: 'CharacterDevice'
+      type: 'CharacterDevice',
     },
     {
       path: 'dev/hd0',
-      type: 'BlockDevice'
+      type: 'BlockDevice',
     },
     {
       path: 'dev/fifo0',
-      type: 'FIFO'
+      type: 'FIFO',
     },
+    // note: unrecognized types are ignored, so this won't emit a warning.
+    // gnutar and bsdtar treat unrecognized types as 'file', so it may be
+    // worth doing the same thing, but with a warning.
     unknown.block,
     'asdf',
     '',
-    ''
+    '',
   ])
 
   t.test('basic, warns', t => {
     const warnings = []
-    const u = new Unpack({ cwd: dir, onwarn: (c,w,d) => warnings.push([c,w,d]) })
+    const u = new Unpack({ cwd: dir, onwarn: (c, w, d) => warnings.push([c, w, d]) })
     const c = 'TAR_ENTRY_UNSUPPORTED'
     const expect = [
       [c, 'unsupported entry type: CharacterDevice', {
@@ -642,7 +644,7 @@ t.test('unsupported entries', t => {
     const u = new Unpack({
       cwd: dir,
       strict: true,
-      onwarn: (c,w,d) => warnings.push([c,w,d])
+      onwarn: (c, w, d) => warnings.push([c, w, d]),
     })
     u.on('error', e => errors.push(e))
     u.on('close', _ => {
@@ -651,16 +653,16 @@ t.test('unsupported entries', t => {
       t.match(errors, [
         {
           message: 'unsupported entry type: CharacterDevice',
-          entry: { path: 'dev/random' }
+          entry: { path: 'dev/random' },
         },
         {
           message: 'unsupported entry type: BlockDevice',
-          entry: { path: 'dev/hd0' }
+          entry: { path: 'dev/hd0' },
         },
         {
           message: 'unsupported entry type: FIFO',
-          entry: { path: 'dev/fifo0' }
-        }
+          entry: { path: 'dev/fifo0' },
+        },
       ])
       t.end()
     })
@@ -669,7 +671,6 @@ t.test('unsupported entries', t => {
 
   t.end()
 })
-
 
 t.test('file in dir path', t => {
   const dir = path.resolve(unpackdir, 'file-junk')
@@ -688,7 +689,7 @@ t.test('file in dir path', t => {
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'a',
     {
@@ -697,11 +698,11 @@ t.test('file in dir path', t => {
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'b',
     '',
-    ''
+    '',
   ])
 
   t.test('fail because of file', t => {
@@ -754,15 +755,15 @@ t.test('set umask option', t => {
     {
       path: 'd/i/r/dir',
       type: 'Directory',
-      mode: 0o751
+      mode: 0o751,
     },
     '',
-    ''
+    '',
   ])
 
   new Unpack({
     umask: 0o027,
-    cwd: dir
+    cwd: dir,
   }).on('close', _ => {
     t.equal(fs.statSync(dir + '/d/i/r').mode & 0o7777, 0o750)
     t.equal(fs.statSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -792,11 +793,11 @@ t.test('absolute paths', t => {
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'a',
     '',
-    ''
+    '',
   ])
 
   t.test('warn and correct', t => {
@@ -815,15 +816,15 @@ t.test('absolute paths', t => {
       warnings.length = 0
       new Unpack({
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
-      }).on('close', _=> check(t)).end(data)
+        onwarn: (c, w, d) => warnings.push([w, d]),
+      }).on('close', _ => check(t)).end(data)
     })
 
     t.test('sync', t => {
       warnings.length = 0
       new UnpackSync({
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d]),
       }).end(data)
       check(t)
     })
@@ -845,8 +846,8 @@ t.test('absolute paths', t => {
       new Unpack({
         preservePaths: true,
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
-      }).on('close', _=> check(t)).end(data)
+        onwarn: (c, w, d) => warnings.push([w, d]),
+      }).on('close', _ => check(t)).end(data)
     })
 
     t.test('sync', t => {
@@ -854,7 +855,7 @@ t.test('absolute paths', t => {
       new UnpackSync({
         preservePaths: true,
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d]),
       }).end(data)
       check(t)
     })
@@ -885,20 +886,20 @@ t.test('.. paths', t => {
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'd',
     '',
-    ''
+    '',
   ])
 
   t.test('warn and skip', t => {
     const check = t => {
       t.match(warnings, [[
         'path contains \'..\'',
-        { path: dotted, code: 'TAR_ENTRY_ERROR' }
+        { path: dotted, code: 'TAR_ENTRY_ERROR' },
       ]])
-      t.throws(_=>fs.lstatSync(resolved))
+      t.throws(_ => fs.lstatSync(resolved))
       t.end()
     }
 
@@ -909,8 +910,8 @@ t.test('.. paths', t => {
       new Unpack({
         fmode: fmode,
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
-      }).on('close', _=> check(t)).end(data)
+        onwarn: (c, w, d) => warnings.push([w, d]),
+      }).on('close', _ => check(t)).end(data)
     })
 
     t.test('sync', t => {
@@ -918,7 +919,7 @@ t.test('.. paths', t => {
       new UnpackSync({
         fmode: fmode,
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d]),
       }).end(data)
       check(t)
     })
@@ -942,8 +943,8 @@ t.test('.. paths', t => {
         fmode: fmode,
         preservePaths: true,
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
-      }).on('close', _=> check(t)).end(data)
+        onwarn: (c, w, d) => warnings.push([w, d]),
+      }).on('close', _ => check(t)).end(data)
     })
 
     t.test('sync', t => {
@@ -952,7 +953,7 @@ t.test('.. paths', t => {
         fmode: fmode,
         preservePaths: true,
         cwd: dir,
-        onwarn: (c, w, d) => warnings.push([w, d])
+        onwarn: (c, w, d) => warnings.push([w, d]),
       }).end(data)
       check(t)
     })
@@ -988,7 +989,7 @@ t.test('fail all stats', t => {
       type: 'Directory',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/dir/',
@@ -996,7 +997,7 @@ t.test('fail all stats', t => {
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/file',
@@ -1004,7 +1005,7 @@ t.test('fail all stats', t => {
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'a',
     {
@@ -1013,7 +1014,7 @@ t.test('fail all stats', t => {
       linkpath: 'd/i/r/file',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/symlink',
@@ -1021,10 +1022,10 @@ t.test('fail all stats', t => {
       linkpath: './dir',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     '',
-    ''
+    '',
   ])
 
   const check = (t, expect) => {
@@ -1036,11 +1037,11 @@ t.test('fail all stats', t => {
   t.test('async', t => {
     const expect = [
       ['poop', poop],
-      ['poop', poop]
+      ['poop', poop],
     ]
     new Unpack({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).on('close', _ => check(t, expect)).end(data)
   })
 
@@ -1051,21 +1052,21 @@ t.test('fail all stats', t => {
         {
           code: 'EISDIR',
           path: path.resolve(dir, 'd/i/r/file'),
-          syscall: 'open'
-        }
+          syscall: 'open',
+        },
       ],
       [
         String,
         {
           dest: path.resolve(dir, 'd/i/r/link'),
           path: path.resolve(dir, 'd/i/r/file'),
-          syscall: 'link'
-        }
-      ]
+          syscall: 'link',
+        },
+      ],
     ]
     new UnpackSync({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).end(data)
     check(t, expect)
   })
@@ -1095,7 +1096,7 @@ t.test('fail symlink', t => {
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/symlink',
@@ -1103,10 +1104,10 @@ t.test('fail symlink', t => {
       linkpath: './dir',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     '',
-    ''
+    '',
   ])
 
   const check = (t, expect) => {
@@ -1119,7 +1120,7 @@ t.test('fail symlink', t => {
     const expect = [['poop', poop]]
     new Unpack({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).on('close', _ => check(t, expect)).end(data)
   })
 
@@ -1127,7 +1128,7 @@ t.test('fail symlink', t => {
     const expect = [['poop', poop]]
     new UnpackSync({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).end(data)
     check(t, expect)
   })
@@ -1156,7 +1157,7 @@ t.test('fail chmod', t => {
       type: 'Directory',
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/dir/',
@@ -1164,10 +1165,10 @@ t.test('fail chmod', t => {
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     '',
-    ''
+    '',
   ])
 
   const check = (t, expect) => {
@@ -1180,7 +1181,7 @@ t.test('fail chmod', t => {
     const expect = [['poop', poop]]
     new Unpack({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).on('close', _ => check(t, expect)).end(data)
   })
 
@@ -1188,7 +1189,7 @@ t.test('fail chmod', t => {
     const expect = [['poop', poop]]
     new UnpackSync({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).end(data)
     check(t, expect)
   })
@@ -1223,21 +1224,21 @@ t.test('fail mkdir', t => {
       mode: 0o751,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     '',
-    ''
+    '',
   ])
 
-  const expect = [ [
+  const expect = [[
     'ENOENT: no such file or directory, lstat \'' +
     path.resolve(dir, 'dir') + '\'',
     {
       code: 'ENOENT',
       syscall: 'lstat',
-      path: path.resolve(dir, 'dir')
-    }
-  ] ]
+      path: path.resolve(dir, 'dir'),
+    },
+  ]]
 
   const check = t => {
     t.match(warnings, expect)
@@ -1248,14 +1249,14 @@ t.test('fail mkdir', t => {
   t.test('async', t => {
     new Unpack({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).on('close', _ => check(t)).end(data)
   })
 
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).end(data)
     check(t)
   })
@@ -1284,14 +1285,14 @@ t.test('fail write', t => {
       type: 'File',
       size: 1,
       mode: 0o751,
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'x',
     '',
-    ''
+    '',
   ])
 
-  const expect = [ [ 'poop', poop ] ]
+  const expect = [['poop', poop]]
 
   const check = t => {
     t.match(warnings, expect)
@@ -1302,14 +1303,14 @@ t.test('fail write', t => {
   t.test('async', t => {
     new Unpack({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).on('close', _ => check(t)).end(data)
   })
 
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d])
+      onwarn: (c, w, d) => warnings.push([w, d]),
     }).end(data)
     check(t)
   })
@@ -1336,11 +1337,11 @@ t.test('skip existing', t => {
       type: 'File',
       size: 1,
       mode: 0o751,
-      mtime: new Date('2013-12-19T17:00:00.000Z')
+      mtime: new Date('2013-12-19T17:00:00.000Z'),
     },
     'x',
     '',
-    ''
+    '',
   ])
 
   const check = t => {
@@ -1355,14 +1356,14 @@ t.test('skip existing', t => {
   t.test('async', t => {
     new Unpack({
       cwd: dir,
-      keep: true
+      keep: true,
     }).on('close', _ => check(t)).end(data)
   })
 
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
-      keep: true
+      keep: true,
     }).end(data)
     check(t)
   })
@@ -1389,11 +1390,11 @@ t.test('skip newer', t => {
       type: 'File',
       size: 1,
       mode: 0o751,
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'x',
     '',
-    ''
+    '',
   ])
 
   const check = t => {
@@ -1408,14 +1409,14 @@ t.test('skip newer', t => {
   t.test('async', t => {
     new Unpack({
       cwd: dir,
-      newer: true
+      newer: true,
     }).on('close', _ => check(t)).end(data)
   })
 
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
-      newer: true
+      newer: true,
     }).end(data)
     check(t)
   })
@@ -1441,7 +1442,7 @@ t.test('no mtime', t => {
       size: 0,
       atime: date,
       ctime: date,
-      mtime: date
+      mtime: date,
     },
     {
       path: 'x/y',
@@ -1450,11 +1451,11 @@ t.test('no mtime', t => {
       mode: 0o751,
       atime: date,
       ctime: date,
-      mtime: date
+      mtime: date,
     },
     'x',
     '',
-    ''
+    '',
   ])
 
   const check = t => {
@@ -1473,14 +1474,14 @@ t.test('no mtime', t => {
   t.test('async', t => {
     new Unpack({
       cwd: dir,
-      noMtime: true
+      noMtime: true,
     }).on('close', _ => check(t)).end(data)
   })
 
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
-      noMtime: true
+      noMtime: true,
     }).end(data)
     check(t)
   })
@@ -1496,7 +1497,7 @@ t.test('unpack big enough to pause/drain', t => {
   const u = new Unpack({
     cwd: dir,
     strip: 3,
-    strict: true
+    strict: true,
   })
 
   u.on('ignoredEntry', entry =>
@@ -1548,63 +1549,63 @@ t.test('set owner', t => {
       uid: 2456124561,
       gid: 813708013,
       path: 'foo/',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       uid: myUid,
       gid: 813708013,
       path: 'foo/my-uid-different-gid',
       type: 'File',
-      size: 3
+      size: 3,
     },
     'qux',
     {
       uid: 2456124561,
       path: 'foo/different-uid-nogid',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       uid: 2456124561,
       path: 'foo/different-uid-nogid/bar',
       type: 'File',
-      size: 3
+      size: 3,
     },
     'qux',
     {
       gid: 813708013,
       path: 'foo/different-gid-nouid/bar',
       type: 'File',
-      size: 3
+      size: 3,
     },
     'qux',
     {
       uid: myUid,
       gid: myGid,
       path: 'foo-mine/',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       uid: myUid,
       gid: myGid,
       path: 'foo-mine/bar',
       type: 'File',
-      size: 3
+      size: 3,
     },
     'qux',
     {
       uid: myUid,
       path: 'foo-mine/nogid',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       uid: myUid,
       path: 'foo-mine/nogid/bar',
       type: 'File',
-      size: 3
+      size: 3,
     },
     'qux',
     '',
-    ''
+    '',
   ])
 
   t.test('chown failure results in unpack failure', t => {
@@ -1629,7 +1630,7 @@ t.test('set owner', t => {
             t.equal(er, poop)
             t.end()
           }
-        }
+        },
       })
       u.end(data)
     })
@@ -1647,7 +1648,7 @@ t.test('set owner', t => {
             t.equal(er, poop)
             t.end()
           }
-        }
+        },
       })
       u.end(data)
     })
@@ -1670,7 +1671,7 @@ t.test('set owner', t => {
     const lchownSync = fs.lchownSync
     let called = 0
     fs.fchown = fs.chown = fs.lchown = (path, owner, group, cb) => {
-      called ++
+      called++
       cb()
     }
     fs.chownSync = fs.lchownSync = fs.fchownSync = _ => called++
@@ -1762,16 +1763,16 @@ t.test('unpack when dir is not writable', t => {
     {
       path: 'a/',
       type: 'Directory',
-      mode: 0o444
+      mode: 0o444,
     },
     {
       path: 'a/b',
       type: 'File',
-      size: 1
+      size: 1,
     },
     'a',
     '',
-    ''
+    '',
   ])
 
   const dir = path.resolve(unpackdir, 'nowrite-dir')
@@ -1804,11 +1805,11 @@ t.test('transmute chars on windows', t => {
     {
       path: '<|>?:.txt',
       size: 5,
-      type: 'File'
+      type: 'File',
     },
     '<|>?:',
     '',
-    ''
+    '',
   ])
 
   const dir = path.resolve(unpackdir, 'winchars')
@@ -1820,7 +1821,7 @@ t.test('transmute chars on windows', t => {
   const ugly = path.resolve(dir, uglyName)
 
   const check = t => {
-    t.same(fs.readdirSync(dir), [ uglyName ])
+    t.same(fs.readdirSync(dir), [uglyName])
     t.equal(fs.readFileSync(ugly, 'utf8'), '<|>?:')
     t.end()
   }
@@ -1828,7 +1829,7 @@ t.test('transmute chars on windows', t => {
   t.test('async', t => {
     const u = new Unpack({
       cwd: dir,
-      win32: true
+      win32: true,
     })
     u.end(data)
     u.on('close', _ => check(t))
@@ -1837,7 +1838,7 @@ t.test('transmute chars on windows', t => {
   t.test('sync', t => {
     const u = new Unpack.Sync({
       cwd: dir,
-      win32: true
+      win32: true,
     })
     u.end(data)
     check(t)
@@ -1855,11 +1856,11 @@ t.test('safely transmute chars on windows with absolutes', t => {
     {
       path: 'c:/x/y/z/<|>?:.txt',
       size: 5,
-      type: 'File'
+      type: 'File',
     },
     '<|>?:',
     '',
-    ''
+    '',
   ])
 
   const hex = 'ef80bcef81bcef80beef80bfef80ba2e747874'
@@ -1868,7 +1869,7 @@ t.test('safely transmute chars on windows with absolutes', t => {
 
   const u = new Unpack({
     win32: true,
-    preservePaths: true
+    preservePaths: true,
   })
   u.on('entry', entry => {
     t.equal(entry.path, uglyPath)
@@ -1887,10 +1888,10 @@ t.test('use explicit chmod when required by umask', t => {
     {
       path: 'x/y/z',
       mode: 0o775,
-      type: 'Directory'
+      type: 'Directory',
     },
     '',
-    ''
+    '',
   ])
 
   const check = t => {
@@ -1944,14 +1945,14 @@ t.test('chown implicit dirs and also the entries', t => {
   fs.lchown = fs.fchown = fs.chown = (path, uid, gid, cb) => {
     currentTest.equal(uid, 420, 'chown(' + path + ') uid')
     currentTest.equal(gid, 666, 'chown(' + path + ') gid')
-    chowns ++
+    chowns++
     cb()
   }
 
   fs.lchownSync = fs.chownSync = fs.fchownSync = (path, uid, gid) => {
     currentTest.equal(uid, 420, 'chownSync(' + path + ') uid')
     currentTest.equal(gid, 666, 'chownSync(' + path + ') gid')
-    chowns ++
+    chowns++
   }
 
   const data = makeTar([
@@ -1961,7 +1962,7 @@ t.test('chown implicit dirs and also the entries', t => {
       type: 'File',
       size: 1,
       uid: null,
-      gid: null
+      gid: null,
     },
     '.',
     {
@@ -1970,11 +1971,11 @@ t.test('chown implicit dirs and also the entries', t => {
       uid: 12345,
       gid: 54321,
       type: 'File',
-      size: 1
+      size: 1,
     },
     '.',
     '',
-    ''
+    '',
   ])
 
   const check = t => {
@@ -2037,18 +2038,18 @@ t.test('bad cwd setting', t => {
     // the cwd itself
     {
       path: './',
-      type: 'Directory'
+      type: 'Directory',
     },
     // a file directly in the cwd
     {
       path: 'a',
-      type: 'File'
+      type: 'File',
     },
     // a file nested within a subdir of the cwd
     {
       path: 'a/b/c',
-      type: 'File'
-    }
+      type: 'File',
+    },
   ]
 
   fs.writeFileSync(basedir + '/file', 'xyz')
@@ -2061,10 +2062,10 @@ t.test('bad cwd setting', t => {
         type: c.type,
         size: 0,
         uid: null,
-        gid: null
+        gid: null,
       },
       '',
-      ''
+      '',
     ])
 
     t.test('cwd is a file', t => {
@@ -2075,7 +2076,7 @@ t.test('bad cwd setting', t => {
         name: 'CwdError',
         message: 'ENOTDIR: Cannot cd into \'' + cwd + '\'',
         path: cwd,
-        code: 'ENOTDIR'
+        code: 'ENOTDIR',
       })
 
       new Unpack(opt).on('error', er => {
@@ -2083,7 +2084,7 @@ t.test('bad cwd setting', t => {
           name: 'CwdError',
           message: 'ENOTDIR: Cannot cd into \'' + cwd + '\'',
           path: cwd,
-          code: 'ENOTDIR'
+          code: 'ENOTDIR',
         })
         t.end()
       }).end(data)
@@ -2097,7 +2098,7 @@ t.test('bad cwd setting', t => {
         name: 'CwdError',
         message: 'ENOENT: Cannot cd into \'' + cwd + '\'',
         path: cwd,
-        code: 'ENOENT'
+        code: 'ENOENT',
       })
 
       new Unpack(opt).on('error', er => {
@@ -2105,7 +2106,7 @@ t.test('bad cwd setting', t => {
           name: 'CwdError',
           message: 'ENOENT: Cannot cd into \'' + cwd + '\'',
           path: cwd,
-          code: 'ENOENT'
+          code: 'ENOENT',
         })
         t.end()
       }).end(data)
@@ -2122,19 +2123,19 @@ t.test('transform', t => {
   const cases = {
     'emptypax.tar': {
       '🌟.txt': '🌟✧✩⭐︎✪✫✬✭✮⚝✯✰✵✶✷✸✹❂⭑⭒★☆✡☪✴︎✦✡️🔯✴️🌠\n',
-      'one-byte.txt': '[a]'
+      'one-byte.txt': '[a]',
     },
     'body-byte-counts.tar': {
       '1024-bytes.txt': new Array(1024).join('[x]') + '[\n]',
       '512-bytes.txt': new Array(512).join('[x]') + '[\n]',
       'one-byte.txt': '[a]',
-      'zero-byte.txt': ''
+      'zero-byte.txt': '',
     },
     'utf8.tar': {
       '🌟.txt': '🌟✧✩⭐︎✪✫✬✭✮⚝✯✰✵✶✷✸✹❂⭑⭒★☆✡☪✴︎✦✡️🔯✴️🌠\n',
       'Ω.txt': '[Ω]',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': '[Ω]'
-    }
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': '[Ω]',
+    },
   }
 
   const txFn = entry => {
@@ -2236,7 +2237,7 @@ t.test('transform error', t => {
       let actual = 0
       unpack.on('error', er => {
         t.equal(er, poop)
-        actual ++
+        actual++
       })
       unpack.end(tardata)
       t.equal(actual, expect, 'error count')
@@ -2248,7 +2249,7 @@ t.test('transform error', t => {
       let actual = 0
       unpack.on('warn', (code, msg, er) => {
         t.equal(er, poop)
-        actual ++
+        actual++
       })
       unpack.end(tardata)
       t.equal(actual, expect, 'error count')
@@ -2300,7 +2301,7 @@ t.test('futimes/fchown failures', t => {
   const methods = ['utimes', 'chown']
   methods.forEach(method => {
     const fc = method === 'chown'
-    t.test(method +' fallback', t => {
+    t.test(method + ' fallback', t => {
       t.teardown(mutateFS.fail('f' + method, poop))
       // forceChown will fail on systems where the user is not root
       // and/or the uid/gid in the archive aren't valid. We're just
@@ -2399,24 +2400,24 @@ t.test('onentry option is preserved', t => {
   const data = makeTar([
     {
       path: 'd/i',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       path: 'd/i/r/dir',
       type: 'Directory',
       mode: 0o751,
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     {
       path: 'd/i/r/file',
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
-      ctime: new Date('2011-03-27T22:16:31.000Z')
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'a',
     '',
-    ''
+    '',
   ])
 
   const check = t => {
@@ -2457,7 +2458,7 @@ t.test('do not reuse hardlinks, only nlink=1 files', t => {
       type: 'File',
       size: 4,
       mode: 0o644,
-      mtime: now
+      mtime: now,
     },
     'foo\n',
     {
@@ -2465,27 +2466,27 @@ t.test('do not reuse hardlinks, only nlink=1 files', t => {
       linkpath: 'overwriteme',
       type: 'Link',
       mode: 0o644,
-      mtime: now
+      mtime: now,
     },
     {
       path: 'link',
       type: 'File',
       size: 4,
       mode: 0o644,
-      mtime: now
+      mtime: now,
     },
     'bar\n',
     '',
-    ''
+    '',
   ])
 
   const checks = {
-    'link': 'bar\n',
-    'overwriteme': 'foo\n'
+    link: 'bar\n',
+    overwriteme: 'foo\n',
   }
 
   const check = t => {
-    for (let f in checks) {
+    for (const f in checks) {
       t.equal(fs.readFileSync(basedir + '/' + f, 'utf8'), checks[f], f)
       t.equal(fs.statSync(basedir + '/' + f).nlink, 1, f)
     }
@@ -2560,7 +2561,7 @@ t.test('handle errors on fs.close', t => {
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
       ctime: new Date('2011-03-27T22:16:31.000Z'),
-      mtime: new Date('2011-03-27T22:16:31.000Z')
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
     },
     'a',
     '',

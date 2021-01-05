@@ -14,9 +14,9 @@ const EE = require('events').EventEmitter
 t.test('fixture tests', t => {
   class ByteStream extends MiniPass {
     write (chunk) {
-      for (let i = 0; i < chunk.length - 1; i++) {
+      for (let i = 0; i < chunk.length - 1; i++)
         super.write(chunk.slice(i, i + 1))
-      }
+
       return super.write(chunk.slice(chunk.length - 1, chunk.length))
     }
   }
@@ -33,7 +33,7 @@ t.test('fixture tests', t => {
     })
     p.on('ignoredEntry', entry => {
       ok = ok && t.match(['ignoredEntry', entry], expect[cursor++],
-                         'ignored: ' + entry.path)
+        'ignored: ' + entry.path)
     })
     p.on('warn', (c, message, data) => {
       ok = ok && t.match(['warn', c, message], expect[cursor++], 'warn')
@@ -58,12 +58,11 @@ t.test('fixture tests', t => {
 
   t.jobs = 4
   const path = require('path')
-  const tardir = path.resolve(__dirname, 'fixtures/tars')
   const parsedir = path.resolve(__dirname, 'fixtures/parse')
   const files = fs.readdirSync(tardir)
   const maxMetaOpt = [250, null]
-  const filterOpt = [ true, false ]
-  const strictOpt = [ true, false ]
+  const filterOpt = [true, false]
+  const strictOpt = [true, false]
   const runTest = (file, maxMeta, filter, strict) => {
     const tardata = fs.readFileSync(file)
     const base = path.basename(file, '.tar')
@@ -71,7 +70,6 @@ t.test('fixture tests', t => {
            ' maxmeta=' + maxMeta +
            ' filter=' + filter +
            ' strict=' + strict, t => {
-
       const o =
         (maxMeta ? '-meta-' + maxMeta : '') +
         (filter ? '-filter' : '') +
@@ -81,11 +79,11 @@ t.test('fixture tests', t => {
       const expect = require(eventsFile)
 
       t.test('one byte at a time', t => {
-        const bs = new ByteStream
+        const bs = new ByteStream()
         const opt = (maxMeta || filter || strict) ? {
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict
+          strict: strict,
         } : null
         const bp = new Parse(opt)
         trackEvents(t, expect, bp)
@@ -97,7 +95,7 @@ t.test('fixture tests', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict
+          strict: strict,
         })
         trackEvents(t, expect, p)
         p.end(tardata)
@@ -107,19 +105,18 @@ t.test('fixture tests', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict
+          strict: strict,
         })
         trackEvents(t, expect, p)
         p.end(zlib.gzipSync(tardata))
       })
 
       t.test('gzipped byte at a time', t => {
-        const bs = new ByteStream
-        const gz = new zlib.Gzip()
+        const bs = new ByteStream()
         const bp = new Parse({
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict
+          strict: strict,
         })
         trackEvents(t, expect, bp)
         bs.pipe(bp)
@@ -130,11 +127,11 @@ t.test('fixture tests', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict
+          strict: strict,
         })
         trackEvents(t, expect, p, true)
-        p.write(tardata.slice(0, Math.floor(tardata.length/2)))
-        process.nextTick(_ => p.end(tardata.slice(Math.floor(tardata.length/2))))
+        p.write(tardata.slice(0, Math.floor(tardata.length / 2)))
+        process.nextTick(_ => p.end(tardata.slice(Math.floor(tardata.length / 2))))
       })
 
       t.end()
@@ -142,11 +139,11 @@ t.test('fixture tests', t => {
   }
 
   files
-  .map(f => path.resolve(tardir, f)).forEach(file =>
-    maxMetaOpt.forEach(maxMeta =>
-      strictOpt.forEach(strict =>
-        filterOpt.forEach(filter =>
-          runTest(file, maxMeta, filter, strict)))))
+    .map(f => path.resolve(tardir, f)).forEach(file =>
+      maxMetaOpt.forEach(maxMeta =>
+        strictOpt.forEach(strict =>
+          filterOpt.forEach(filter =>
+            runTest(file, maxMeta, filter, strict)))))
   t.end()
 })
 
@@ -163,7 +160,9 @@ t.test('strict warn with an error emits that error', t => {
 t.test('onwarn gets added to the warn event', t => {
   t.plan(1)
   const p = new Parse({
-    onwarn (code, message) { t.equal(message, 'this is fine') },
+    onwarn (code, message) {
+      t.equal(message, 'this is fine')
+    },
   })
   p.warn('TAR_TEST', 'this is fine')
 })
@@ -171,7 +170,7 @@ t.test('onwarn gets added to the warn event', t => {
 t.test('onentry gets added to entry event', t => {
   t.plan(1)
   const p = new Parse({
-    onentry: entry => t.equal(entry, 'yes hello this is dog')
+    onentry: entry => t.equal(entry, 'yes hello this is dog'),
   })
   p.emit('entry', 'yes hello this is dog')
 })
@@ -197,22 +196,22 @@ t.test('drain event timings', t => {
       {
         path: 'one',
         size: 513,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('1'),
       '1',
       {
         path: 'two',
         size: 513,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('2'),
       '2',
       {
         path: 'three',
         size: 1024,
-        type: 'File'
-      }
+        type: 'File',
+      },
     ],
     [
       new Array(513).join('3'),
@@ -220,8 +219,8 @@ t.test('drain event timings', t => {
       {
         path: 'four',
         size: 513,
-        type: 'File'
-      }
+        type: 'File',
+      },
     ],
     [
       new Array(513).join('4'),
@@ -229,78 +228,78 @@ t.test('drain event timings', t => {
       {
         path: 'five',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('5'),
       new Array(513).join('5'),
       {
         path: 'six',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('6'),
       new Array(513).join('6'),
       {
         path: 'seven',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('7'),
       new Array(513).join('7'),
       {
         path: 'eight',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('8'),
       new Array(513).join('8'),
       {
         path: 'four',
         size: 513,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('4'),
       '4',
       {
         path: 'five',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('5'),
       new Array(513).join('5'),
       {
         path: 'six',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('6'),
       new Array(513).join('6'),
       {
         path: 'seven',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
       new Array(513).join('7'),
       new Array(513).join('7'),
       {
         path: 'eight',
         size: 1024,
-        type: 'File'
+        type: 'File',
       },
-      new Array(513).join('8')
+      new Array(513).join('8'),
     ],
     [
       new Array(513).join('8'),
       {
         path: 'nine',
         size: 1537,
-        type: 'File'
+        type: 'File',
       },
-      new Array(513).join('9')
+      new Array(513).join('9'),
     ],
-    [ new Array(513).join('9') ],
-    [ new Array(513).join('9') ],
-    [ '9' ]
+    [new Array(513).join('9')],
+    [new Array(513).join('9')],
+    ['9'],
   ].map(chunks => makeTar(chunks))
 
   const expect = [
@@ -311,7 +310,7 @@ t.test('drain event timings', t => {
     'one', 'two', 'three',
     'four', 'five', 'six', 'seven', 'eight',
     'four', 'five', 'six', 'seven', 'eight',
-    'nine'
+    'nine',
   ]
 
   class SlowStream extends EE {
@@ -319,19 +318,22 @@ t.test('drain event timings', t => {
       setTimeout(_ => this.emit('drain'))
       return false
     }
-    end () { return this.write() }
+
+    end () {
+      return this.write()
+    }
   }
 
   let currentEntry
-  let autoPipe = true
+  const autoPipe = true
   const p = new Parse({
     ondone,
     onentry: entry => {
       t.equal(entry.path, expect.shift())
       currentEntry = entry
       if (autoPipe)
-        setTimeout(_=> entry.pipe(new SlowStream()))
-    }
+        setTimeout(_ => entry.pipe(new SlowStream()))
+    },
   })
 
   data.forEach(d => {
@@ -354,7 +356,7 @@ t.test('drain event timings', t => {
     const hunklen = Math.floor(d.length / 2)
     const hunks = [
       d.slice(0, hunklen),
-      d.slice(hunklen)
+      d.slice(hunklen),
     ]
     p.write(hunks[0])
 
@@ -387,70 +389,69 @@ t.test('consume while consuming', t => {
     {
       path: 'one',
       size: 0,
-      type: 'File'
+      type: 'File',
     },
     {
       path: 'zero',
       size: 0,
-      type: 'File'
+      type: 'File',
     },
     {
       path: 'two',
       size: 513,
-      type: 'File'
+      type: 'File',
     },
     new Array(513).join('2'),
     '2',
     {
       path: 'three',
       size: 1024,
-      type: 'File'
+      type: 'File',
     },
     new Array(513).join('3'),
     new Array(513).join('3'),
     {
       path: 'zero',
       size: 0,
-      type: 'File'
+      type: 'File',
     },
     {
       path: 'zero',
       size: 0,
-      type: 'File'
+      type: 'File',
     },
     {
       path: 'four',
       size: 1024,
-      type: 'File'
+      type: 'File',
     },
     new Array(513).join('4'),
     new Array(513).join('4'),
     {
       path: 'zero',
       size: 0,
-      type: 'File'
+      type: 'File',
     },
     {
       path: 'zero',
       size: 0,
-      type: 'File'
+      type: 'File',
     },
   ])
-
 
   const runTest = (t, size) => {
     const p = new Parse()
     const first = data.slice(0, size)
     const rest = data.slice(size)
     p.once('entry', entry => {
-      for (let pos = 0; pos < rest.length; pos += size) {
+      for (let pos = 0; pos < rest.length; pos += size)
         p.write(rest.slice(pos, pos + size))
-      }
+
       p.end()
     })
-    .on('entry', entry => entry.resume())
-    .on('end', _ => t.end())
-    .write(first)
+      .on('entry', entry => entry.resume())
+      .on('end', _ => t.end())
+      .write(first)
   }
 
   // one that aligns, and another that doesn't, so that we
@@ -464,13 +465,13 @@ t.test('truncated input', t => {
   const data = makeTar([
     {
       path: 'foo/',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       path: 'foo/bar',
       type: 'File',
-      size: 18
-    }
+      size: 18,
+    },
   ])
 
   t.test('truncated at block boundary', t => {
@@ -478,7 +479,7 @@ t.test('truncated input', t => {
     const p = new Parse({ onwarn: (c, message) => warnings.push(message) })
     p.end(data)
     t.same(warnings, [
-      'Truncated input (needed 512 more bytes, only 0 available)'
+      'Truncated input (needed 512 more bytes, only 0 available)',
     ])
     t.end()
   })
@@ -489,7 +490,7 @@ t.test('truncated input', t => {
     p.write(data)
     p.end(Buffer.from('not a full block'))
     t.same(warnings, [
-      'Truncated input (needed 512 more bytes, only 16 available)'
+      'Truncated input (needed 512 more bytes, only 16 available)',
     ])
     t.end()
   })
@@ -501,16 +502,16 @@ t.test('truncated gzip input', t => {
   const raw = makeTar([
     {
       path: 'foo/',
-      type: 'Directory'
+      type: 'Directory',
     },
     {
       path: 'foo/bar',
       type: 'File',
-      size: 18
+      size: 18,
     },
     new Array(19).join('x'),
     '',
-    ''
+    '',
   ])
   const tgz = zlib.gzipSync(raw)
   const split = Math.floor(tgz.length * 2 / 3)
@@ -518,7 +519,7 @@ t.test('truncated gzip input', t => {
 
   const skipEarlyEnd = process.version.match(/^v4\./)
   t.test('early end', {
-    skip: skipEarlyEnd ? 'not a zlib error on v4' : false
+    skip: skipEarlyEnd ? 'not a zlib error on v4' : false,
   }, t => {
     const warnings = []
     const p = new Parse()
@@ -527,7 +528,7 @@ t.test('truncated gzip input', t => {
     p.on('abort', _ => aborted = true)
     p.end(trunc)
     t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, [ 'zlib: unexpected end of file' ])
+    t.same(warnings, ['zlib: unexpected end of file'])
     t.end()
   })
 
@@ -542,7 +543,7 @@ t.test('truncated gzip input', t => {
     p.write(tgz.slice(split))
     p.end()
     t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, [ 'zlib: incorrect data check' ])
+    t.same(warnings, ['zlib: incorrect data check'])
     t.end()
   })
 
@@ -555,35 +556,35 @@ t.test('end while consuming', t => {
     {
       path: 'package/package.json',
       type: 'File',
-      size: 130
+      size: 130,
     },
     new Array(131).join('x'),
     {
       path: 'package/node_modules/@c/d/node_modules/e/package.json',
       type: 'File',
-      size: 30
+      size: 30,
     },
     new Array(31).join('e'),
     {
       path: 'package/node_modules/@c/d/package.json',
       type: 'File',
-      size: 33
+      size: 33,
     },
     new Array(34).join('d'),
     {
       path: 'package/node_modules/a/package.json',
       type: 'File',
-      size: 59
+      size: 59,
     },
     new Array(60).join('a'),
     {
       path: 'package/node_modules/b/package.json',
       type: 'File',
-      size: 30
+      size: 30,
     },
     new Array(31).join('b'),
     '',
-    ''
+    '',
   ]))
 
   const actual = []
@@ -592,7 +593,7 @@ t.test('end while consuming', t => {
     'package/node_modules/@c/d/node_modules/e/package.json',
     'package/node_modules/@c/d/package.json',
     'package/node_modules/a/package.json',
-    'package/node_modules/b/package.json'
+    'package/node_modules/b/package.json',
   ]
 
   const mp = new MiniPass()
@@ -622,7 +623,7 @@ t.test('bad archives', t => {
     t.match(warnings.pop(), [
       'TAR_BAD_ARCHIVE',
       'Unrecognized archive format',
-      { code: 'TAR_BAD_ARCHIVE', tarCode: 'TAR_BAD_ARCHIVE' }
+      { code: 'TAR_BAD_ARCHIVE', tarCode: 'TAR_BAD_ARCHIVE' },
     ])
     t.end()
   })
@@ -644,7 +645,6 @@ t.test('header that throws', t => {
     mode: 0o07777, // gonna make this one invalid
     uid: 1234,
     gid: 4321,
-    size: 99,
     type: 'File',
     size: 1,
   })
@@ -676,10 +676,10 @@ t.test('warnings that are not so bad', t => {
     'a',
     {
       path: 'a/b/c',
-      type: 'Directory'
+      type: 'Directory',
     },
     '',
-    ''
+    '',
   ])
   p.on('end', () => {
     t.same(warnings, [])

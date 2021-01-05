@@ -23,7 +23,7 @@ t.test('ustar format', t => {
     'hex')
 
   const h = new Header({
-    path: 'foo.txt'
+    path: 'foo.txt',
   })
   const slab = Buffer.alloc(1024)
   h.set({
@@ -34,7 +34,7 @@ t.test('ustar format', t => {
     mtime: new Date('2016-04-01T22:00Z'),
     type: 'File',
     uname: 'isaacs',
-    gname: 'staff'
+    gname: 'staff',
   })
   h.encode(slab)
 
@@ -55,7 +55,7 @@ t.test('ustar format', t => {
     uname: 'isaacs',
     gname: 'staff',
     cksumValid: true,
-    cksum: 5673
+    cksum: 5673,
   })
 
   t.end()
@@ -84,7 +84,7 @@ t.test('xstar format', t => {
     'hex')
 
   const h = new Header({
-    path: 'foo.txt'
+    path: 'foo.txt',
   })
 
   h.set({
@@ -97,7 +97,7 @@ t.test('xstar format', t => {
     atime: new Date('2016-04-01T22:00Z'),
     type: 'File',
     uname: 'isaacs',
-    gname: 'staff'
+    gname: 'staff',
   })
   h.encode()
   const slab = h.block
@@ -119,7 +119,7 @@ t.test('xstar format', t => {
     uname: 'isaacs',
     gname: 'staff',
     cksumValid: true,
-    cksum: 6745
+    cksum: 6745,
   })
 
   t.end()
@@ -161,19 +161,19 @@ t.test('prefix handling', t => {
       atime: undefined,
       type: '0',
       uname: 'isaacs',
-      gname: 'staff'
+      gname: 'staff',
     })
     const b2 = Buffer.alloc(512)
     h.encode(b2, 0)
 
     t.equal(b2.toString().replace(/\0+/g, ' '),
-            buf.toString().replace(/\0+/g, ' '))
+      buf.toString().replace(/\0+/g, ' '))
     t.equal(b2.toString('hex'), buf.toString('hex'))
 
     const h2 = new Header(buf)
 
     t.match(h2, {
-      path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' + 
+      path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-' +
         '/r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/foo.txt',
       mode: 0o755,
@@ -188,7 +188,7 @@ t.test('prefix handling', t => {
       gname: 'staff',
       cksumValid: true,
       cksum: 16060,
-      needPax: false
+      needPax: false,
     })
 
     t.equal(b2.toString().replace(/\0.*$/, ''), 'foo.txt')
@@ -261,7 +261,7 @@ t.test('prefix handling', t => {
       gname: 'staff',
       cksumValid: true,
       cksum: 17216,
-      needPax: false
+      needPax: false,
     }, 'header from buffer')
 
     t.equal(b2.toString().replace(/\0.*$/, ''), 'e/p/-/p/a/t/h/foo.txt')
@@ -292,7 +292,7 @@ t.test('prefix handling', t => {
       '2f702f612f742f68000000000000000000000000000000000000000000000000',
       'hex')
     const h = new Header({
-      path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' + 
+      path: 'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/' +
         (new Array(20).join('long-file-')) + 'long-file.txt',
@@ -305,7 +305,7 @@ t.test('prefix handling', t => {
       atime: undefined,
       type: '0',
       uname: 'isaacs',
-      gname: 'staff'
+      gname: 'staff',
     })
     const b2 = Buffer.alloc(513)
     h.encode(b2, 1)
@@ -323,7 +323,7 @@ t.test('prefix handling', t => {
         'r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/long-file-long-file-long-' +
         'file-long-file-long-file-long-file-long-file-long-file-long-' +
         'file-long-file',
-      needPax: false
+      needPax: false,
     })
 
     t.end()
@@ -361,7 +361,7 @@ t.test('prefix handling', t => {
       atime: undefined,
       type: '0',
       uname: 'isaacs',
-      gname: 'staff'
+      gname: 'staff',
     })
     const b2 = Buffer.alloc(512)
     h.encode(b2, 0)
@@ -380,7 +380,7 @@ t.test('prefix handling', t => {
         'long-dirname-long-dirname-long-dirname-long-dir',
       cksum: 14469,
       cksumValid: true,
-      needPax: false
+      needPax: false,
     })
 
     t.end()
@@ -389,10 +389,10 @@ t.test('prefix handling', t => {
 
 t.test('throwers', t => {
   t.throws(_ => new Header(Buffer.alloc(100)),
-           new Error('need 512 bytes for header'))
+    new Error('need 512 bytes for header'))
 
   t.throws(_ => new Header({}).encode(Buffer.alloc(100)),
-           new Error('need 512 bytes for header'))
+    new Error('need 512 bytes for header'))
 
   t.end()
 })
@@ -417,7 +417,7 @@ t.test('null block', t => {
     devmin: 0,
     atime: null,
     ctime: null,
-    nullBlock: true
+    nullBlock: true,
   })
   t.end()
 })
@@ -515,7 +515,7 @@ t.test('null numeric values do not get written', t => {
     devmaj: 0,
     devmin: 0,
     atime: null,
-    ctime: null
+    ctime: null,
   })
   t.end()
 })
@@ -524,7 +524,7 @@ t.test('big numbers', t => {
   const b = Buffer.alloc(512)
   const h = new Header({
     path: 'bignum',
-    size: 0o77777777777 + 1
+    size: 0o77777777777 + 1,
   })
   h.encode(b, 0)
   const h2 = new Header(b)
@@ -563,7 +563,7 @@ t.test('null block, global extended header', t => {
     blerg: 'bloo',
   }, {
     path: '/global.path',
-    foo: 'global foo'
+    foo: 'global foo',
   })
   t.match(h, {
     cksumValid: false,

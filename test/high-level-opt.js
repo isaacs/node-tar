@@ -12,7 +12,7 @@ t.same(hlo({
   P: 'preserve',
   U: 'unlink',
   'strip-components': 99,
-  foo: 'bar'
+  foo: 'bar',
 }), {
   cwd: 'dir',
   file: 'file',
@@ -20,7 +20,7 @@ t.same(hlo({
   preservePaths: 'preserve',
   unlink: 'unlink',
   strip: 99,
-  foo: 'bar'
+  foo: 'bar',
 })
 
 t.same(hlo({
@@ -30,7 +30,7 @@ t.same(hlo({
   P: 'preserve',
   U: 'unlink',
   stripComponents: 99,
-  foo: 'bar'
+  foo: 'bar',
 }), {
   cwd: 'dir',
   file: 'file',
@@ -38,5 +38,5 @@ t.same(hlo({
   preservePaths: 'preserve',
   unlink: 'unlink',
   strip: 99,
-  foo: 'bar'
+  foo: 'bar',
 })

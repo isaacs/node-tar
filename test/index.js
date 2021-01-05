@@ -65,7 +65,7 @@ t.match(tar, {
       ['TapeVolumeHeader', 'V'],
       ['OldExtendedHeader', 'X'],
     ]),
-  }
+  },
 })
 t.match(tar.Pack.Sync, Function)
 t.match(tar.WriteEntry.Sync, Function)

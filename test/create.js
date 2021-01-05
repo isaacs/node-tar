@@ -30,22 +30,22 @@ t.test('setup', t => {
 })
 
 t.test('no cb if sync or without file', t => {
-  t.throws(_ => c({ sync: true }, ['asdf'], _=>_))
-  t.throws(_ => c(_=>_))
-  t.throws(_ => c({}, _=>_))
-  t.throws(_ => c({}, ['asdf'], _=>_))
+  t.throws(_ => c({ sync: true }, ['asdf'], _ => _))
+  t.throws(_ => c(_ => _))
+  t.throws(_ => c({}, _ => _))
+  t.throws(_ => c({}, ['asdf'], _ => _))
   t.end()
 })
 
 t.test('create file', t => {
-  const files = [ path.basename(__filename) ]
+  const files = [path.basename(__filename)]
 
   t.test('sync', t => {
     const file = path.resolve(dir, 'sync.tar')
     c({
       file: file,
       cwd: __dirname,
-      sync: true
+      sync: true,
     }, files)
     readtar(file, (code, signal, list) => {
       t.equal(code, 0)
@@ -59,7 +59,7 @@ t.test('create file', t => {
     const file = path.resolve(dir, 'async.tar')
     c({
       file: file,
-      cwd: __dirname
+      cwd: __dirname,
     }, files, er => {
       if (er)
         throw er
@@ -76,7 +76,7 @@ t.test('create file', t => {
     const file = path.resolve(dir, 'promise.tar')
     c({
       file: file,
-      cwd: __dirname
+      cwd: __dirname,
     }, files).then(_ => {
       readtar(file, (code, signal, list) => {
         t.equal(code, 0)
@@ -95,7 +95,7 @@ t.test('create file', t => {
         mode: mode,
         file: file,
         cwd: __dirname,
-        sync: true
+        sync: true,
       }, files)
       readtar(file, (code, signal, list) => {
         t.equal(code, 0)
@@ -111,7 +111,7 @@ t.test('create file', t => {
       c({
         mode: mode,
         file: file,
-        cwd: __dirname
+        cwd: __dirname,
       }, files, er => {
         if (er)
           throw er
@@ -143,8 +143,8 @@ t.test('open fails', t => {
   t.throws(_ => c({
     file: file,
     sync: true,
-    cwd: __dirname
-  }, [ path.basename(__filename) ]))
+    cwd: __dirname,
+  }, [path.basename(__filename)]))
   t.throws(_ => fs.lstatSync(file))
   t.end()
 })
@@ -153,11 +153,11 @@ t.test('gzipped tarball that makes some drain/resume stuff', t => {
   const cwd = path.dirname(__dirname)
   const out = path.resolve(dir, 'package.tgz')
 
-  c({ z: true, C: cwd },[ 'node_modules' ])
+  c({ z: true, C: cwd }, ['node_modules'])
     .pipe(fs.createWriteStream(out))
     .on('finish', _ => {
       const child = spawn('tar', ['tf', out], {
-        stdio: [ 'ignore', 'ignore', 'pipe' ]
+        stdio: ['ignore', 'ignore', 'pipe'],
       })
       child.stderr.on('data', c => {
         t.fail(c + '')
@@ -181,19 +181,21 @@ t.test('create tarball out of another tarball', t => {
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
       'hardlink-1',
       'hardlink-2',
-      'symlink'
+      'symlink',
     ]
-    list({ f: out, sync: true, onentry: entry => {
-      if (entry.path === 'hardlink-2')
-        t.equal(entry.type, 'Link')
-      else if (entry.path === 'symlink')
-        t.equal(entry.type, 'SymbolicLink')
-      else if (entry.path === 'dir/')
-        t.equal(entry.type, 'Directory')
-      else
-        t.equal(entry.type, 'File')
-      t.equal(entry.path, expect.shift())
-    }})
+    list({ f: out,
+      sync: true,
+      onentry: entry => {
+        if (entry.path === 'hardlink-2')
+          t.equal(entry.type, 'Link')
+        else if (entry.path === 'symlink')
+          t.equal(entry.type, 'SymbolicLink')
+        else if (entry.path === 'dir/')
+          t.equal(entry.type, 'Directory')
+        else
+          t.equal(entry.type, 'File')
+        t.equal(entry.path, expect.shift())
+      }})
     t.same(expect, [])
     t.end()
   }
@@ -202,7 +204,7 @@ t.test('create tarball out of another tarball', t => {
     c({
       f: out,
       cwd: tars,
-      sync: true
+      sync: true,
     }, ['@dir.tar', '@utf8.tar', '@links.tar'])
     check(t)
   })
@@ -210,7 +212,7 @@ t.test('create tarball out of another tarball', t => {
   t.test('async', t => {
     c({
       f: out,
-      cwd: tars
+      cwd: tars,
     }, ['@dir.tar', '@utf8.tar', '@links.tar'], _ => check(t))
   })
 

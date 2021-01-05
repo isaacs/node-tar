@@ -57,7 +57,7 @@ t.test('basic file add to archive (good or truncated)', t => {
   t.beforeEach(reset)
 
   const check = (file, t) => {
-    const c = spawn('tar', ['tf', file], { stdio: [ 0, 'pipe', 2 ] })
+    const c = spawn('tar', ['tf', file], { stdio: [0, 'pipe', 2] })
     const out = []
     c.stdout.on('data', chunk => out.push(chunk))
     c.on('close', (code, signal) => {
@@ -69,7 +69,7 @@ t.test('basic file add to archive (good or truncated)', t => {
         '512-bytes.txt',
         'one-byte.txt',
         'zero-byte.txt',
-        path.basename(__filename)
+        path.basename(__filename),
       ])
       t.end()
     })
@@ -78,15 +78,15 @@ t.test('basic file add to archive (good or truncated)', t => {
   ;[file,
     fileNoNulls,
     fileTruncHead,
-    fileTruncBody
+    fileTruncBody,
   ].forEach(file => {
-    const fileList = [ path.basename(__filename) ]
+    const fileList = [path.basename(__filename)]
     t.test(path.basename(file), t => {
       t.test('sync', t => {
         r({
           sync: true,
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList)
         check(file, t)
       })
@@ -94,7 +94,7 @@ t.test('basic file add to archive (good or truncated)', t => {
       t.test('async cb', t => {
         r({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList, er => {
           if (er)
             throw er
@@ -105,7 +105,7 @@ t.test('basic file add to archive (good or truncated)', t => {
       t.test('async promise', t => {
         r({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList).then(_ => check(file, t))
       })
 
@@ -128,7 +128,7 @@ t.test('add to empty archive', t => {
       t.equal(signal, null)
       const actual = Buffer.concat(out).toString().trim().split('\n')
       t.same(actual, [
-        path.basename(__filename)
+        path.basename(__filename),
       ])
       t.end()
     })
@@ -136,14 +136,14 @@ t.test('add to empty archive', t => {
 
   ;[fileNonExistent,
     fileEmpty,
-    fileZeroByte
+    fileZeroByte,
   ].forEach(file => {
     t.test(path.basename(file), t => {
       t.test('sync', t => {
         r({
           sync: true,
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, [path.basename(__filename)])
         check(file, t)
       })
@@ -151,7 +151,7 @@ t.test('add to empty archive', t => {
       t.test('async cb', t => {
         r({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, [path.basename(__filename)], er => {
           if (er)
             throw er
@@ -162,7 +162,7 @@ t.test('add to empty archive', t => {
       t.test('async promise', t => {
         r({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, [path.basename(__filename)]).then(_ => check(file, t))
       })
 
@@ -182,13 +182,13 @@ t.test('cannot append to gzipped archives', t => {
   t.throws(_ => r({
     file: fileCompressed,
     cwd: __dirname,
-    gzip: true
+    gzip: true,
   }, [path.basename(__filename)]), expectT)
 
   t.throws(_ => r({
     file: fileCompressed,
     cwd: __dirname,
-    sync: true
+    sync: true,
   }, [path.basename(__filename)]), expect)
 
   r({
@@ -203,7 +203,7 @@ t.test('cannot append to gzipped archives', t => {
 t.test('other throws', t => {
   t.throws(_ => r({}, ['asdf']), new TypeError('file is required'))
   t.throws(_ => r({file: 'asdf'}, []),
-           new TypeError('no files or directories specified'))
+    new TypeError('no files or directories specified'))
   t.end()
 })
 
@@ -255,7 +255,7 @@ t.test('mtime cache', t => {
         '512-bytes.txt',
         'one-byte.txt',
         'zero-byte.txt',
-        path.basename(__filename)
+        path.basename(__filename),
       ])
       const mtc = {}
       mtimeCache.forEach((v, k) => mtc[k] = mtimeCache.get(k).toISOString())
@@ -263,7 +263,7 @@ t.test('mtime cache', t => {
         '1024-bytes.txt': '2017-04-10T16:57:47.000Z',
         '512-bytes.txt': '2017-04-10T17:08:55.000Z',
         'one-byte.txt': '2017-04-10T16:58:20.000Z',
-        'zero-byte.txt': '2017-04-10T17:08:01.000Z'
+        'zero-byte.txt': '2017-04-10T17:08:01.000Z',
       })
       t.end()
     })
@@ -274,7 +274,7 @@ t.test('mtime cache', t => {
       sync: true,
       file: file,
       cwd: __dirname,
-      mtimeCache: mtimeCache = new Map()
+      mtimeCache: mtimeCache = new Map(),
     }, [path.basename(__filename)])
     check(file, t)
   })
@@ -283,7 +283,7 @@ t.test('mtime cache', t => {
     r({
       file: file,
       cwd: __dirname,
-      mtimeCache: mtimeCache = new Map()
+      mtimeCache: mtimeCache = new Map(),
     }, [path.basename(__filename)], er => {
       if (er)
         throw er
@@ -295,7 +295,7 @@ t.test('mtime cache', t => {
     r({
       file: file,
       cwd: __dirname,
-      mtimeCache: mtimeCache = new Map()
+      mtimeCache: mtimeCache = new Map(),
     }, [path.basename(__filename)]).then(_ => check(file, t))
   })
 
@@ -314,11 +314,13 @@ t.test('create tarball out of another tarball', t => {
       'dir/',
       'Ω.txt',
       '🌟.txt',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
     ]
-    list({ f: out, sync: true, onentry: entry => {
-      t.equal(entry.path, expect.shift())
-    }})
+    list({ f: out,
+      sync: true,
+      onentry: entry => {
+        t.equal(entry.path, expect.shift())
+      }})
     t.same(expect, [])
     t.end()
   }
@@ -327,7 +329,7 @@ t.test('create tarball out of another tarball', t => {
     r({
       f: out,
       cwd: tars,
-      sync: true
+      sync: true,
     }, ['@utf8.tar'])
     check(t)
   })
@@ -335,7 +337,7 @@ t.test('create tarball out of another tarball', t => {
   t.test('async', t => {
     r({
       f: out,
-      cwd: tars
+      cwd: tars,
     }, ['@utf8.tar'], _ => check(t))
   })
 

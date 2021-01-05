@@ -68,7 +68,7 @@ t.test('basic file add to archive (good or truncated)', t => {
         '512-bytes.txt',
         'one-byte.txt',
         'zero-byte.txt',
-        path.basename(__filename)
+        path.basename(__filename),
       ])
       t.end()
     })
@@ -77,7 +77,7 @@ t.test('basic file add to archive (good or truncated)', t => {
   ;[file,
     fileNoNulls,
     fileTruncHead,
-    fileTruncBody
+    fileTruncBody,
   ].forEach(file => {
     t.test(path.basename(file), t => {
       const fileList = [path.basename(__filename)]
@@ -85,7 +85,7 @@ t.test('basic file add to archive (good or truncated)', t => {
         u({
           sync: true,
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList)
         check(file, t)
       })
@@ -93,7 +93,7 @@ t.test('basic file add to archive (good or truncated)', t => {
       t.test('async cb', t => {
         u({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList, er => {
           if (er)
             throw er
@@ -104,7 +104,7 @@ t.test('basic file add to archive (good or truncated)', t => {
       t.test('async promise', t => {
         u({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList).then(_ => check(file, t))
       })
 
@@ -127,7 +127,7 @@ t.test('add to empty archive', t => {
       t.equal(signal, null)
       const actual = Buffer.concat(out).toString().trim().split('\n')
       t.same(actual, [
-        path.basename(__filename)
+        path.basename(__filename),
       ])
       t.end()
     })
@@ -135,7 +135,7 @@ t.test('add to empty archive', t => {
 
   ;[fileNonExistent,
     fileEmpty,
-    fileZeroByte
+    fileZeroByte,
   ].forEach(file => {
     t.test(path.basename(file), t => {
       const fileList = [path.basename(__filename)]
@@ -143,7 +143,7 @@ t.test('add to empty archive', t => {
         u({
           sync: true,
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList)
         check(file, t)
       })
@@ -151,7 +151,7 @@ t.test('add to empty archive', t => {
       t.test('async cb', t => {
         u({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList, er => {
           if (er)
             throw er
@@ -162,7 +162,7 @@ t.test('add to empty archive', t => {
       t.test('async promise', t => {
         u({
           file: file,
-          cwd: __dirname
+          cwd: __dirname,
         }, fileList).then(_ => check(file, t))
       })
 
@@ -182,13 +182,13 @@ t.test('cannot append to gzipped archives', t => {
   t.throws(_ => u({
     file: fileCompressed,
     cwd: __dirname,
-    gzip: true
+    gzip: true,
   }, [path.basename(__filename)]), expectT)
 
   t.throws(_ => u({
     file: fileCompressed,
     cwd: __dirname,
-    sync: true
+    sync: true,
   }, [path.basename(__filename)]), expect)
 
   u({
@@ -203,7 +203,7 @@ t.test('cannot append to gzipped archives', t => {
 t.test('other throws', t => {
   t.throws(_ => u({}, ['asdf']), new TypeError('file is required'))
   t.throws(_ => u({file: 'asdf'}, []),
-           new TypeError('no files or directories specified'))
+    new TypeError('no files or directories specified'))
   t.end()
 })
 
@@ -283,7 +283,7 @@ t.test('do add newer file', t => {
       file: file,
       cwd: dir,
       sync: true,
-      filter: path => path === '1024-bytes.txt'
+      filter: path => path === '1024-bytes.txt',
     }, ['1024-bytes.txt', 'compressed.tgz'])
     check(t)
   })

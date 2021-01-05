@@ -10,12 +10,12 @@ t.test('parse', t => {
     ['800000000000100000000020', 17592186044448],
     ['fffffffffffffffe1ecc8020', -8073215968],
     ['fffffffffffffff000000020', -68719476704],
-    ['80000000001fffffffffffff', 9007199254740991],  // MAX_SAFE_INTEGER
+    ['80000000001fffffffffffff', 9007199254740991], // MAX_SAFE_INTEGER
     ['ffffffffffe0000000000001', -9007199254740991], // MIN_SAFE_INTEGER
     ['800000000000100000000000', 17592186044416],
     ['fffffffffffffffe1ecc8000', -8073216000],
     ['fffffffffffffff000000000', -68719476736],
-    ['800000000000000353b66200', 14289363456]
+    ['800000000000000353b66200', 14289363456],
   ])
   t.plan(cases.size)
   cases.forEach((value, hex) =>
@@ -25,7 +25,7 @@ t.test('parse', t => {
 t.test('parse out of range', t => {
   const cases = [
     '800000030000000000000000',
-    '800000000020000000000000',  // MAX_SAFE_INTEGER + 1
+    '800000000020000000000000', // MAX_SAFE_INTEGER + 1
     'ffffffffffe0000000000000', // MIN_SAFE_INTEGER - 1
     'fffffffffdd0000000000000',
   ]
@@ -37,7 +37,7 @@ t.test('parse out of range', t => {
 
 t.test('parse invalid base256 encoding', t => {
   const cases = [
-    '313233343536373131',       // octal encoded
+    '313233343536373131', // octal encoded
     '700000030000000000000000', // does not start with 0x80 or 0xff
   ]
   t.plan(cases.length)
@@ -53,9 +53,9 @@ t.test('encode', t => {
     ['800000000000100000000000', 17592186044416],
     ['fffffffffffffffe1ecc8020', -8073215968],
     ['fffffffffffffff000000020', -68719476704],
-    ['fffffffffffffff000000000', -68719476736],      // Allows us to test the case where there's a trailing 00
-    ['80000000001fffffffffffff', 9007199254740991],  // MAX_SAFE_INTEGER
-    ['ffffffffffe0000000000001', -9007199254740991] // MIN_SAFE_INTEGER
+    ['fffffffffffffff000000000', -68719476736], // Allows us to test the case where there's a trailing 00
+    ['80000000001fffffffffffff', 9007199254740991], // MAX_SAFE_INTEGER
+    ['ffffffffffe0000000000001', -9007199254740991], // MIN_SAFE_INTEGER
   ])
   t.plan(2)
   t.test('alloc', t => {
@@ -83,4 +83,3 @@ t.test('encode unsafe numbers', t => {
     t.throws(_ => encode(value),
       Error('cannot encode number outside of javascript safe integer range')))
 })
-

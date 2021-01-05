@@ -15,7 +15,7 @@ t.test('create read entry', t => {
     atime: new Date('2016-04-01T22:00Z'),
     type: 'File',
     uname: 'isaacs',
-    gname: 'staff'
+    gname: 'staff',
   })
   h.encode()
 
@@ -43,7 +43,7 @@ t.test('create read entry', t => {
       devmaj: 0,
       devmin: 0,
       atime: new Date('2016-04-01T22:00:00.000Z'),
-      ctime: new Date('2016-04-01T22:00:00.000Z')
+      ctime: new Date('2016-04-01T22:00:00.000Z'),
     },
     blockRemain: 512,
     remain: 100,
@@ -62,7 +62,7 @@ t.test('create read entry', t => {
     ctime: new Date('2016-04-01T22:00:00.000Z'),
     linkpath: null,
     x: 'y',
-    z: 0
+    z: 0,
   })
 
   let data = ''
@@ -93,7 +93,7 @@ t.test('meta entry', t => {
     atime: new Date('2016-04-01T22:00Z'),
     type: 'NextFileHasLongLinkpath',
     uname: 'isaacs',
-    gname: 'staff'
+    gname: 'staff',
   })
   const body = Buffer.alloc(512)
   body.write('not that long, actually')
@@ -107,7 +107,7 @@ t.test('meta entry', t => {
   entry.write(body.slice(0, 1))
   entry.write(body.slice(1, 25))
   entry.write(body.slice(25))
-  t.throws(_=> entry.write(Buffer.alloc(1024)))
+  t.throws(_ => entry.write(Buffer.alloc(1024)))
 
   t.equal(actual, expect)
   t.like(entry, { meta: true, type: 'NextFileHasLongLinkpath' })
@@ -125,7 +125,7 @@ t.test('unknown entry type', t => {
     ctime: new Date('2016-04-01T22:00Z'),
     atime: new Date('2016-04-01T22:00Z'),
     uname: 'isaacs',
-    gname: 'staff'
+    gname: 'staff',
   })
   h.encode()
   h.block.write('9', 156, 1, 'ascii')
@@ -143,7 +143,7 @@ t.test('unknown entry type', t => {
   entry.write(body.slice(0, 1))
   entry.write(body.slice(1, 25))
   entry.write(body.slice(25))
-  t.throws(_=> entry.write(Buffer.alloc(1024)))
+  t.throws(_ => entry.write(Buffer.alloc(1024)))
 
   t.equal(actual, expect)
   t.like(entry, { ignore: true })
@@ -161,7 +161,7 @@ t.test('entry without mode', t => {
     atime: new Date('2016-04-01T22:00Z'),
     type: 'File',
     uname: 'isaacs',
-    gname: 'staff'
+    gname: 'staff',
   })
   h.encode()
 
@@ -187,7 +187,7 @@ t.test('entry without mode', t => {
       devmaj: 0,
       devmin: 0,
       atime: new Date('2016-04-01T22:00:00.000Z'),
-      ctime: new Date('2016-04-01T22:00:00.000Z')
+      ctime: new Date('2016-04-01T22:00:00.000Z'),
     },
     blockRemain: 512,
     remain: 100,
@@ -204,7 +204,7 @@ t.test('entry without mode', t => {
     mtime: new Date('2016-04-01T22:00:00.000Z'),
     atime: new Date('2016-04-01T22:00:00.000Z'),
     ctime: new Date('2016-04-01T22:00:00.000Z'),
-    linkpath: null
+    linkpath: null,
   })
 
   let data = ''
