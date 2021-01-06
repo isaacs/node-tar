@@ -21,11 +21,6 @@
   },
   "dependencies": {
     "chownr": "^2.0.0",
-    "eslint": "^7.17.0",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^5.0.0",
     "fs-minipass": "^2.0.0",
     "minipass": "^3.0.0",
     "minizlib": "^2.1.1",
@@ -35,6 +30,11 @@
   "devDependencies": {
     "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.3",
+    "eslint": "^7.17.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^5.0.0",
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
     "rimraf": "^2.7.1",
