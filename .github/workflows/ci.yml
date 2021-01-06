@@ -24,6 +24,10 @@ jobs:
         shell: ${{ matrix.platform.shell }}
 
     steps:
+      # there are files here that make windows unhappy by default
+      - name: Support longpaths
+        run: git config --global core.longpaths true
+
       - name: Checkout Repository
         uses: actions/checkout@v1.1.0
 
@@ -35,6 +39,5 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Run for all environments
       - name: Run Tap Tests
         run: npm test -- -c -t0
