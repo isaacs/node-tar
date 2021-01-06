@@ -20,6 +20,7 @@
 !.gitattributes
 !map.js
 !index.js
+!.github
 
 .*.swp
 node_modules/
