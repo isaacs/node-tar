@@ -1,7 +1,5 @@
 # node-tar
 
-[![Build Status](https://travis-ci.org/npm/node-tar.svg?branch=master)](https://travis-ci.org/npm/node-tar)
-
 [Fast](./benchmarks) and full-featured Tar for Node.js
 
 The API is designed to mimic the behavior of `tar(1)` on unix systems.
