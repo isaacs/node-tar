@@ -2532,7 +2532,12 @@ t.test('trying to unpack a javascript file should fail', t => {
       .once('error', er => t.match(er, expect, 'async emits'))
       .on('error', () => { /* zlib emits a few times here */ })
       .end(dataGzip)
-    t.throws(() => new UnpackSync(opts).end(dataGzip), expect, 'sync throws')
+    const skip = !/^v([0-9]|1[0-4])\./.test(process.version) ? false
+      : 'node prior to v14 did not raise sync zlib errors properly'
+    t.test('sync throws', { skip }, t => {
+      t.plan(1)
+      t.throws(() => new UnpackSync(opts).end(dataGzip), expect, 'sync throws')
+    })
   })
 
   t.test('bad archive if no gzip', t => {
@@ -2545,7 +2550,12 @@ t.test('trying to unpack a javascript file should fail', t => {
     new Unpack(opts)
       .on('error', er => t.match(er, expect, 'async emits'))
       .end(data)
-    t.throws(() => new UnpackSync(opts).end(data), expect, 'sync throws')
+    const skip = !/^v([0-9]|1[0-4])\./.test(process.version) ? false
+      : 'node prior to v14 did not raise sync zlib errors properly'
+    t.test('sync throws', { skip }, t => {
+      t.plan(1)
+      t.throws(() => new UnpackSync(opts).end(data), expect, 'sync throws')
+    })
   })
 
   t.end()
