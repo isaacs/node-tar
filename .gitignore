@@ -21,6 +21,7 @@
 !map.js
 !index.js
 !.github
+!.eslintrc.json
 
 .*.swp
 node_modules/
