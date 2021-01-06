@@ -2508,8 +2508,8 @@ t.test('do not reuse hardlinks, only nlink=1 files', t => {
   t.end()
 })
 
-t.test('trying to unpack a javascript file should fail', t => {
-  const data = fs.readFileSync(__filename)
+t.test('trying to unpack a non-zlib gzip file should fail', t => {
+  const data = Buffer.from('hello this is not gzip data')
   const dataGzip = Buffer.concat([Buffer.from([0x1f, 0x8b]), data])
   const basedir = path.resolve(unpackdir, 'bad-archive')
   t.test('abort if gzip has an error', t => {
