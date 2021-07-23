@@ -377,7 +377,10 @@ t.test('nonexistent file', t => {
 })
 
 t.test('absolute path', t => {
-  const f = path.resolve(files, '512-bytes.txt')
+  const absolute = path.resolve(files, '512-bytes.txt')
+  const { root } = path.parse(absolute)
+  const f = root + root + root + absolute
+  const warn = root + root + root + root
   t.test('preservePaths=false strict=false', t => {
     const warnings = []
     const ws = new WriteEntry(f, {
@@ -390,13 +393,13 @@ t.test('absolute path', t => {
       out = Buffer.concat(out)
       t.equal(out.length, 1024)
       t.match(warnings, [[
-        'TAR_ENTRY_INFO', /stripping .* from absolute path/, { path: f }
+        'TAR_ENTRY_INFO', `stripping ${warn} from absolute path`, { path: f },
       ]])
 
       t.match(ws.header, {
         cksumValid: true,
         needPax: false,
-        path: f.replace(/^(\/|[a-z]:\\\\)/, ''),
+        path: f.replace(/^(\/|[a-z]:\\\\){4}/, ''),
         mode: 0o644,
         size: 512,
         linkpath: null,
