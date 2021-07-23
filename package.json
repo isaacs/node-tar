@@ -2,7 +2,7 @@
   "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
   "name": "tar",
   "description": "tar for node",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "publishConfig": {
     "tag": "v3-legacy"
   },
