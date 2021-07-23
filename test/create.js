@@ -131,15 +131,15 @@ t.test('create file', t => {
 })
 
 t.test('create', t => {
-  t.isa(c({ sync: true }, ['README.md']), Pack.Sync)
-  t.isa(c(['README.md']), Pack)
+  t.type(c({ sync: true }, ['README.md']), Pack.Sync)
+  t.type(c(['README.md']), Pack)
   t.end()
 })
 
 t.test('open fails', t => {
   const poop = new Error('poop')
   const file = path.resolve(dir, 'throw-open.tar')
-  t.tearDown(mutateFS.statFail(poop))
+  t.teardown(mutateFS.statFail(poop))
   t.throws(_ => c({
     file: file,
     sync: true,

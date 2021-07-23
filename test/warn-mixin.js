@@ -6,7 +6,7 @@ const Warner = warner(EE)
 
 const w = new Warner()
 
-t.isa(w.warn, 'function')
+t.type(w.warn, 'function')
 
 const warning = []
 w.once('warn', (code, msg, data) => warning.push(code, msg, data))

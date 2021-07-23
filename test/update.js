@@ -24,7 +24,7 @@ const spawn = require('child_process').spawn
 
 t.teardown(_ => rimraf.sync(dir))
 
-const reset = cb => {
+const reset = () => {
   rimraf.sync(dir)
   mkdirp.sync(dir)
   const data = fs.readFileSync(tars + '/body-byte-counts.tar')
@@ -43,13 +43,11 @@ const reset = cb => {
   fs.writeFileSync(fileEmpty, Buffer.alloc(1024))
 
   fs.writeFileSync(fileCompressed, zlib.gzipSync(data))
-
-  if (cb)
-    cb()
 }
 
 t.test('setup', t => {
-  reset(t.end)
+  reset()
+  t.end()
 })
 
 t.test('basic file add to archive (good or truncated)', t => {
@@ -263,13 +261,12 @@ t.test('do not add older file', t => {
 })
 
 t.test('do add newer file', t => {
-  t.beforeEach(cb => {
+  t.beforeEach(() => {
     reset()
     const f = dir + '/1024-bytes.txt'
     fs.writeFileSync(f, new Array(1025).join('.'))
     const newDate = new Date('2017-05-01T22:06:43.736Z')
     fs.utimesSync(f, newDate, newDate)
-    cb()
   })
 
   const check = t => {

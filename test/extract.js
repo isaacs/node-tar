@@ -16,10 +16,9 @@ t.test('basic extracting', t => {
   const file = path.resolve(tars, 'utf8.tar')
   const dir = path.resolve(extractdir, 'basic')
 
-  t.beforeEach(cb => {
+  t.beforeEach(() => {
     rimraf.sync(dir)
     mkdirp.sync(dir)
-    cb()
   })
 
   const check = t => {
@@ -59,10 +58,9 @@ t.test('file list and filter', t => {
   const file = path.resolve(tars, 'utf8.tar')
   const dir = path.resolve(extractdir, 'filter')
 
-  t.beforeEach(cb => {
+  t.beforeEach(() => {
     rimraf.sync(dir)
     mkdirp.sync(dir)
-    cb()
   })
 
   const check = t => {
@@ -103,10 +101,9 @@ t.test('no file list', t => {
   const file = path.resolve(tars, 'body-byte-counts.tar')
   const dir = path.resolve(extractdir, 'no-list')
 
-  t.beforeEach(cb => {
+  t.beforeEach(() => {
     rimraf.sync(dir)
     mkdirp.sync(dir)
-    cb()
   })
 
   const check = t => {
@@ -145,10 +142,9 @@ t.test('read in itty bits', t => {
   const file = path.resolve(tars, 'body-byte-counts.tar')
   const dir = path.resolve(extractdir, 'no-list')
 
-  t.beforeEach(cb => {
+  t.beforeEach(() => {
     rimraf.sync(dir)
     mkdirp.sync(dir)
-    cb()
   })
 
   const check = t => {
@@ -191,9 +187,9 @@ t.test('bad calls', t => {
 
 t.test('no file', t => {
   const Unpack = require('../lib/unpack.js')
-  t.isa(x(), Unpack)
-  t.isa(x(['asdf']), Unpack)
-  t.isa(x({sync: true}), Unpack.Sync)
+  t.type(x(), Unpack)
+  t.type(x(['asdf']), Unpack)
+  t.type(x({sync: true}), Unpack.Sync)
   t.end()
 })
 

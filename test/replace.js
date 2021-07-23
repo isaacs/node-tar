@@ -25,7 +25,7 @@ const spawn = require('child_process').spawn
 
 t.teardown(_ => rimraf.sync(dir))
 
-const reset = cb => {
+const reset = () => {
   rimraf.sync(dir)
   mkdirp.sync(dir)
   const data = fs.readFileSync(tars + '/body-byte-counts.tar')
@@ -44,13 +44,11 @@ const reset = cb => {
   fs.writeFileSync(fileEmpty, Buffer.alloc(1024))
 
   fs.writeFileSync(fileCompressed, zlib.gzipSync(data))
-
-  if (cb)
-    cb()
 }
 
 t.test('setup', t => {
-  reset(t.end)
+  reset()
+  t.end()
 })
 
 t.test('basic file add to archive (good or truncated)', t => {
@@ -305,8 +303,8 @@ t.test('mtime cache', t => {
 t.test('create tarball out of another tarball', t => {
   const out = path.resolve(dir, 'out.tar')
 
-  t.beforeEach(cb => {
-    fs.writeFile(out, fs.readFileSync(path.resolve(tars, 'dir.tar')), cb)
+  t.beforeEach(() => {
+    fs.writeFileSync(out, fs.readFileSync(path.resolve(tars, 'dir.tar')))
   })
 
   const check = t => {

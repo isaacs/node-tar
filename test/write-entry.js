@@ -243,7 +243,7 @@ t.test('zero-byte file', t => {
 
 t.test('zero-byte file, but close fails', t => {
   const poop = new Error('poop')
-  t.tearDown(mutateFS.fail('close', poop))
+  t.teardown(mutateFS.fail('close', poop))
 
   const ws = new WriteEntry('files/1024-bytes.txt', { cwd: fixtures })
 
@@ -526,7 +526,7 @@ t.test('readlink fail', t => {
     path: __filename,
   }
   // pretend everything is a symbolic link, then read something that isn't
-  t.tearDown(mutateFS.statType('SymbolicLink'))
+  t.teardown(mutateFS.statType('SymbolicLink'))
   t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
     expect)
   new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
@@ -536,7 +536,7 @@ t.test('readlink fail', t => {
 })
 
 t.test('open fail', t => {
-  t.tearDown(mutateFS.fail('open', new Error('pwn')))
+  t.teardown(mutateFS.fail('open', new Error('pwn')))
   t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
     { message: 'pwn' })
   new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
@@ -552,7 +552,7 @@ t.test('read fail', t => {
     syscall: 'read',
   }
   // pretend everything is a symbolic link, then read something that isn't
-  t.tearDown(mutateFS.statType('File'))
+  t.teardown(mutateFS.statType('File'))
   t.throws(_ => new WriteEntry.Sync('fixtures', {
     cwd: __dirname,
   }), expect)
@@ -563,7 +563,7 @@ t.test('read fail', t => {
 })
 
 t.test('read invalid EOF', t => {
-  t.tearDown(mutateFS.mutate('read', (er, br) => [er, 0]))
+  t.teardown(mutateFS.mutate('read', (er, br) => [er, 0]))
   const expect = {
     message: 'encountered unexpected EOF',
     path: __filename,
@@ -579,7 +579,7 @@ t.test('read invalid EOF', t => {
 })
 
 t.test('read overflow expectation', t => {
-  t.tearDown(mutateFS.statMutate((er, st) => {
+  t.teardown(mutateFS.statMutate((er, st) => {
     if (st)
       st.size = 3
   }))
@@ -598,7 +598,7 @@ t.test('read overflow expectation', t => {
 })
 
 t.test('short reads', t => {
-  t.tearDown(mutateFS.zenoRead())
+  t.teardown(mutateFS.zenoRead())
   const cases = {
     '1024-bytes.txt': new Array(1024).join('x') + '\n',
     '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': new Array(101).join('c'),
@@ -677,7 +677,7 @@ t.test('win32 <|>? in paths', {
 })
 
 t.test('uid doesnt match, dont set uname', t => {
-  t.tearDown(mutateFS.statMutate((er, st) => {
+  t.teardown(mutateFS.statMutate((er, st) => {
     if (st)
       st.uid -= 1
   }))

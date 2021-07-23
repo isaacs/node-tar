@@ -110,7 +110,7 @@ t.test('meta entry', t => {
   t.throws(_ => entry.write(Buffer.alloc(1024)))
 
   t.equal(actual, expect)
-  t.like(entry, { meta: true, type: 'NextFileHasLongLinkpath' })
+  t.match(entry, { meta: true, type: 'NextFileHasLongLinkpath' })
   t.end()
 })
 
@@ -146,7 +146,7 @@ t.test('unknown entry type', t => {
   t.throws(_ => entry.write(Buffer.alloc(1024)))
 
   t.equal(actual, expect)
-  t.like(entry, { ignore: true })
+  t.match(entry, { ignore: true })
   t.end()
 })
 

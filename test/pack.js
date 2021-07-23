@@ -198,7 +198,7 @@ t.test('portable pack a dir', t => {
 
 t.test('use process cwd if cwd not specified', t => {
   const cwd = process.cwd()
-  t.tearDown(_ => process.chdir(cwd))
+  t.teardown(_ => process.chdir(cwd))
   process.chdir(files)
 
   const out = []
@@ -368,7 +368,7 @@ t.test('add the same dir twice (exercise cache code)', t => {
 t.test('if gzip is truthy, make it an object', t => {
   const opt = { gzip: true }
   new Pack(opt)
-  t.isa(opt.gzip, 'object')
+  t.type(opt.gzip, 'object')
   t.end()
 })
 
@@ -463,7 +463,7 @@ t.test('very deep gzip path, sync', t => {
   pack.resume()
 
   const zipped = pack.read()
-  t.isa(zipped, Buffer)
+  t.type(zipped, Buffer)
   const data = zlib.unzipSync(zipped)
   const entries = []
   for (var i = 0; i < data.length; i += 512) {
@@ -536,7 +536,7 @@ t.test('write after end', t => {
 })
 
 t.test('emit error when stat fail', t => {
-  t.tearDown(mutateFS.statFail(new Error('xyz')))
+  t.teardown(mutateFS.statFail(new Error('xyz')))
   t.throws(_ => new PackSync({ cwd: files }).add('one-byte.txt'),
     new Error('xyz'))
 
@@ -547,7 +547,7 @@ t.test('emit error when stat fail', t => {
 })
 
 t.test('readdir fail', t => {
-  t.tearDown(mutateFS.fail('readdir', new Error('xyz')))
+  t.teardown(mutateFS.fail('readdir', new Error('xyz')))
   t.throws(_ => new PackSync({ cwd: files }).add('dir'), new Error('xyz'))
 
   new Pack({ cwd: files }).add('dir').on('error', e => {
@@ -678,7 +678,7 @@ t.test('ignores mid-queue', t => {
     const data = Buffer.concat(out)
     t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), './')
     const file = data.slice(512, 612).toString().replace(/\0.*$/, '')
-    t.notequal(files.indexOf(file), -1)
+    t.not(files.indexOf(file), -1)
     t.end()
   })
 
@@ -752,11 +752,10 @@ t.test('warnings', t => {
 t.test('no dir recurse', t => {
   const dir = path.resolve(fixtures, 'pack-no-dir-recurse')
   t.teardown(_ => rimraf.sync(dir))
-  t.beforeEach(cb => {
+  t.beforeEach(() => {
     rimraf.sync(dir)
     mkdirp.sync(dir + '/x')
     fs.writeFileSync(dir + '/x/y', 'y')
-    cb()
   })
 
   const check = (t, data) => {
@@ -1003,7 +1002,7 @@ t.test('padding works regardless of arite/add order', t =>
     write({ before: true }),
     write({ before: false }),
   ]).then(res =>
-    t.is(res[0], res[1], 'length is the same regardless of write/add order')))
+    t.equal(res[0], res[1], 'length is the same regardless of write/add order')))
 
 t.test('prefix and subdirs', t => {
   const dir = path.resolve(fixtures, 'pack-prefix-subdirs')
