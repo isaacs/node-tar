@@ -776,6 +776,9 @@ t.test('absolute paths', t => {
   })
 
   const absolute = path.resolve(dir, 'd/i/r/absolute')
+  const root = path.parse(absolute).root
+  const extraAbsolute = root + root + root + absolute
+  t.ok(path.isAbsolute(extraAbsolute))
   t.ok(path.isAbsolute(absolute))
   const parsed = path.parse(absolute)
   const relative = absolute.substr(parsed.root.length)
@@ -783,7 +786,7 @@ t.test('absolute paths', t => {
 
   const data = makeTar([
     {
-      path: absolute,
+      path: extraAbsolute,
       type: 'File',
       size: 1,
       atime: new Date('1979-07-01T19:10:00.000Z'),
@@ -798,7 +801,7 @@ t.test('absolute paths', t => {
   t.test('warn and correct', t => {
     const check = t => {
       t.match(warnings, [[
-        'stripping / from absolute path',
+        `stripping ${root}${root}${root}${root} from absolute path`,
         { path: absolute, code: 'TAR_ENTRY_INFO' },
       ]])
       t.ok(fs.lstatSync(path.resolve(dir, relative)).isFile(), 'is file')
