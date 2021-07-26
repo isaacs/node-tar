@@ -2493,3 +2493,55 @@ t.test('do not reuse hardlinks, only nlink=1 files', t => {
 
   t.end()
 })
+
+t.test('drop entry from dirCache if no longer a directory', t => {
+  const dir = path.resolve(unpackdir, 'dir-cache-error')
+  mkdirp.sync(dir + '/sync/y')
+  mkdirp.sync(dir + '/async/y')
+  const data = makeTar([
+    {
+      path: 'x',
+      type: 'Directory',
+    },
+    {
+      path: 'x',
+      type: 'SymbolicLink',
+      linkpath: './y',
+    },
+    {
+      path: 'x/ginkoid',
+      type: 'File',
+      size: 'ginkoid'.length,
+    },
+    'ginkoid',
+    '',
+    '',
+  ])
+  t.plan(2)
+  const WARNINGS = {}
+  const check = (t, path) => {
+    t.equal(fs.statSync(path + '/x').isDirectory(), true)
+    t.equal(fs.lstatSync(path + '/x').isSymbolicLink(), true)
+    t.equal(fs.statSync(path + '/y').isDirectory(), true)
+    t.strictSame(fs.readdirSync(path + '/y'), [])
+    t.throws(() => fs.readFileSync(path + '/x/ginkoid'), { code: 'ENOENT' })
+    t.strictSame(WARNINGS[path], [
+      'Cannot extract through symbolic link',
+    ])
+    t.end()
+  }
+  t.test('async', t => {
+    const path = dir + '/async'
+    new Unpack({ cwd: path })
+      .on('warn', (msg) => WARNINGS[path] = [msg])
+      .on('end', () => check(t, path))
+      .end(data)
+  })
+  t.test('sync', t => {
+    const path = dir + '/sync'
+    new UnpackSync({ cwd: path })
+      .on('warn', (msg) => WARNINGS[path] = [msg])
+      .end(data)
+    check(t, path)
+  })
+})
