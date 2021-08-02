@@ -242,6 +242,7 @@ t.test('zero-byte file, but close fails', t => {
     t.match(er, { message: 'poop' })
     t.end()
   })
+  ws.resume()
 })
 
 t.test('hardlinks', t => {
@@ -590,7 +591,7 @@ t.test('read overflow expectation', t => {
   t.throws(_ => new WriteEntry.Sync(f, { cwd: files, maxReadSize: 2 }), expect)
   new WriteEntry(f, { cwd: files, maxReadSize: 2 }).on('error', er => {
     t.match(er, expect)
-  })
+  }).resume()
 })
 
 t.test('short reads', t => {
