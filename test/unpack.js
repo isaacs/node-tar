@@ -2545,3 +2545,46 @@ t.test('drop entry from dirCache if no longer a directory', t => {
     check(t, path)
   })
 })
+
+t.test('using strip option when top level file exists', t => {
+  const dir = path.resolve(unpackdir, 'strip-with-top-file')
+  mkdirp.sync(dir + '/sync/y')
+  mkdirp.sync(dir + '/async/y')
+  const data = makeTar([
+    {
+      path: 'top',
+      type: 'File',
+      size: 0,
+    },
+    {
+      path: 'x',
+      type: 'Directory',
+    },
+    {
+      path: 'x/a',
+      type: 'File',
+      size: 'a'.length,
+    },
+    'a',
+    '',
+    '',
+  ])
+  t.plan(2)
+  const check = (t, path) => {
+    t.equal(fs.statSync(path).isDirectory(), true)
+    t.equal(fs.lstatSync(path + '/a').isFile(), true)
+    t.throws(() => fs.statSync(path + '/top'), { code: 'ENOENT' })
+    t.end()
+  }
+  t.test('async', t => {
+    const path = dir + '/async'
+    new Unpack({ cwd: path, strip: 1 })
+      .on('end', () => check(t, path))
+      .end(data)
+  })
+  t.test('sync', t => {
+    const path = dir + '/sync'
+    new UnpackSync({ cwd: path, strip: 1 }).end(data)
+    check(t, path)
+  })
+})
