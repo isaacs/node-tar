@@ -126,8 +126,10 @@ t.test('100 byte filename', t => {
 })
 
 t.test('directory', t => {
+  const onEntryCalled = []
   const ws = new WriteEntry('dir', {
     cwd: files,
+    onentry: entry => onEntryCalled.push(entry),
   })
   let out = []
   ws.on('data', c => out.push(c))
@@ -147,9 +149,15 @@ t.test('directory', t => {
       devmin: 0,
     })
     t.equal(out.length, 512)
+    t.strictSame(onEntryCalled, [ws], 'called onentry function')
 
-    const wss = new WriteEntry.Sync('dir', { cwd: files })
+    const onEntrySyncCalled = []
+    const wss = new WriteEntry.Sync('dir', {
+      cwd: files,
+      onentry: entry => onEntrySyncCalled.push(entry),
+    })
     t.equal(wss.read().length, 512)
+    t.strictSame(onEntrySyncCalled, [wss], 'called onentry function sync')
     t.match(wss.header, {
       cksumValid: true,
       needPax: false,
@@ -965,7 +973,10 @@ t.test('write entry from read entry', t => {
 
   t.test('basic file', t => {
     const fileEntry = new ReadEntry(new Header(data))
-    const wetFile = new WriteEntry.Tar(fileEntry)
+    const onEntryCalled = []
+    const wetFile = new WriteEntry.Tar(fileEntry, {
+      onentry: entry => onEntryCalled.push(entry),
+    })
     const out = []
     let wetFileEnded = false
     wetFile.on('data', c => out.push(c))
@@ -974,6 +985,7 @@ t.test('write entry from read entry', t => {
     fileEntry.write(data.slice(550, 1000))
     fileEntry.end(data.slice(1000, 1024))
     t.equal(wetFileEnded, true)
+    t.strictSame(onEntryCalled, [wetFile], 'onentry was called')
     const result = Buffer.concat(out)
     t.equal(result.length, 1024)
     t.equal(result.toString().replace(/\0.*$/, ''), '$')
