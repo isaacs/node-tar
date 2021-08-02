@@ -229,6 +229,22 @@ t.test('zero-byte file', t => {
   })
 })
 
+t.test('zero-byte file, but close fails', t => {
+  const poop = new Error('poop')
+  t.tearDown(mutateFS.fail('close', poop))
+
+  const ws = new WriteEntry('files/1024-bytes.txt', { cwd: fixtures })
+
+  ws.on('end', _ =>
+   t.fail('should not get an end, because the close fails'))
+
+  ws.on('error', er => {
+    t.match(er, { message: 'poop' })
+    t.end()
+  })
+  ws.resume()
+})
+
 t.test('hardlinks', t => {
   const h1 = 'hardlink-1'
   const h2 = 'hardlink-2'
@@ -573,7 +589,7 @@ t.test('read overflow expectation', t => {
   new WriteEntry(f, { cwd: files, maxReadSize: 2 }).on('error', er => {
     t.match(er, expect)
     t.end()
-  })
+  }).resume()
 })
 
 t.test('short reads', t => {
