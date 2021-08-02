@@ -919,6 +919,20 @@ t.test('portable dir entries, no mtime', t => {
   })
 })
 
+t.test('writing more data than is appropriate', t => {
+  const path = t.testdir({
+    file: 'hello',
+  })
+  const wss = new WriteEntry(`${path}/file`)
+  wss.on('error', er => {
+    t.match(er, {
+      message: 'writing more data than expected',
+    })
+    t.end()
+  })
+  wss.on('stat', () => wss.write(Buffer.from('some more stuff')))
+})
+
 t.test('write entry from read entry', t => {
   const data = makeTar([
     {
