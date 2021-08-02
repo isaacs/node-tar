@@ -1015,16 +1015,16 @@ t.test('prefix and subdirs', t => {
 
   const expect = [
     'out/x/\0',
-    'out/x/a/\0',
+    'out/x/k/\0',
     'out/x/d\0',
     'ddd\0',
-    'out/x/a/b/\0',
-    'out/x/a/d\0',
+    'out/x/k/b/\0',
+    'out/x/k/d\0',
     'ddd\0',
-    'out/x/a/b/c/\0',
-    'out/x/a/b/d\0',
+    'out/x/k/b/c/\0',
+    'out/x/k/b/d\0',
     'ddd\0',
-    'out/x/a/b/c/d\0',
+    'out/x/k/b/c/d\0',
     'ddd\0',
     '\0',
     '\0',
@@ -1041,6 +1041,7 @@ t.test('prefix and subdirs', t => {
     const p = new Class({
       cwd: dir + '/in',
       prefix: 'out/x',
+      onentry: entry => entry.path = entry.path.replace(/a/g, 'k'),
     })
     const out = []
     p.on('data', d => out.push(d))
