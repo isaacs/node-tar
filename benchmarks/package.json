@@ -2,6 +2,6 @@
   "name": "benchmarks",
   "version": "1.0.0",
   "dependencies": {
-    "tar": "^2.2.2"
+    "tar": "^4.4.15"
   }
 }
