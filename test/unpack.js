@@ -2685,3 +2685,182 @@ t.test('using strip option when top level file exists', t => {
     check(t, path)
   })
 })
+
+t.test('handle EPERMs when creating symlinks', t => {
+  // https://github.com/npm/node-tar/issues/265
+  const msg = 'You do not have sufficient privilege to perform this operation.'
+  const er = Object.assign(new Error(msg), {
+    code: 'EPERM',
+  })
+  t.teardown(mutateFS.fail('symlink', er))
+  const data = makeTar([
+    {
+      path: 'x',
+      type: 'Directory',
+    },
+    {
+      path: 'x/y',
+      type: 'File',
+      size: 'hello, world'.length,
+    },
+    'hello, world',
+    {
+      path: 'x/link1',
+      type: 'SymbolicLink',
+      linkpath: './y',
+    },
+    {
+      path: 'x/link2',
+      type: 'SymbolicLink',
+      linkpath: './y',
+    },
+    {
+      path: 'x/link3',
+      type: 'SymbolicLink',
+      linkpath: './y',
+    },
+    {
+      path: 'x/z',
+      type: 'File',
+      size: 'hello, world'.length,
+    },
+    'hello, world',
+    '',
+    '',
+  ])
+
+  const dir = path.resolve(unpackdir, 'eperm-symlinks')
+  mkdirp.sync(`${dir}/sync`)
+  mkdirp.sync(`${dir}/async`)
+
+  const check = path => {
+    t.match(WARNINGS, [
+      ['TAR_ENTRY_ERROR', msg],
+      ['TAR_ENTRY_ERROR', msg],
+      ['TAR_ENTRY_ERROR', msg],
+    ], 'got expected warnings')
+    t.equal(WARNINGS.length, 3)
+    WARNINGS.length = 0
+    t.equal(fs.readFileSync(`${path}/x/y`, 'utf8'), 'hello, world')
+    t.equal(fs.readFileSync(`${path}/x/z`, 'utf8'), 'hello, world')
+    t.throws(() => fs.statSync(`${path}/x/link1`), { code: 'ENOENT' })
+    t.throws(() => fs.statSync(`${path}/x/link2`), { code: 'ENOENT' })
+    t.throws(() => fs.statSync(`${path}/x/link3`), { code: 'ENOENT' })
+  }
+
+  const WARNINGS = []
+  const u = new Unpack({
+    cwd: `${dir}/async`,
+    onwarn: (code, msg, er) => WARNINGS.push([code, msg]),
+  })
+  u.on('end', () => {
+    check(`${dir}/async`)
+    const u = new UnpackSync({
+      cwd: `${dir}/sync`,
+      onwarn: (code, msg, er) => WARNINGS.push([code, msg]),
+    })
+    u.end(data)
+    check(`${dir}/sync`)
+    t.end()
+  })
+  u.end(data)
+})
+
+t.test('close fd when error writing', t => {
+  const data = makeTar([
+    {
+      type: 'Directory',
+      path: 'x',
+    },
+    {
+      type: 'File',
+      size: 1,
+      path: 'x/y',
+    },
+    '.',
+    '',
+    '',
+  ])
+  t.teardown(mutateFS.fail('write', new Error('nope')))
+  const CLOSES = []
+  const OPENS = {}
+  const {open} = require('fs')
+  t.teardown(() => fs.open = open)
+  fs.open = (...args) => {
+    const cb = args.pop()
+    args.push((er, fd) => {
+      OPENS[args[0]] = fd
+      cb(er, fd)
+    })
+    return open.call(fs, ...args)
+  }
+  t.teardown(mutateFS.mutateArgs('close', ([fd]) => {
+    CLOSES.push(fd)
+    return [fd]
+  }))
+  const WARNINGS = []
+  const dir = path.resolve(unpackdir, 'close-on-write-error')
+  mkdirp.sync(dir)
+  const unpack = new Unpack({
+    cwd: dir,
+    onwarn: (code, msg) => WARNINGS.push([code, msg]),
+  })
+  unpack.on('end', () => {
+    for (const [path, fd] of Object.entries(OPENS))
+      t.equal(CLOSES.includes(fd), true, 'closed fd for ' + path)
+    t.end()
+  })
+  unpack.end(data)
+})
+
+t.test('close fd when error setting mtime', t => {
+  const data = makeTar([
+    {
+      type: 'Directory',
+      path: 'x',
+    },
+    {
+      type: 'File',
+      size: 1,
+      path: 'x/y',
+      atime: new Date('1979-07-01T19:10:00.000Z'),
+      ctime: new Date('2011-03-27T22:16:31.000Z'),
+      mtime: new Date('2011-03-27T22:16:31.000Z'),
+    },
+    '.',
+    '',
+    '',
+  ])
+  // have to clobber these both, because we fall back
+  t.teardown(mutateFS.fail('futimes', new Error('nope')))
+  t.teardown(mutateFS.fail('utimes', new Error('nooooope')))
+  const CLOSES = []
+  const OPENS = {}
+  const {open} = require('fs')
+  t.teardown(() => fs.open = open)
+  fs.open = (...args) => {
+    const cb = args.pop()
+    args.push((er, fd) => {
+      OPENS[args[0]] = fd
+      cb(er, fd)
+    })
+    return open.call(fs, ...args)
+  }
+  t.teardown(mutateFS.mutateArgs('close', ([fd]) => {
+    CLOSES.push(fd)
+    return [fd]
+  }))
+  const WARNINGS = []
+  const dir = path.resolve(unpackdir, 'close-on-futimes-error')
+  mkdirp.sync(dir)
+  const unpack = new Unpack({
+    cwd: dir,
+    onwarn: (code, msg) => WARNINGS.push([code, msg]),
+  })
+  unpack.on('end', () => {
+    for (const [path, fd] of Object.entries(OPENS))
+      t.equal(CLOSES.includes(fd), true, 'closed fd for ' + path)
+    t.end()
+  })
+  unpack.end(data)
+})
