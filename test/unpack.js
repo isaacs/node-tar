@@ -2880,3 +2880,42 @@ t.test('close fd when error setting mtime', t => {
   })
   unpack.end(data)
 })
+
+t.test('do not hang on large files that fail to open()', t => {
+  const data = makeTar([
+    {
+      type: 'Directory',
+      path: 'x',
+    },
+    {
+      type: 'File',
+      size: 31745,
+      path: 'x/y',
+    },
+    'x'.repeat(31745),
+    '',
+    '',
+  ])
+  t.teardown(mutateFS.fail('open', new Error('nope')))
+  const dir = path.resolve(unpackdir, 'no-hang-for-large-file-failures')
+  mkdirp.sync(dir)
+  const WARNINGS = []
+  const unpack = new Unpack({
+    cwd: dir,
+    onwarn: (code, msg) => WARNINGS.push([code, msg]),
+  })
+  unpack.on('end', () => {
+    t.strictSame(WARNINGS, [['TAR_ENTRY_ERROR', 'nope']])
+    t.end()
+  })
+  unpack.write(data.slice(0, 2048))
+  setTimeout(() => {
+    unpack.write(data.slice(2048, 4096))
+    setTimeout(() => {
+      unpack.write(data.slice(4096))
+      setTimeout(() => {
+        unpack.end()
+      })
+    })
+  })
+})
