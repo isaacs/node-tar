@@ -32,6 +32,7 @@
     "end-of-stream": "^1.4.4",
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
+    "require-inject": "^1.4.4",
     "rimraf": "^2.7.1",
     "tap": "^14.11.0",
     "tar-fs": "^1.16.3",
