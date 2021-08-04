@@ -1060,3 +1060,97 @@ t.test('prefix and subdirs', t => {
     return t.test('./', t => runTest(t, './', Pack.Sync))
   })
 })
+
+// https://github.com/npm/node-tar/issues/284
+t.test('prefix and hard links', t => {
+  const dir = path.resolve(fixtures, 'pack-prefix-hardlinks')
+  t.teardown(_ => rimraf.sync(dir))
+  mkdirp.sync(dir + '/in/z/b/c')
+  fs.writeFileSync(dir + '/in/target', 'ddd')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/b/c/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/b/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/y')
+
+  const expect = [
+    'out/x/\0',
+    {
+      type: 'File',
+      size: 3,
+      path: 'out/x/target',
+      linkpath: '',
+    },
+    'ddd\0\0\0\0\0\0\0\0\0\0\0',
+    {
+      path: 'out/x/y',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    'out/x/z/\0',
+    'out/x/z/b/\0',
+    {
+      path: 'out/x/z/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    'out/x/z/b/c/\0',
+    {
+      path: 'out/x/z/b/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      path: 'out/x/z/b/c/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    '\0',
+    '\0',
+  ]
+
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    expect.forEach((e, i) => {
+      if (typeof e === 'string')
+        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+      else
+        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+    })
+    t.end()
+  }
+
+  const runTest = (t, path, Class) => {
+    const p = new Class({
+      cwd: dir + '/in',
+      prefix: 'out/x',
+      noDirRecurse: true,
+    })
+    const out = []
+    p.on('data', d => out.push(d))
+    p.on('end', () => check(out, t))
+    p.write(path)
+    if (path === '.')
+      path = './'
+    p.write(`${path}target`)
+    p.write(`${path}y`)
+    p.write(`${path}z`)
+    p.write(`${path}z/b`)
+    p.write(`${path}z/d`)
+    p.write(`${path}z/b/c`)
+    p.write(`${path}z/b/d`)
+    p.write(`${path}z/b/c/d`)
+    p.end()
+  }
+
+  t.test('async', t => {
+    t.test('.', t => runTest(t, '.', Pack))
+    return t.test('./', t => runTest(t, './', Pack))
+  })
+
+  t.test('sync', t => {
+    t.test('.', t => runTest(t, '.', Pack.Sync))
+    return t.test('./', t => runTest(t, './', Pack.Sync))
+  })
+
+  t.end()
+})
