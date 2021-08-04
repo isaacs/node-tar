@@ -26,5 +26,4 @@
 .*.swp
 node_modules/
 test/fixtures/unpack
-!benchmarks/
-benchmarks/extract/cwd
+benchmarks/
