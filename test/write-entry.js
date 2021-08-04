@@ -1,9 +1,22 @@
 'use strict'
 const t = require('tap')
+
+// make our tests verify that windows link targets get turned into / paths
+const fs = require('fs')
+const {readlink, readlinkSync} = fs
+fs.readlink = (path, cb) => {
+  readlink(path, (er, path) => {
+    if (er)
+      return cb(er)
+    else
+      cb(null, path.replace(/\//g, '\\'))
+  })
+}
+fs.readlinkSync = path => readlinkSync(path).replace(/\//g, '\\')
+
 const ReadEntry = require('../lib/read-entry.js')
 const makeTar = require('./make-tar.js')
 const WriteEntry = require('../lib/write-entry.js')
-const fs = require('fs')
 const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
@@ -1144,6 +1157,521 @@ t.test('write entry from read entry', t => {
     t.throws(_ => wet.write(Buffer.from(new Array(1024).join('x'))))
     t.end()
   })
+
+  t.end()
+})
+
+// https://github.com/npm/node-tar/issues/284
+t.test('prefix and hard links', t => {
+  const dir = path.resolve(fixtures, 'writeentry-prefix-hardlinks')
+  rimraf.sync(dir)
+  t.teardown(_ => rimraf.sync(dir))
+  mkdirp.sync(dir + '/in/z/b/c')
+  fs.writeFileSync(dir + '/in/target', 'ddd')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/b/c/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/b/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/y')
+  const long = 'y'.repeat(250)
+  fs.linkSync(dir + '/in/target', dir + '/in/' + long)
+
+  const expect = [
+    {
+      type: 'Directory',
+      path: 'out/x/',
+    },
+    {
+      type: 'File',
+      size: 3,
+      path: 'out/x/target',
+    },
+    'ddd\0',
+    {
+      path: 'out/x/y',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      path: 'PaxHeader/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
+      type: 'ExtendedHeader',
+    },
+    new RegExp('^266 path=out.x.' + long + '[\\w\\W]*linkpath=out.x.target'),
+    {
+      path: 'out/x/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      type: 'Directory',
+      path: 'out/x/z/',
+    },
+    {
+      type: 'Directory',
+      path: 'out/x/z/b/',
+    },
+    {
+      path: 'out/x/z/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      type: 'Directory',
+      path: 'out/x/z/b/c/',
+    },
+    {
+      path: 'out/x/z/b/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      path: 'out/x/z/b/c/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+  ]
+
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    expect.forEach((e, i) => {
+      if (typeof e === 'string')
+        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+      else if (e instanceof RegExp)
+        t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
+      else
+        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+    })
+  }
+
+  const runTest = async (t, path, Class) => {
+    const linkCache = new Map()
+    const statCache = new Map()
+    const opt = {
+      cwd: dir + '/in',
+      prefix: 'out/x',
+      noDirRecurse: true,
+      linkCache,
+      statCache,
+    }
+    const out = []
+    const entry = (path) => new Promise(resolve => {
+      const p = new Class(path, opt)
+      p.on('end', resolve)
+      p.on('data', d => out.push(d))
+    })
+
+    await entry(path)
+    if (path === '.')
+      path = './'
+    await entry(`${path}target`)
+    await entry(`${path}y`)
+    await entry(`${path}${long}`)
+    await entry(`${path}z`)
+    await entry(`${path}z/b`)
+    await entry(`${path}z/d`)
+    await entry(`${path}z/b/c`)
+    await entry(`${path}z/b/d`)
+    await entry(`${path}z/b/c/d`)
+    check(out, t)
+  }
+
+  t.test('async', t => {
+    t.test('.', t => runTest(t, '.', WriteEntry))
+    return t.test('./', t => runTest(t, './', WriteEntry))
+  })
+
+  t.test('sync', t => {
+    t.test('.', t => runTest(t, '.', WriteEntry.Sync))
+    return t.test('./', t => runTest(t, './', WriteEntry.Sync))
+  })
+
+  t.end()
+})
+
+t.test('prefix and hard links from tar entries', t => {
+  const long = 'y'.repeat(250)
+  const expect = [
+    {
+      type: 'Directory',
+      path: 'out/x/',
+    },
+    {
+      type: 'File',
+      size: 3,
+      path: 'out/x/target',
+    },
+    'ddd\0',
+    {
+      path: 'out/x/y',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      path: 'PaxHeader/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
+      type: 'ExtendedHeader',
+    },
+    new RegExp('^266 path=out.x.' + long + '[\\w\\W]*linkpath=out.x.target'),
+    {
+      path: 'out/x/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      type: 'Directory',
+      path: 'out/x/z/',
+    },
+    {
+      type: 'Directory',
+      path: 'out/x/z/b/',
+    },
+    {
+      path: 'out/x/z/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      type: 'Directory',
+      path: 'out/x/z/b/c/',
+    },
+    {
+      path: 'out/x/z/b/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+    {
+      path: 'out/x/z/b/c/d',
+      type: 'Link',
+      linkpath: 'out/x/target',
+    },
+  ]
+
+  const data = makeTar([
+    {
+      type: 'Directory',
+      path: './',
+    },
+    {
+      type: 'File',
+      size: 3,
+      path: 'target',
+    },
+    'ddd\0',
+    {
+      path: 'y',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      path: 'PaxHeader/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
+      type: 'ExtendedHeader',
+      size: ('260 path=' + long + '\n19 linkpath=target\n').length,
+    },
+    '260 path=' + long + '\n19 linkpath=target\n',
+    {
+      path: 'yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/',
+    },
+    {
+      path: 'z/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/c/',
+    },
+    {
+      path: 'z/b/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      path: 'z/b/c/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    '',
+    '',
+  ])
+
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    expect.forEach((e, i) => {
+      if (typeof e === 'string')
+        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+      else if (e instanceof RegExp)
+        t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
+      else
+        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+    })
+  }
+
+  const runTest = async (t, path) => {
+    const linkCache = new Map()
+    const statCache = new Map()
+    const opt = {
+      prefix: 'out/x',
+      noDirRecurse: true,
+      linkCache,
+      statCache,
+    }
+    const out = []
+    const parser = new Parser({
+      strict: true,
+      onentry: readEntry => {
+        const p = new WriteEntry.Tar(readEntry, opt)
+        p.on('data', d => out.push(d))
+      },
+    })
+    parser.on('end', () => check(out, t))
+    parser.end(data)
+  }
+
+  t.test('.', t => runTest(t, '.'))
+  t.test('./', t => runTest(t, './'))
+
+  t.end()
+})
+
+t.test('hard links and no prefix', t => {
+  const dir = path.resolve(fixtures, 'writeentry-prefix-hardlinks')
+  t.teardown(_ => rimraf.sync(dir))
+  mkdirp.sync(dir + '/in/z/b/c')
+  fs.writeFileSync(dir + '/in/target', 'ddd')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/b/c/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/b/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/z/d')
+  fs.linkSync(dir + '/in/target', dir + '/in/y')
+
+  const expect = [
+    {
+      type: 'Directory',
+      path: './',
+    },
+    {
+      type: 'File',
+      size: 3,
+      path: 'target',
+    },
+    'ddd\0',
+    {
+      path: 'y',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/',
+    },
+    {
+      path: 'z/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/c/',
+    },
+    {
+      path: 'z/b/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      path: 'z/b/c/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+  ]
+
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    expect.forEach((e, i) => {
+      if (typeof e === 'string')
+        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+      else
+        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+    })
+  }
+
+  const runTest = async (t, path, Class) => {
+    const linkCache = new Map()
+    const statCache = new Map()
+    const opt = {
+      cwd: dir + '/in',
+      linkCache,
+      statCache,
+    }
+    const out = []
+    const entry = (path) => new Promise(resolve => {
+      const p = new Class(path, opt)
+      p.on('end', resolve)
+      p.on('data', d => out.push(d))
+    })
+
+    await entry(path)
+    if (path === '.')
+      path = './'
+    await entry(`${path}target`)
+    await entry(`${path}y`)
+    await entry(`${path}z`)
+    await entry(`${path}z/b`)
+    await entry(`${path}z/d`)
+    await entry(`${path}z/b/c`)
+    await entry(`${path}z/b/d`)
+    await entry(`${path}z/b/c/d`)
+    check(out, t)
+  }
+
+  t.test('async', t => {
+    t.test('.', t => runTest(t, '.', WriteEntry))
+    return t.test('./', t => runTest(t, './', WriteEntry))
+  })
+
+  t.test('sync', t => {
+    t.test('.', t => runTest(t, '.', WriteEntry.Sync))
+    return t.test('./', t => runTest(t, './', WriteEntry.Sync))
+  })
+
+  t.end()
+})
+
+t.test('hard links from tar entries and no prefix', t => {
+  const expect = [
+    {
+      type: 'Directory',
+      path: './',
+    },
+    {
+      type: 'File',
+      size: 3,
+      path: 'target',
+    },
+    'ddd\0',
+    {
+      path: 'y',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/',
+    },
+    {
+      path: 'z/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/c/',
+    },
+    {
+      path: 'z/b/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      path: 'z/b/c/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+  ]
+
+  const data = makeTar([
+    {
+      type: 'Directory',
+      path: './',
+    },
+    {
+      type: 'File',
+      size: 3,
+      path: 'target',
+    },
+    'ddd\0',
+    {
+      path: 'y',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/',
+    },
+    {
+      path: 'z/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      type: 'Directory',
+      path: 'z/b/c/',
+    },
+    {
+      path: 'z/b/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+    {
+      path: 'z/b/c/d',
+      type: 'Link',
+      linkpath: 'target',
+    },
+  ])
+
+  const check = (out, t) => {
+    const data = Buffer.concat(out)
+    expect.forEach((e, i) => {
+      if (typeof e === 'string')
+        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+      else if (e instanceof RegExp)
+        t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
+      else
+        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+    })
+  }
+
+  const runTest = async (t, path) => {
+    const linkCache = new Map()
+    const statCache = new Map()
+    const opt = {
+      noDirRecurse: true,
+      linkCache,
+      statCache,
+    }
+    const out = []
+    const parser = new Parser({
+      onentry: readEntry => {
+        const p = new WriteEntry.Tar(readEntry, opt)
+        p.on('data', d => out.push(d))
+      },
+    })
+    parser.on('end', () => check(out, t))
+    parser.end(data)
+  }
+
+  t.test('.', t => runTest(t, '.'))
+  t.test('./', t => runTest(t, './'))
 
   t.end()
 })
