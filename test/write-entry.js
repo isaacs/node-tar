@@ -28,6 +28,7 @@ const Parser = require('../lib/parse.js')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const isWindows = process.platform === 'win32'
+const normPath = require('../lib/normalize-windows-path.js')
 
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
@@ -36,7 +37,7 @@ t.test('set up', t => {
     fs.unlinkSync(files + '/hardlink-2')
     fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   }
-  chmodr.sync(files, 0o644)
+  chmodr.sync(files, isWindows ? 0o666 : 0o644)
   t.end()
 })
 
@@ -63,7 +64,7 @@ t.test('100 byte filename', t => {
           cksumValid: true,
           needPax: false,
           path: '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-          mode: 0o644,
+          mode: isWindows ? 0o666 : 0o644,
           size: 100,
           linkpath: null,
           uname: 'isaacs',
@@ -91,7 +92,7 @@ t.test('100 byte filename', t => {
         cksumValid: true,
         needPax: false,
         path: '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        mode: 0o644,
+        mode: isWindows ? 0o666 : 0o644,
         size: 100,
         linkpath: '',
         uname: 'isaacs',
@@ -139,7 +140,7 @@ t.test('directory', t => {
       cksumValid: true,
       needPax: false,
       path: 'dir/',
-      mode: 0o755,
+      mode: isWindows ? 0o777 : 0o755,
       size: 0,
       linkpath: null,
       uname: 'isaacs',
@@ -155,7 +156,7 @@ t.test('directory', t => {
       cksumValid: true,
       needPax: false,
       path: 'dir/',
-      mode: 0o755,
+      mode: isWindows ? 0o777 : 0o755,
       size: 0,
       linkpath: null,
       uname: 'isaacs',
@@ -179,7 +180,7 @@ t.test('empty path for cwd', t => {
       cksumValid: true,
       needPax: false,
       path: './',
-      mode: fs.statSync('./').mode & 0o7777,
+      mode: isWindows ? 0o777 : fs.statSync('./').mode & 0o7777,
       size: 0,
       linkpath: null,
       uname: 'isaacs',
@@ -191,7 +192,9 @@ t.test('empty path for cwd', t => {
   })
 })
 
-t.test('symlink', t => {
+t.test('symlink', {
+  skip: isWindows && 'symlinks not fully supported',
+}, t => {
   const ws = new WriteEntry('symlink', { cwd: files })
   let out = []
   ws.on('data', c => out.push(c))
@@ -230,7 +233,7 @@ t.test('zero-byte file', t => {
       path: 'files/zero-byte.txt',
       cksumValid: true,
       needPax: false,
-      mode: 0o644,
+      mode: isWindows ? 0o666 : 0o644,
       size: 0,
       linkpath: null,
       uname: 'isaacs',
@@ -282,7 +285,7 @@ t.test('hardlinks', t => {
       path: 'files/hardlink-2',
       cksumValid: true,
       needPax: false,
-      mode: 0o644,
+      mode: isWindows ? 0o666 : 0o644,
       size: 0,
       linkpath: 'files/hardlink-1',
       uname: 'isaacs',
@@ -314,7 +317,7 @@ t.test('hardlinks far away', t => {
       path: 'files/hardlink-2',
       cksumValid: true,
       needPax: false,
-      mode: 0o644,
+      mode: isWindows ? 0o666 : 0o644,
       size: 26,
       linkpath: null,
       uname: 'isaacs',
@@ -338,7 +341,7 @@ t.test('really deep path', t => {
       cksumValid: true,
       needPax: true,
       path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      mode: 0o644,
+      mode: isWindows ? 0o666 : 0o644,
       size: 100,
       linkpath: null,
       uname: 'isaacs',
@@ -363,7 +366,7 @@ t.test('no pax', t => {
       cksumValid: true,
       needPax: true,
       path: 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      mode: 0o644,
+      mode: isWindows ? 0o666 : 0o644,
       size: 100,
       linkpath: null,
       uname: 'isaacs',
@@ -394,10 +397,12 @@ t.test('absolute path', t => {
   const absolute = path.resolve(files, '512-bytes.txt')
   const { root } = path.parse(absolute)
   const f = root + root + root + absolute
-  const warn = root + root + root + root
+  const warn = normPath(isWindows ? root : root + root + root + root)
   t.test('preservePaths=false strict=false', t => {
     const warnings = []
-    const ws = new WriteEntry(f, {
+    // on windows, c:\c:\c:\... is a valid path, so just use the
+    // single-root absolute version of it.
+    const ws = new WriteEntry(isWindows ? absolute : f, {
       cwd: files,
       onwarn: (c, m, p) => warnings.push([c, m, p])
     })
@@ -407,14 +412,16 @@ t.test('absolute path', t => {
       out = Buffer.concat(out)
       t.equal(out.length, 1024)
       t.match(warnings, [[
-        'TAR_ENTRY_INFO', `stripping ${warn} from absolute path`, { path: f },
+        'TAR_ENTRY_INFO',
+        `stripping ${warn} from absolute path`,
+        { path: normPath(isWindows ? absolute : f) },
       ]])
 
       t.match(ws.header, {
         cksumValid: true,
         needPax: false,
-        path: f.replace(/^(\/|[a-z]:\\\\){4}/, ''),
-        mode: 0o644,
+        path: normPath(absolute.replace(/^(\/|[a-z]:[/\\])*/i, '')),
+        mode: isWindows ? 0o666 : 0o644,
         size: 512,
         linkpath: null,
         uname: 'isaacs',
@@ -433,7 +440,7 @@ t.test('absolute path', t => {
 
       t.test('strict=' + strict, t => {
         const warnings = []
-        const ws = new WriteEntry(f, {
+        const ws = new WriteEntry(isWindows ? absolute : f, {
           cwd: files,
           strict: strict,
           preservePaths: true,
@@ -448,8 +455,8 @@ t.test('absolute path', t => {
           t.match(ws.header, {
             cksumValid: true,
             needPax: false,
-            path: f,
-            mode: 0o644,
+            path: normPath(isWindows ? absolute : f),
+            mode: isWindows ? 0o666 : 0o644,
             size: 512,
             linkpath: null,
             uname: 'isaacs',
@@ -465,11 +472,14 @@ t.test('absolute path', t => {
 
   t.test('preservePaths=false strict=true', t => {
     t.throws(_ => {
-      new WriteEntry(f, {
+      new WriteEntry(isWindows ? absolute : f, {
         strict: true,
         cwd: files
       })
-    }, { message: /stripping .* from absolute path/, path: f })
+    }, {
+      message: /stripping .* from absolute path/,
+      path: normPath(isWindows ? absolute : f),
+    })
     t.end()
   })
 
@@ -490,7 +500,7 @@ t.test('no user environ, sets uname to empty string', t => {
       cksumValid: true,
       needPax: false,
       path: '512-bytes.txt',
-      mode: 0o644,
+      mode: isWindows ? 0o666 : 0o644,
       size: 512,
       uname: '',
       linkpath: null,
@@ -529,17 +539,17 @@ t.test('an unsuppored type', {
 
 t.test('readlink fail', t => {
   const expect = {
-    message: 'EINVAL: invalid argument, readlink \'' + __filename + '\'',
-    code: 'EINVAL',
     syscall: 'readlink',
-    path: __filename
+    path: String,
   }
   // pretend everything is a symbolic link, then read something that isn't
-  t.tearDown(mutateFS.statType('SymbolicLink'))
-  t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
-           expect)
+  t.teardown(mutateFS.statType('SymbolicLink'))
+  t.throws(_ => {
+    return new WriteEntry.Sync('write-entry.js', { cwd: __dirname })
+  }, expect)
   new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
     t.match(er, expect)
+    t.equal(normPath(er.path), normPath(__filename))
     t.end()
   })
 })
@@ -560,13 +570,17 @@ t.test('read fail', t => {
     code: 'EISDIR',
     syscall: 'read'
   }
-  // pretend everything is a symbolic link, then read something that isn't
-  t.tearDown(mutateFS.statType('File'))
-  t.throws(_ => new WriteEntry.Sync('fixtures', { cwd: __dirname }),
-           expect)
-  let prev
+  // pretend everything is a file, then read something that isn't
+  t.teardown(mutateFS.statMutate((er, st) => {
+    if (er)
+      return [er, st]
+    st.isFile = () => true
+    st.size = 123
+  }))
+  t.throws(_ => new WriteEntry.Sync('fixtures', {
+    cwd: __dirname,
+  }), expect)
   new WriteEntry('fixtures', { cwd: __dirname }).on('error', er => {
-    prev = er
     t.match(er, expect)
     t.end()
   })
@@ -576,7 +590,7 @@ t.test('read invalid EOF', t => {
   t.tearDown(mutateFS.mutate('read', (er, br) => [er, 0]))
   const expect = {
     message: 'encountered unexpected EOF',
-    path: __filename,
+    path: normPath(__filename),
     syscall: 'read',
     code: 'EOF'
   }
@@ -596,7 +610,7 @@ t.test('read overflow expectation', t => {
   const f = '512-bytes.txt'
   const expect = {
     message: 'did not encounter expected EOF',
-    path: path.resolve(files, f),
+    path: normPath(path.resolve(files, f)),
     syscall: 'read',
     code: 'EOF'
   }
@@ -954,7 +968,7 @@ t.test('write entry from read entry', t => {
       path: '$',
       type: 'File',
       size: 10,
-      mode: 0o755,
+      mode: isWindows ? 0o777 : 0o755,
       uid: 123,
       gid: 321,
       ctime: new Date('1979-07-01'),
@@ -995,7 +1009,7 @@ t.test('write entry from read entry', t => {
         path: '$',
         type: 'Directory',
         size: 0,
-        mode: 0o755,
+        mode: isWindows ? 0o777 : 0o755,
         uid: 123,
         gid: 321,
         ctime: new Date('1979-07-01'),
@@ -1677,5 +1691,17 @@ t.test('hard links from tar entries and no prefix', t => {
   t.test('.', t => runTest(t, '.'))
   t.test('./', t => runTest(t, './'))
 
+  t.end()
+})
+
+t.test('myuid set by getuid() if available, otherwise 0', t => {
+  const {getuid} = process
+  process.getuid = null
+  const noUid = new WriteEntry(__filename)
+  t.equal(noUid.myuid, 0, 'set to zero if no getuid function')
+  process.getuid = () => 123456789
+  const hasUid = new WriteEntry(__filename)
+  t.equal(hasUid.myuid, 123456789, 'set to process.getuid()')
+  process.getuid = getuid
   t.end()
 })

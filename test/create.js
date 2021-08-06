@@ -1,5 +1,6 @@
 'use strict'
 
+const isWindows = process.platform === 'win32'
 const t = require('tap')
 const c = require('../lib/create.js')
 const list = require('../lib/list.js')
@@ -7,11 +8,12 @@ const fs = require('fs')
 const path = require('path')
 const dir = path.resolve(__dirname, 'fixtures/create')
 const tars = path.resolve(__dirname, 'fixtures/tars')
-const rimraf = require('rimraf')
-const mkdirp = require('mkdirp')
 const spawn = require('child_process').spawn
 const Pack = require('../lib/pack.js')
 const mutateFS = require('mutate-fs')
+const {promisify} = require('util')
+const rimraf = promisify(require('rimraf'))
+const mkdirp = promisify(require('mkdirp'))
 
 const readtar = (file, cb) => {
   const child = spawn('tar', ['tf', file])
@@ -21,12 +23,11 @@ const readtar = (file, cb) => {
     cb(code, signal, Buffer.concat(out).toString()))
 }
 
-t.teardown(_ => rimraf.sync(dir))
+t.teardown(() => rimraf(dir))
 
-t.test('setup', t => {
-  rimraf.sync(dir)
-  mkdirp.sync(dir)
-  t.end()
+t.test('setup', async () => {
+  await rimraf(dir)
+  await mkdirp(dir)
 })
 
 t.test('no cb if sync or without file', t => {
@@ -88,7 +89,7 @@ t.test('create file', t => {
   })
 
   t.test('with specific mode', t => {
-    const mode = 0o740
+    const mode = isWindows ? 0o666 : 0o740
     t.test('sync', t => {
       const file = path.resolve(dir, 'sync-mode.tar')
       c({

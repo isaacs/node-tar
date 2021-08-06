@@ -19,6 +19,8 @@ const EE = require('events').EventEmitter
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const ReadEntry = require('../lib/read-entry.js')
+const isWindows = process.platform === 'win32'
+const normPath = require('../lib/normalize-windows-path.js')
 
 const ctime = new Date('2017-05-10T01:03:12.000Z')
 const atime = new Date('2017-04-17T00:00:00.000Z')
@@ -57,7 +59,7 @@ t.test('pack a file', t => {
         cksumValid: true,
         needPax: false,
         path: 'one-byte.txt',
-        mode: 0o644,
+        mode: isWindows ? 0o666 : 0o644,
         size: 1,
         mtime: mtime,
         cksum: Number,
@@ -101,7 +103,7 @@ t.test('pack a file with a prefix', t => {
         cksumValid: true,
         needPax: false,
         path: 'package/.dotfile',
-        mode: 0o644,
+        mode: isWindows ? 0o666 : 0o644,
         size: 2,
         mtime: mtime,
         cksum: Number,
@@ -216,7 +218,7 @@ t.test('use process cwd if cwd not specified', t => {
         cksumValid: true,
         needPax: false,
         path: 'dir/',
-        mode: 0o755,
+        mode: isWindows ? 0o777 : 0o755,
         size: 0,
         mtime: mtime,
         cksum: Number,
@@ -244,7 +246,7 @@ t.test('use process cwd if cwd not specified', t => {
         cksumValid: true,
         needPax: false,
         path: 'dir/x',
-        mode: 0o644,
+        mode: isWindows ? 0o666 : 0o644,
         size: 0,
         mtime: mtime,
         cksum: Number,
@@ -282,7 +284,7 @@ t.test('filter', t => {
         cksumValid: true,
         needPax: false,
         path: 'dir/',
-        mode: 0o755,
+        mode: isWindows ? 0o777 : 0o755,
         size: 0,
         mtime: mtime,
         cksum: Number,
@@ -328,7 +330,7 @@ t.test('add the same dir twice (exercise cache code)', t => {
         cksumValid: true,
         needPax: false,
         path: 'dir/',
-        mode: 0o755,
+        mode: isWindows ? 0o777 : 0o755,
         size: 0,
         mtime: mtime,
         cksum: Number,
@@ -576,7 +578,7 @@ t.test('pipe into a slow reader', t => {
       cksumValid: true,
       needPax: false,
       path: 'long-path/',
-      mode: 0o755,
+      mode: isWindows ? 0o777 : 0o755,
       size: 0,
       mtime: mtime,
       cksum: Number,
@@ -634,7 +636,7 @@ t.test('pipe into a slow gzip reader', t => {
       cksumValid: true,
       needPax: false,
       path: 'long-path/',
-      mode: 0o755,
+      mode: isWindows ? 0o777 : 0o755,
       size: 0,
       mtime: mtime,
       cksum: Number,
@@ -700,11 +702,13 @@ t.test('warnings', t => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
       t.match(warnings, [[
-        'TAR_ENTRY_INFO', /stripping .* from absolute path/, { path: f },
+        'TAR_ENTRY_INFO',
+        /stripping .* from absolute path/,
+        { path: normPath(f) },
       ]])
 
       t.match(new Header(data), {
-        path: f.replace(/^(\/|[a-z]:\\\\)/, '')
+        path: normPath(f).replace(/^(\/|[a-z]:\/)/i, ''),
       })
       t.end()
     })
@@ -729,7 +733,7 @@ t.test('warnings', t => {
           t.equal(warnings.length, 0)
 
           t.match(new Header(data), {
-            path: f
+            path: normPath(f),
           })
           t.end()
         })
@@ -742,7 +746,10 @@ t.test('warnings', t => {
       strict: true,
       cwd: files
     }).end(f).on('error', e => {
-      t.match(e, { message: /stripping .* from absolute path/, path: f })
+      t.match(e, {
+        message: /stripping .* from absolute path/,
+        path: normPath(f),
+      })
       t.end()
     })
   })
@@ -796,7 +803,7 @@ t.test('no dir recurse', t => {
   t.end()
 })
 
-t.test('follow', t => {
+t.test('follow', { skip: isWindows && 'file symlinks not available' }, t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     t.equal(data.length, 2048)
@@ -805,8 +812,8 @@ t.test('follow', t => {
       cksumValid: true,
       needPax: false,
       path: 'symlink',
-      mode: 0o644,
-      size: 26
+      mode: isWindows ? 0o666 : 0o644,
+      size: 26,
     })
     t.match(data.slice(512).toString(), /this link is like diamond\n\0+$/)
     t.end()

@@ -5,7 +5,7 @@ const Header = require('../lib/header.js')
 
 t.test('create read entry', t => {
   const h = new Header({
-    path: 'foo.txt',
+    path: 'oof.txt',
     mode: 0o755,
     uid: 24561,
     gid: 20,
@@ -19,17 +19,17 @@ t.test('create read entry', t => {
   })
   h.encode()
 
-  const entry = new ReadEntry(h, { x: 'y' }, { z: 0, a: null, b: undefined })
+  const entry = new ReadEntry(h, { x: 'y', path: 'foo.txt' }, { z: 0, a: null, b: undefined })
 
   t.ok(entry.header.cksumValid, 'header checksum should be valid')
 
   t.match(entry, {
-    extended: { x: 'y' },
+    extended: { x: 'y', path: 'foo.txt' },
     globalExtended: { z: 0, a: null, b: undefined },
     header: {
       cksumValid: true,
       needPax: false,
-      path: 'foo.txt',
+      path: 'oof.txt',
       mode: 0o755,
       uid: 24561,
       gid: 20,
