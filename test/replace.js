@@ -4,59 +4,29 @@ const t = require('tap')
 const r = require('../lib/replace.js')
 const path = require('path')
 const fs = require('fs')
-const mkdirp = require('mkdirp')
-const rimraf = require('rimraf')
 const mutateFS = require('mutate-fs')
 const list = require('../lib/list.js')
+const {resolve} = require('path')
 
 const fixtures = path.resolve(__dirname, 'fixtures')
-const dir = path.resolve(fixtures, 'replace')
 const tars = path.resolve(fixtures, 'tars')
-const file = dir + '/body-byte-counts.tar'
-const fileNoNulls = dir + '/no-null-eof.tar'
-const fileTruncHead = dir + '/truncated-head.tar'
-const fileTruncBody = dir + '/truncated-body.tar'
-const fileNonExistent = dir + '/does-not-exist.tar'
-const fileZeroByte = dir + '/zero.tar'
-const fileEmpty = dir + '/empty.tar'
-const fileCompressed = dir + '/compressed.tgz'
 const zlib = require('zlib')
 
 const spawn = require('child_process').spawn
 
-t.teardown(_ => rimraf.sync(dir))
-
-const reset = cb => {
-  rimraf.sync(dir)
-  mkdirp.sync(dir)
-  const data = fs.readFileSync(tars + '/body-byte-counts.tar')
-  fs.writeFileSync(file, data)
-
-  const dataNoNulls = data.slice(0, data.length - 1024)
-  fs.writeFileSync(fileNoNulls, dataNoNulls)
-
-  const dataTruncHead = Buffer.concat([dataNoNulls, data.slice(0, 500)])
-  fs.writeFileSync(fileTruncHead, dataTruncHead)
-
-  const dataTruncBody = Buffer.concat([dataNoNulls, data.slice(0, 700)])
-  fs.writeFileSync(fileTruncBody, dataTruncBody)
-
-  fs.writeFileSync(fileZeroByte, '')
-  fs.writeFileSync(fileEmpty, Buffer.alloc(1024))
-
-  fs.writeFileSync(fileCompressed, zlib.gzipSync(data))
-
-  if (cb)
-    cb()
+const data = fs.readFileSync(tars + '/body-byte-counts.tar')
+const dataNoNulls = data.slice(0, data.length - 1024)
+const fixtureDef = {
+  'body-byte-counts.tar': data,
+  'no-null-eof.tar': dataNoNulls,
+  'truncated-head.tar': Buffer.concat([dataNoNulls, data.slice(0, 500)]),
+  'truncated-body.tar': Buffer.concat([dataNoNulls, data.slice(0, 700)]),
+  'zero.tar': Buffer.from(''),
+  'empty.tar': Buffer.alloc(512),
+  'compressed.tgz': zlib.gzipSync(data),
 }
 
-t.test('setup', t => {
-  reset(t.end)
-})
-
 t.test('basic file add to archive (good or truncated)', t => {
-  t.beforeEach(reset)
-
   const check = (file, t) => {
     const c = spawn('tar', ['tf', file], { stdio: [ 0, 'pipe', 2 ] })
     const out = []
@@ -64,7 +34,7 @@ t.test('basic file add to archive (good or truncated)', t => {
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
-      const actual = Buffer.concat(out).toString().trim().split('\n')
+      const actual = Buffer.concat(out).toString().trim().split(/\r?\n/)
       t.same(actual, [
         '1024-bytes.txt',
         '512-bytes.txt',
@@ -76,50 +46,68 @@ t.test('basic file add to archive (good or truncated)', t => {
     })
   }
 
-  ;[file,
-    fileNoNulls,
-    fileTruncHead,
-    fileTruncBody
-  ].forEach(file => {
-    const fileList = [ path.basename(__filename) ]
-    t.test(path.basename(file), t => {
-      t.test('sync', t => {
+  const files = [
+    'body-byte-counts.tar',
+    'no-null-eof.tar',
+    'truncated-head.tar',
+    'truncated-body.tar',
+  ]
+  const td = files.map(f => [f, fixtureDef[f]]).reduce((s, [k, v]) => {
+    s[k] = v
+    return s
+  }, {})
+  const fileList = [path.basename(__filename)]
+  t.test('sync', t => {
+    t.plan(files.length)
+    const dir = t.testdir(td)
+    for (const file of files) {
+      t.test(file, t => {
         r({
           sync: true,
-          file: file,
-          cwd: __dirname
+          file: resolve(dir, file),
+          cwd: __dirname,
         }, fileList)
-        check(file, t)
+        check(resolve(dir, file), t)
       })
+    }
+  })
 
-      t.test('async cb', t => {
+  t.test('async cb', t => {
+    t.plan(files.length)
+    const dir = t.testdir(td)
+    for (const file of files) {
+      t.test(file, t => {
         r({
-          file: file,
-          cwd: __dirname
+          file: resolve(dir, file),
+          cwd: __dirname,
         }, fileList, er => {
           if (er)
             throw er
-          check(file, t)
+          check(resolve(dir, file), t)
         })
       })
+    }
+  })
 
-      t.test('async promise', t => {
+  t.test('async', t => {
+    t.plan(files.length)
+    const dir = t.testdir(td)
+    for (const file of files) {
+      t.test(file, t => {
         r({
-          file: file,
-          cwd: __dirname
-        }, fileList).then(_ => check(file, t))
+          file: resolve(dir, file),
+          cwd: __dirname,
+        }, fileList).then(() => {
+          check(resolve(dir, file), t)
+        })
       })
-
-      t.end()
-    })
+    }
   })
 
   t.end()
 })
 
 t.test('add to empty archive', t => {
-  t.beforeEach(reset)
-
   const check = (file, t) => {
     const c = spawn('tar', ['tf', file])
     const out = []
@@ -135,70 +123,91 @@ t.test('add to empty archive', t => {
     })
   }
 
-  ;[fileNonExistent,
-    fileEmpty,
-    fileZeroByte
-  ].forEach(file => {
-    t.test(path.basename(file), t => {
-      t.test('sync', t => {
+  const files = [
+    'empty.tar',
+    'zero.tar',
+  ]
+  const td = files.map(f => [f, fixtureDef[f]]).reduce((s, [k, v]) => {
+    s[k] = v
+    return s
+  }, {})
+  files.push('not-existing.tar')
+
+  t.test('sync', t => {
+    const dir = t.testdir(td)
+    t.plan(files.length)
+    for (const file of files) {
+      t.test(file, t => {
         r({
           sync: true,
-          file: file,
-          cwd: __dirname
+          file: resolve(dir, file),
+          cwd: __dirname,
         }, [path.basename(__filename)])
-        check(file, t)
+        check(resolve(dir, file), t)
       })
+    }
+  })
 
-      t.test('async cb', t => {
+  t.test('async cb', t => {
+    const dir = t.testdir(td)
+    t.plan(files.length)
+    for (const file of files) {
+      t.test(file, t => {
         r({
-          file: file,
-          cwd: __dirname
+          file: resolve(dir, file),
+          cwd: __dirname,
         }, [path.basename(__filename)], er => {
           if (er)
             throw er
-          check(file, t)
+          check(resolve(dir, file), t)
         })
       })
+    }
+  })
 
-      t.test('async promise', t => {
+  t.test('async', async t => {
+    const dir = t.testdir(td)
+    t.plan(files.length)
+    for (const file of files) {
+      t.test(file, t => {
         r({
-          file: file,
-          cwd: __dirname
-        }, [path.basename(__filename)]).then(_ => check(file, t))
+          file: resolve(dir, file),
+          cwd: __dirname,
+        }, [path.basename(__filename)]).then(() => {
+          check(resolve(dir, file), t)
+        })
       })
-
-      t.end()
-    })
+    }
   })
 
   t.end()
 })
 
-t.test('cannot append to gzipped archives', t => {
-  reset()
+t.test('cannot append to gzipped archives', async t => {
+  const dir = t.testdir({
+    'compressed.tgz': fixtureDef['compressed.tgz'],
+  })
+  const file = resolve(dir, 'compressed.tgz')
 
   const expect = new Error('cannot append to compressed archives')
   const expectT = new TypeError('cannot append to compressed archives')
 
   t.throws(_ => r({
-    file: fileCompressed,
+    file,
     cwd: __dirname,
     gzip: true
   }, [path.basename(__filename)]), expectT)
 
   t.throws(_ => r({
-    file: fileCompressed,
+    file,
     cwd: __dirname,
     sync: true
   }, [path.basename(__filename)]), expect)
 
-  r({
-    file: fileCompressed,
+  return r({
+    file,
     cwd: __dirname,
-  }, [path.basename(__filename)], er => {
-    t.match(er, expect)
-    t.end()
-  })
+  }, [path.basename(__filename)], er => t.match(er, expect))
 })
 
 t.test('other throws', t => {
@@ -209,37 +218,61 @@ t.test('other throws', t => {
 })
 
 t.test('broken open', t => {
+  const dir = t.testdir({
+    'body-byte-counts.tar': fixtureDef['body-byte-counts.tar'],
+  })
+  const file = resolve(dir, 'body-byte-counts.tar')
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('open', poop))
-  t.throws(_ => r({ sync: true, file: file }, ['README.md']), poop)
-  r({ file: file }, ['README.md'], er => {
+  t.throws(_ => r({ sync: true, file }, ['README.md']), poop)
+  r({ file }, ['README.md'], er => {
     t.match(er, poop)
     t.end()
   })
 })
 
 t.test('broken fstat', t => {
+  const td = {
+    'body-byte-counts.tar': fixtureDef['body-byte-counts.tar'],
+  }
   const poop = new Error('poop')
-  t.teardown(mutateFS.fail('fstat', poop))
-  t.throws(_ => r({ sync: true, file: file }, ['README.md']), poop)
-  r({ file: file }, ['README.md'], er => {
-    t.match(er, poop)
+  t.test('sync', t => {
+    const dir = t.testdir(td)
+    const file = resolve(dir, 'body-byte-counts.tar')
+    t.teardown(mutateFS.fail('fstat', poop))
+    t.throws(_ => r({ sync: true, file }, ['README.md']), poop)
     t.end()
   })
+  t.test('async', t => {
+    const dir = t.testdir(td)
+    const file = resolve(dir, 'body-byte-counts.tar')
+    t.teardown(mutateFS.fail('fstat', poop))
+    r({ file }, ['README.md'], async er => {
+      t.match(er, poop)
+      t.end()
+    })
+  })
+  t.end()
 })
 
 t.test('broken read', t => {
+  const dir = t.testdir({
+    'body-byte-counts.tar': fixtureDef['body-byte-counts.tar'],
+  })
+  const file = resolve(dir, 'body-byte-counts.tar')
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('read', poop))
-  t.throws(_ => r({ sync: true, file: file }, ['README.md']), poop)
-  r({ file: file }, ['README.md'], er => {
+  t.throws(_ => r({ sync: true, file }, ['README.md']), poop)
+  r({ file }, ['README.md'], er => {
     t.match(er, poop)
     t.end()
   })
 })
 
-t.test('mtime cache', t => {
-  t.beforeEach(reset)
+t.test('mtime cache', async t => {
+  const td = {
+    'body-byte-counts.tar': fixtureDef['body-byte-counts.tar'],
+  }
 
   let mtimeCache
 
@@ -250,7 +283,7 @@ t.test('mtime cache', t => {
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
-      const actual = Buffer.concat(out).toString().trim().split('\n')
+      const actual = Buffer.concat(out).toString().trim().split(/\r?\n/)
       t.same(actual, [
         '1024-bytes.txt',
         '512-bytes.txt',
@@ -271,9 +304,11 @@ t.test('mtime cache', t => {
   }
 
   t.test('sync', t => {
+    const dir = t.testdir(td)
+    const file = resolve(dir, 'body-byte-counts.tar')
     r({
       sync: true,
-      file: file,
+      file,
       cwd: __dirname,
       mtimeCache: mtimeCache = new Map()
     }, [path.basename(__filename)])
@@ -281,8 +316,10 @@ t.test('mtime cache', t => {
   })
 
   t.test('async cb', t => {
+    const dir = t.testdir(td)
+    const file = resolve(dir, 'body-byte-counts.tar')
     r({
-      file: file,
+      file,
       cwd: __dirname,
       mtimeCache: mtimeCache = new Map()
     }, [path.basename(__filename)], er => {
@@ -293,8 +330,10 @@ t.test('mtime cache', t => {
   })
 
   t.test('async promise', t => {
+    const dir = t.testdir(td)
+    const file = resolve(dir, 'body-byte-counts.tar')
     r({
-      file: file,
+      file,
       cwd: __dirname,
       mtimeCache: mtimeCache = new Map()
     }, [path.basename(__filename)]).then(_ => check(file, t))
@@ -304,40 +343,58 @@ t.test('mtime cache', t => {
 })
 
 t.test('create tarball out of another tarball', t => {
-  const out = path.resolve(dir, 'out.tar')
+  const td = {
+    'out.tar': fs.readFileSync(path.resolve(tars, 'dir.tar')),
+  }
 
-  t.beforeEach(cb => {
-    fs.writeFile(out, fs.readFileSync(path.resolve(tars, 'dir.tar')), cb)
-  })
-
-  const check = t => {
+  const check = (out, t) => {
     const expect = [
       'dir/',
       'Ω.txt',
       '🌟.txt',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
     ]
-    list({ f: out, sync: true, onentry: entry => {
-      t.equal(entry.path, expect.shift())
-    }})
+    list({
+      f: out,
+      sync: true,
+      onentry: entry => {
+        t.equal(entry.path, expect.shift())
+      }})
     t.same(expect, [])
     t.end()
   }
 
   t.test('sync', t => {
+    const dir = t.testdir(td)
+    const out = resolve(dir, 'out.tar')
     r({
       f: out,
       cwd: tars,
       sync: true
     }, ['@utf8.tar'])
-    check(t)
+    check(out, t)
+  })
+
+  t.test('async cb', t => {
+    const dir = t.testdir(td)
+    const out = resolve(dir, 'out.tar')
+    r({
+      f: out,
+      cwd: tars,
+    }, ['@utf8.tar'], er => {
+      if (er)
+        throw er
+      check(out, t)
+    })
   })
 
   t.test('async', t => {
+    const dir = t.testdir(td)
+    const out = resolve(dir, 'out.tar')
     r({
       f: out,
-      cwd: tars
-    }, ['@utf8.tar'], _ => check(t))
+      cwd: tars,
+    }, ['@utf8.tar']).then(() => check(out, t))
   })
 
   t.end()
