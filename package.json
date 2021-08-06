@@ -8,7 +8,9 @@
     "url": "https://github.com/npm/node-tar.git"
   },
   "scripts": {
-    "test": "tap",
+    "test:posix": "tap",
+    "test:win32": "tap --lines=98 --branches=98 --statements=98 --functions=98",
+    "test": "node test/fixtures/test.js",
     "posttest": "npm run lint",
     "eslint": "eslint",
     "lint": "npm run eslint -- test lib",
