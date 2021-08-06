@@ -16,22 +16,30 @@ const fixtures = path.resolve(__dirname, 'fixtures')
 const tars = path.resolve(fixtures, 'tars')
 const parses = path.resolve(fixtures, 'parse')
 const unpackdir = path.resolve(fixtures, 'unpack')
-const rimraf = require('rimraf')
+const {promisify} = require('util')
+const rimraf = promisify(require('rimraf'))
 const mkdirp = require('mkdirp')
 const mutateFS = require('mutate-fs')
 const eos = require('end-of-stream')
+const normPath = require('../lib/normalize-windows-path.js')
 
-t.teardown(_ => rimraf.sync(unpackdir))
+// On Windows in particular, the "really deep folder path" file
+// often tends to cause problems, which don't indicate a failure
+// of this library, it's just what happens on Windows with super
+// long file paths.
+const isWindows = process.platform === 'win32'
+const isLongFile = f => f.match(/r.e.a.l.l.y.-.d.e.e.p.-.f.o.l.d.e.r.-.p.a.t.h/)
 
-t.test('setup', t => {
-  rimraf.sync(unpackdir)
-  mkdirp.sync(unpackdir)
-  t.end()
+t.teardown(_ => rimraf(unpackdir))
+
+t.before(async () => {
+  await rimraf(unpackdir)
+  await mkdirp(unpackdir)
 })
 
 t.test('basic file unpack tests', t => {
   const basedir = path.resolve(unpackdir, 'basic')
-  t.teardown(_ => rimraf.sync(basedir))
+  t.teardown(_ => rimraf(basedir))
 
   const cases = {
     'emptypax.tar': {
@@ -79,17 +87,19 @@ t.test('basic file unpack tests', t => {
       const tf = path.resolve(tars, tarfile)
       const dir = path.resolve(basedir, tarfile)
       const linkdir = path.resolve(basedir, tarfile + '.link')
-      t.beforeEach(() => {
-        rimraf.sync(dir)
-        rimraf.sync(linkdir)
-        mkdirp.sync(dir)
-        fs.symlinkSync(dir, linkdir)
+      t.beforeEach(async () => {
+        await rimraf(dir)
+        await rimraf(linkdir)
+        await mkdirp(dir)
+        fs.symlinkSync(dir, linkdir, 'junction')
       })
 
       const check = t => {
         const expect = cases[tarfile]
         Object.keys(expect).forEach(file => {
           const f = path.resolve(dir, file)
+          if (isWindows && isLongFile(file))
+            return
           t.equal(fs.readFileSync(f, 'utf8'), expect[file], file)
         })
         t.end()
@@ -131,7 +141,7 @@ t.test('basic file unpack tests', t => {
 t.test('cwd default to process cwd', t => {
   const u = new Unpack()
   const us = new UnpackSync()
-  const cwd = process.cwd()
+  const cwd = normPath(process.cwd())
   t.equal(u.cwd, cwd)
   t.equal(us.cwd, cwd)
   t.end()
@@ -143,8 +153,8 @@ t.test('links!', t => {
   const stripData = fs.readFileSync(tars + '/links-strip.tar')
 
   t.plan(6)
-  t.beforeEach(() => mkdirp.sync(dir))
-  t.afterEach(() => rimraf.sync(dir))
+  t.beforeEach(() => mkdirp(dir))
+  t.afterEach(() => rimraf(dir))
 
   const check = t => {
     const hl1 = fs.lstatSync(dir + '/hardlink-1')
@@ -153,9 +163,12 @@ t.test('links!', t => {
     t.equal(hl1.ino, hl2.ino)
     t.equal(hl1.nlink, 2)
     t.equal(hl2.nlink, 2)
-    const sym = fs.lstatSync(dir + '/symlink')
-    t.ok(sym.isSymbolicLink())
-    t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    if (!isWindows) {
+      // doesn't work on win32 without special privs
+      const sym = fs.lstatSync(dir + '/symlink')
+      t.ok(sym.isSymbolicLink())
+      t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    }
     t.end()
   }
   const checkForStrip = t => {
@@ -168,9 +181,11 @@ t.test('links!', t => {
     t.equal(hl1.ino, hl3.ino)
     t.equal(hl1.nlink, 3)
     t.equal(hl2.nlink, 3)
-    const sym = fs.lstatSync(dir + '/symlink')
-    t.ok(sym.isSymbolicLink())
-    t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    if (!isWindows) {
+      const sym = fs.lstatSync(dir + '/symlink')
+      t.ok(sym.isSymbolicLink())
+      t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    }
     t.end()
   }
   const checkForStrip3 = t => {
@@ -181,7 +196,8 @@ t.test('links!', t => {
     } catch (e) {
       err = e
     }
-    // can't be extracted because we've passed it in the tar (specially crafted tar for this not to work)
+    // can't be extracted because we've passed it in the tar
+    // (specially crafted tar for this not to work)
     t.equal(err.code, 'ENOENT')
     t.end()
   }
@@ -203,7 +219,7 @@ t.test('links!', t => {
 
   t.test('sync strip', t => {
     const unpack = new UnpackSync({ cwd: dir, strip: 1 })
-    unpack.end(fs.readFileSync(tars + '/links-strip.tar'))
+    unpack.end(stripData)
     checkForStrip(t)
   })
 
@@ -238,7 +254,7 @@ t.test('links without cleanup (exercise clobbering code)', t => {
 
   t.plan(6)
   mkdirp.sync(dir)
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
 
   t.beforeEach(() => {
     // clobber this junk
@@ -256,9 +272,11 @@ t.test('links without cleanup (exercise clobbering code)', t => {
     t.equal(hl1.ino, hl2.ino)
     t.equal(hl1.nlink, 2)
     t.equal(hl2.nlink, 2)
-    const sym = fs.lstatSync(dir + '/symlink')
-    t.ok(sym.isSymbolicLink())
-    t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    if (!isWindows) {
+      const sym = fs.lstatSync(dir + '/symlink')
+      t.ok(sym.isSymbolicLink())
+      t.equal(fs.readlinkSync(dir + '/symlink'), 'hardlink-2')
+    }
     t.end()
   }
 
@@ -306,7 +324,7 @@ t.test('links without cleanup (exercise clobbering code)', t => {
 t.test('nested dir dupe', t => {
   const dir = path.resolve(unpackdir, 'nested-dir')
   mkdirp.sync(dir + '/d/e/e/p')
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
   const expect = {
     'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt': 'short\n',
     'd/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
@@ -335,13 +353,15 @@ t.test('nested dir dupe', t => {
   zip.end(data)
 })
 
-t.test('symlink in dir path', t => {
+t.test('symlink in dir path', {
+  skip: isWindows && 'symlinks not fully supported',
+}, t => {
   const dir = path.resolve(unpackdir, 'symlink-junk')
 
-  t.teardown(_ => rimraf.sync(dir))
-  t.beforeEach(() => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+  t.teardown(_ => rimraf(dir))
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const data = makeTar([
@@ -398,18 +418,22 @@ t.test('symlink in dir path', t => {
       onwarn: (c, w, d) => warnings.push([c, w, d]),
     })
     u.on('close', _ => {
-      t.equal(fs.lstatSync(dir + '/d/i').mode & 0o7777, 0o755)
-      t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+      t.equal(fs.lstatSync(dir + '/d/i').mode & 0o7777, isWindows ? 0o666 : 0o755)
+      t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, isWindows ? 0o666 : 0o751)
       t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
-      t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
-      t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+      if (!isWindows) {
+        t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+        t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+      }
       t.equal(warnings[0][0], 'TAR_ENTRY_ERROR')
-      t.equal(warnings[0][1], 'Cannot extract through symbolic link')
-      t.match(warnings[0][2], {
-        name: 'SylinkError',
-        path: dir + '/d/i/r/symlink/',
-        symlink: dir + '/d/i/r/symlink',
-      })
+      if (!isWindows) {
+        t.equal(warnings[0][1], 'Cannot extract through symbolic link')
+        t.match(warnings[0][2], {
+          name: 'SylinkError',
+          path: dir + '/d/i/r/symlink/',
+          symlink: dir + '/d/i/r/symlink',
+        })
+      }
       t.equal(warnings.length, 1)
       t.end()
     })
@@ -423,10 +447,12 @@ t.test('symlink in dir path', t => {
       onwarn: (c, w, d) => warnings.push([c, w, d]),
     })
     u.end(data)
-    t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+    t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, isWindows ? 0o666 : 0o751)
     t.ok(fs.lstatSync(dir + '/d/i/r/file').isFile(), 'got file')
-    t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
-    t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+    if (!isWindows) {
+      t.ok(fs.lstatSync(dir + '/d/i/r/symlink').isSymbolicLink(), 'got symlink')
+      t.throws(_ => fs.statSync(dir + '/d/i/r/symlink/x'))
+    }
     t.equal(warnings.length, 1)
     t.equal(warnings[0][0], 'TAR_ENTRY_ERROR')
     t.equal(warnings[0][1], 'Cannot extract through symbolic link')
@@ -589,7 +615,7 @@ t.test('symlink in dir path', t => {
 t.test('unsupported entries', t => {
   const dir = path.resolve(unpackdir, 'unsupported-entries')
   mkdirp.sync(dir)
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
   const unknown = new Header({ path: 'qux', type: 'File', size: 4 })
   unknown.type = 'Z'
   unknown.encode()
@@ -672,10 +698,10 @@ t.test('unsupported entries', t => {
 t.test('file in dir path', t => {
   const dir = path.resolve(unpackdir, 'file-junk')
 
-  t.teardown(_ => rimraf.sync(dir))
-  t.beforeEach(() => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+  t.teardown(_ => rimraf(dir))
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const data = makeTar([
@@ -745,7 +771,7 @@ t.test('file in dir path', t => {
 t.test('set umask option', t => {
   const dir = path.resolve(unpackdir, 'umask')
   mkdirp.sync(dir)
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
 
   const data = makeTar([
     {
@@ -761,18 +787,18 @@ t.test('set umask option', t => {
     umask: 0o027,
     cwd: dir,
   }).on('close', _ => {
-    t.equal(fs.statSync(dir + '/d/i/r').mode & 0o7777, 0o750)
-    t.equal(fs.statSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
+    t.equal(fs.statSync(dir + '/d/i/r').mode & 0o7777, isWindows ? 0o666 : 0o750)
+    t.equal(fs.statSync(dir + '/d/i/r/dir').mode & 0o7777, isWindows ? 0o666 : 0o751)
     t.end()
   }).end(data)
 })
 
 t.test('absolute paths', t => {
   const dir = path.join(unpackdir, 'absolute-paths')
-  t.teardown(_ => rimraf.sync(dir))
-  t.beforeEach(() => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+  t.teardown(_ => rimraf(dir))
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const absolute = path.resolve(dir, 'd/i/r/absolute')
@@ -800,9 +826,10 @@ t.test('absolute paths', t => {
 
   t.test('warn and correct', t => {
     const check = t => {
+      const r = normPath(root)
       t.match(warnings, [[
-        `stripping ${root}${root}${root}${root} from absolute path`,
-        { path: absolute, code: 'TAR_ENTRY_INFO' },
+        `stripping ${r}${r}${r}${r} from absolute path`,
+        { path: normPath(absolute), code: 'TAR_ENTRY_INFO' },
       ]])
       t.ok(fs.lstatSync(path.resolve(dir, relative)).isFile(), 'is file')
       t.end()
@@ -831,6 +858,22 @@ t.test('absolute paths', t => {
   })
 
   t.test('preserve absolute path', t => {
+    // if we use the extraAbsolute path here, we end up creating a dir
+    // like C:\C:\C:\C:\path\to\absolute, which is both 100% valid on
+    // windows, as well as SUUUUUPER annoying.
+    const data = makeTar([
+      {
+        path: isWindows ? absolute : extraAbsolute,
+        type: 'File',
+        size: 1,
+        atime: new Date('1979-07-01T19:10:00.000Z'),
+        ctime: new Date('2011-03-27T22:16:31.000Z'),
+        mtime: new Date('2011-03-27T22:16:31.000Z'),
+      },
+      'a',
+      '',
+      '',
+    ])
     const check = t => {
       t.same(warnings, [])
       t.ok(fs.lstatSync(absolute).isFile(), 'is file')
@@ -866,10 +909,10 @@ t.test('absolute paths', t => {
 
 t.test('.. paths', t => {
   const dir = path.join(unpackdir, 'dotted-paths')
-  t.teardown(_ => rimraf.sync(dir))
-  t.beforeEach(() => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+  t.teardown(_ => rimraf(dir))
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const fmode = 0o755
@@ -928,7 +971,7 @@ t.test('.. paths', t => {
     const check = t => {
       t.same(warnings, [])
       t.ok(fs.lstatSync(resolved).isFile(), 'is file')
-      t.equal(fs.lstatSync(resolved).mode & 0o777, fmode, 'mode is 0755')
+      t.equal(fs.lstatSync(resolved).mode & 0o777, isWindows ? 0o666 : fmode)
       t.end()
     }
 
@@ -964,18 +1007,46 @@ t.test('.. paths', t => {
 t.test('fail all stats', t => {
   const poop = new Error('poop')
   poop.code = 'EPOOP'
-  let unmutate
-  const dir = path.join(unpackdir, 'stat-fail')
+  const dir = normPath(path.join(unpackdir, 'stat-fail'))
+  const {
+    stat,
+    fstat,
+    lstat,
+    statSync,
+    fstatSync,
+    lstatSync,
+  } = fs
+  const unmutate = () => Object.assign(fs, {
+    stat,
+    fstat,
+    lstat,
+    statSync,
+    fstatSync,
+    lstatSync,
+  })
+  const mutate = () => {
+    fs.stat = fs.lstat = fs.fstat = (...args) => {
+      // don't fail statting the cwd, or we get different errors
+      if (normPath(args[0]) === dir)
+        return lstat(dir, args.pop())
+      process.nextTick(() => args.pop()(poop))
+    }
+    fs.statSync = fs.lstatSync = fs.fstatSync = (...args) => {
+      if (normPath(args[0]) === dir)
+        return lstatSync(dir)
+      throw poop
+    }
+  }
 
   const warnings = []
   t.beforeEach(() => {
     warnings.length = 0
     mkdirp.sync(dir)
-    unmutate = mutateFS.statFail(poop)
+    mutate()
   })
-  t.afterEach(() => {
+  t.afterEach(async () => {
     unmutate()
-    rimraf.sync(dir)
+    await rimraf(dir)
   })
 
   const data = makeTar([
@@ -1046,15 +1117,15 @@ t.test('fail all stats', t => {
         String,
         {
           code: 'EISDIR',
-          path: path.resolve(dir, 'd/i/r/file'),
+          path: normPath(path.resolve(dir, 'd/i/r/file')),
           syscall: 'open',
         },
       ],
       [
         String,
         {
-          dest: path.resolve(dir, 'd/i/r/link'),
-          path: path.resolve(dir, 'd/i/r/file'),
+          dest: normPath(path.resolve(dir, 'd/i/r/link')),
+          path: normPath(path.resolve(dir, 'd/i/r/file')),
           syscall: 'link',
         },
       ],
@@ -1074,13 +1145,16 @@ t.test('fail symlink', t => {
   poop.code = 'EPOOP'
   const unmutate = mutateFS.fail('symlink', poop)
   const dir = path.join(unpackdir, 'symlink-fail')
-  t.teardown(_ => (unmutate(), rimraf.sync(dir)))
+  t.teardown(async _ => {
+    unmutate()
+    await rimraf(dir)
+  })
 
   const warnings = []
-  t.beforeEach(() => {
+  t.beforeEach(async () => {
     warnings.length = 0
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const data = makeTar([
@@ -1135,13 +1209,16 @@ t.test('fail chmod', t => {
   poop.code = 'EPOOP'
   const unmutate = mutateFS.fail('chmod', poop)
   const dir = path.join(unpackdir, 'chmod-fail')
-  t.teardown(_ => (unmutate(), rimraf.sync(dir)))
+  t.teardown(async _ => {
+    unmutate()
+    await rimraf(dir)
+  })
 
   const warnings = []
-  t.beforeEach(() => {
+  t.beforeEach(async () => {
     warnings.length = 0
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const data = makeTar([
@@ -1195,13 +1272,13 @@ t.test('fail mkdir', t => {
   poop.code = 'EPOOP'
   let unmutate
   const dir = path.join(unpackdir, 'mkdir-fail')
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
 
   const warnings = []
-  t.beforeEach(() => {
+  t.beforeEach(async () => {
     warnings.length = 0
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+    await rimraf(dir)
+    await mkdirp(dir)
     unmutate = mutateFS.fail('mkdir', poop)
   })
   t.afterEach(() => unmutate())
@@ -1220,12 +1297,11 @@ t.test('fail mkdir', t => {
   ])
 
   const expect = [[
-    'ENOENT: no such file or directory, lstat \'' +
-    path.resolve(dir, 'dir') + '\'',
+    'ENOENT: no such file or directory',
     {
       code: 'ENOENT',
       syscall: 'lstat',
-      path: path.resolve(dir, 'dir'),
+      path: normPath(path.resolve(dir, 'dir')),
     },
   ]]
 
@@ -1235,19 +1311,19 @@ t.test('fail mkdir', t => {
     t.end()
   }
 
-  t.test('async', t => {
-    new Unpack({
-      cwd: dir,
-      onwarn: (c, w, d) => warnings.push([w, d]),
-    }).on('close', _ => check(t)).end(data)
-  })
-
   t.test('sync', t => {
     new UnpackSync({
       cwd: dir,
       onwarn: (c, w, d) => warnings.push([w, d]),
     }).end(data)
     check(t)
+  })
+
+  t.test('async', t => {
+    new Unpack({
+      cwd: dir,
+      onwarn: (c, w, d) => warnings.push([w, d]),
+    }).on('close', _ => check(t)).end(data)
   })
 
   t.end()
@@ -1258,13 +1334,16 @@ t.test('fail write', t => {
   poop.code = 'EPOOP'
   const unmutate = mutateFS.fail('write', poop)
   const dir = path.join(unpackdir, 'write-fail')
-  t.teardown(_ => (unmutate(), rimraf.sync(dir)))
+  t.teardown(async _ => {
+    unmutate()
+    await rimraf(dir)
+  })
 
   const warnings = []
-  t.beforeEach(() => {
+  t.beforeEach(async () => {
     warnings.length = 0
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const data = makeTar([
@@ -1308,12 +1387,12 @@ t.test('fail write', t => {
 
 t.test('skip existing', t => {
   const dir = path.join(unpackdir, 'skip-newer')
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
 
   const date = new Date('2011-03-27T22:16:31.000Z')
-  t.beforeEach(() => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
     fs.writeFileSync(dir + '/x', 'y')
     fs.utimesSync(dir + '/x', date, date)
   })
@@ -1360,12 +1439,12 @@ t.test('skip existing', t => {
 
 t.test('skip newer', t => {
   const dir = path.join(unpackdir, 'skip-newer')
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
 
   const date = new Date('2013-12-19T17:00:00.000Z')
-  t.beforeEach(() => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
     fs.writeFileSync(dir + '/x', 'y')
     fs.utimesSync(dir + '/x', date, date)
   })
@@ -1412,11 +1491,11 @@ t.test('skip newer', t => {
 
 t.test('no mtime', t => {
   const dir = path.join(unpackdir, 'skip-newer')
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
 
-  t.beforeEach(() => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
   })
 
   const date = new Date('2011-03-27T22:16:31.000Z')
@@ -1477,7 +1556,7 @@ t.test('no mtime', t => {
 t.test('unpack big enough to pause/drain', t => {
   const dir = path.resolve(unpackdir, 'drain-clog')
   mkdirp.sync(dir)
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
   const stream = fs.createReadStream(fixtures + '/parses.tar')
   const u = new Unpack({
     cwd: dir,
@@ -1600,11 +1679,16 @@ t.test('set owner', t => {
     const unl = mutateFS.fail('lchown', poop)
     const unf = mutateFS.fail('fchown', poop)
 
-    t.teardown(_ => (un(), unf(), unl()))
+    t.teardown(async () => {
+      un()
+      unf()
+      unl()
+      await rimraf(dir)
+    })
 
     t.test('sync', t => {
       mkdirp.sync(dir)
-      t.teardown(_ => rimraf.sync(dir))
+      t.teardown(_ => rimraf(dir))
       let warned = false
       const u = new Unpack.Sync({
         cwd: dir,
@@ -1622,7 +1706,7 @@ t.test('set owner', t => {
 
     t.test('async', t => {
       mkdirp.sync(dir)
-      t.teardown(_ => rimraf.sync(dir))
+      t.teardown(_ => rimraf(dir))
       let warned = false
       const u = new Unpack({
         cwd: dir,
@@ -1636,11 +1720,6 @@ t.test('set owner', t => {
         },
       })
       u.end(data)
-    })
-
-    t.test('cleanup', t => {
-      rimraf.sync(dir)
-      t.end()
     })
 
     t.end()
@@ -1672,7 +1751,7 @@ t.test('set owner', t => {
 
     t.test('sync', t => {
       mkdirp.sync(dir)
-      t.teardown(_ => rimraf.sync(dir))
+      t.teardown(_ => rimraf(dir))
       called = 0
       const u = new Unpack.Sync({ cwd: dir, preserveOwner: true })
       u.end(data)
@@ -1682,7 +1761,7 @@ t.test('set owner', t => {
 
     t.test('async', t => {
       mkdirp.sync(dir)
-      t.teardown(_ => rimraf.sync(dir))
+      t.teardown(_ => rimraf(dir))
       called = 0
       const u = new Unpack({ cwd: dir, preserveOwner: true })
       u.end(data)
@@ -1701,15 +1780,15 @@ t.test('set owner', t => {
     const un = mutateFS.fail('chown', poop)
     const unf = mutateFS.fail('fchown', poop)
     const unl = mutateFS.fail('lchown', poop)
-    t.teardown(_ => {
-      rimraf.sync(dir)
+    t.teardown(async _ => {
       un()
       unf()
       unl()
+      await rimraf(dir)
     })
 
-    t.beforeEach(() => mkdirp.sync(dir))
-    t.afterEach(() => rimraf.sync(dir))
+    t.beforeEach(() => mkdirp(dir))
+    t.afterEach(() => rimraf(dir))
 
     const check = t => {
       const dirStat = fs.statSync(dir + '/foo')
@@ -1761,11 +1840,11 @@ t.test('unpack when dir is not writable', t => {
   ])
 
   const dir = path.resolve(unpackdir, 'nowrite-dir')
-  t.beforeEach(() => mkdirp.sync(dir))
-  t.afterEach(() => rimraf.sync(dir))
+  t.beforeEach(() => mkdirp(dir))
+  t.afterEach(() => rimraf(dir))
 
   const check = t => {
-    t.equal(fs.statSync(dir + '/a').mode & 0o7777, 0o744)
+    t.equal(fs.statSync(dir + '/a').mode & 0o7777, isWindows ? 0o666 : 0o744)
     t.equal(fs.readFileSync(dir + '/a/b', 'utf8'), 'a')
     t.end()
   }
@@ -1798,8 +1877,8 @@ t.test('transmute chars on windows', t => {
   ])
 
   const dir = path.resolve(unpackdir, 'winchars')
-  t.beforeEach(() => mkdirp.sync(dir))
-  t.afterEach(() => rimraf.sync(dir))
+  t.beforeEach(() => mkdirp(dir))
+  t.afterEach(() => rimraf(dir))
 
   const hex = 'ef80bcef81bcef80beef80bfef80ba2e747874'
   const uglyName = Buffer.from(hex, 'hex').toString()
@@ -1879,10 +1958,10 @@ t.test('use explicit chmod when required by umask', t => {
     '',
   ])
 
-  const check = t => {
+  const check = async t => {
     const st = fs.statSync(basedir + '/x/y/z')
-    t.equal(st.mode & 0o777, 0o775)
-    rimraf.sync(basedir)
+    t.equal(st.mode & 0o777, isWindows ? 0o666 : 0o775)
+    await rimraf(basedir)
     t.end()
   }
 
@@ -1921,10 +2000,10 @@ t.test('dont use explicit chmod if noChmod flag set', t => {
     '',
   ])
 
-  const check = t => {
+  const check = async t => {
     const st = fs.statSync(basedir + '/x/y/z')
-    t.equal(st.mode & 0o777, 0o755)
-    rimraf.sync(basedir)
+    t.equal(st.mode & 0o777, isWindows ? 0o666 : 0o755)
+    await rimraf(basedir)
     t.end()
   }
 
@@ -2005,11 +2084,11 @@ t.test('chown implicit dirs and also the entries', t => {
     '',
   ])
 
-  const check = t => {
+  const check = async t => {
     currentTest = null
     t.equal(chowns, 8)
     chowns = 0
-    rimraf.sync(basedir)
+    await rimraf(basedir)
     t.end()
   }
 
@@ -2059,7 +2138,7 @@ t.test('chown implicit dirs and also the entries', t => {
 t.test('bad cwd setting', t => {
   const basedir = path.resolve(unpackdir, 'bad-cwd')
   mkdirp.sync(basedir)
-  t.teardown(_ => rimraf.sync(basedir))
+  t.teardown(_ => rimraf(basedir))
 
   const cases = [
     // the cwd itself
@@ -2101,16 +2180,16 @@ t.test('bad cwd setting', t => {
 
       t.throws(_ => new Unpack.Sync(opt).end(data), {
         name: 'CwdError',
-        message: 'ENOTDIR: Cannot cd into \'' + cwd + '\'',
-        path: cwd,
+        message: 'ENOTDIR: Cannot cd into \'' + normPath(cwd) + '\'',
+        path: normPath(cwd),
         code: 'ENOTDIR',
       })
 
       new Unpack(opt).on('error', er => {
         t.match(er, {
           name: 'CwdError',
-          message: 'ENOTDIR: Cannot cd into \'' + cwd + '\'',
-          path: cwd,
+          message: 'ENOTDIR: Cannot cd into \'' + normPath(cwd) + '\'',
+          path: normPath(cwd),
           code: 'ENOTDIR',
         })
         t.end()
@@ -2123,16 +2202,16 @@ t.test('bad cwd setting', t => {
 
       t.throws(_ => new Unpack.Sync(opt).end(data), {
         name: 'CwdError',
-        message: 'ENOENT: Cannot cd into \'' + cwd + '\'',
-        path: cwd,
+        message: 'ENOENT: Cannot cd into \'' + normPath(cwd) + '\'',
+        path: normPath(cwd),
         code: 'ENOENT',
       })
 
       new Unpack(opt).on('error', er => {
         t.match(er, {
           name: 'CwdError',
-          message: 'ENOENT: Cannot cd into \'' + cwd + '\'',
-          path: cwd,
+          message: 'ENOENT: Cannot cd into \'' + normPath(cwd) + '\'',
+          path: normPath(cwd),
           code: 'ENOENT',
         })
         t.end()
@@ -2145,7 +2224,7 @@ t.test('bad cwd setting', t => {
 
 t.test('transform', t => {
   const basedir = path.resolve(unpackdir, 'transform')
-  t.teardown(_ => rimraf.sync(basedir))
+  t.teardown(_ => rimraf(basedir))
 
   const cases = {
     'emptypax.tar': {
@@ -2193,9 +2272,9 @@ t.test('transform', t => {
     t.test(tarfile, t => {
       const tf = path.resolve(tars, tarfile)
       const dir = path.resolve(basedir, tarfile)
-      t.beforeEach(() => {
-        rimraf.sync(dir)
-        mkdirp.sync(dir)
+      t.beforeEach(async () => {
+        await rimraf(dir)
+        await mkdirp(dir)
       })
 
       const check = t => {
@@ -2243,7 +2322,7 @@ t.test('transform', t => {
 t.test('transform error', t => {
   const dir = path.resolve(unpackdir, 'transform-error')
   mkdirp.sync(dir)
-  t.teardown(_ => rimraf.sync(dir))
+  t.teardown(_ => rimraf(dir))
 
   const tarfile = path.resolve(tars, 'body-byte-counts.tar')
   const tardata = fs.readFileSync(tarfile)
@@ -2316,13 +2395,12 @@ t.test('futimes/fchown failures', t => {
   const poop = new Error('poop')
   const second = new Error('second error')
 
-  const reset = () => {
-    rimraf.sync(dir)
-    mkdirp.sync(dir)
-  }
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
+  })
 
-  reset()
-  t.teardown(() => rimraf.sync(dir))
+  t.teardown(() => rimraf(dir))
 
   const methods = ['utimes', 'chown']
   methods.forEach(method => {
@@ -2337,13 +2415,11 @@ t.test('futimes/fchown failures', t => {
       t.test('async unpack', t => {
         t.plan(2)
         t.test('strict', t => {
-          reset()
           const unpack = new Unpack({ cwd: dir, strict: true, forceChown: fc })
           unpack.on('finish', t.end)
           unpack.end(tardata)
         })
         t.test('loose', t => {
-          reset()
           const unpack = new Unpack({ cwd: dir, forceChown: fc })
           unpack.on('finish', t.end)
           unpack.on('warn', t.fail)
@@ -2353,13 +2429,11 @@ t.test('futimes/fchown failures', t => {
       t.test('sync unpack', t => {
         t.plan(2)
         t.test('strict', t => {
-          reset()
           const unpack = new Unpack.Sync({ cwd: dir, strict: true, forceChown: fc })
           unpack.end(tardata)
           t.end()
         })
         t.test('loose', t => {
-          reset()
           const unpack = new Unpack.Sync({ cwd: dir, forceChown: fc })
           unpack.on('warn', t.fail)
           unpack.end(tardata)
@@ -2379,14 +2453,12 @@ t.test('futimes/fchown failures', t => {
       t.test('async unpack', t => {
         t.plan(2)
         t.test('strict', t => {
-          reset()
           const unpack = new Unpack({ cwd: dir, strict: true, forceChown: fc })
           t.plan(3)
           unpack.on('error', er => t.equal(er, poop))
           unpack.end(tardata)
         })
         t.test('loose', t => {
-          reset()
           const unpack = new Unpack({ cwd: dir, forceChown: fc })
           t.plan(3)
           unpack.on('warn', (code, m, er) => t.equal(er, poop))
@@ -2396,14 +2468,12 @@ t.test('futimes/fchown failures', t => {
       t.test('sync unpack', t => {
         t.plan(2)
         t.test('strict', t => {
-          reset()
           const unpack = new Unpack.Sync({ cwd: dir, strict: true, forceChown: fc })
           t.plan(3)
           unpack.on('error', er => t.equal(er, poop))
           unpack.end(tardata)
         })
         t.test('loose', t => {
-          reset()
           const unpack = new Unpack.Sync({ cwd: dir, forceChown: fc })
           t.plan(3)
           unpack.on('warn', (c, m, er) => t.equal(er, poop))
@@ -2419,7 +2489,7 @@ t.test('futimes/fchown failures', t => {
 t.test('onentry option is preserved', t => {
   const basedir = path.resolve(unpackdir, 'onentry-method')
   mkdirp.sync(basedir)
-  t.teardown(() => rimraf.sync(basedir))
+  t.teardown(() => rimraf(basedir))
 
   let oecalls = 0
   const onentry = entry => oecalls++
@@ -2474,7 +2544,7 @@ t.test('onentry option is preserved', t => {
 t.test('do not reuse hardlinks, only nlink=1 files', t => {
   const basedir = path.resolve(unpackdir, 'hardlink-reuse')
   mkdirp.sync(basedir)
-  t.teardown(() => rimraf.sync(basedir))
+  t.teardown(() => rimraf(basedir))
 
   const now = new Date('2018-04-30T18:30:39.025Z')
 
@@ -2545,7 +2615,7 @@ t.test('trying to unpack a non-zlib gzip file should fail', t => {
       errno: Number,
       code: /^Z/,
       recoverable: false,
-      cwd: basedir,
+      cwd: normPath(basedir),
       tarCode: 'TAR_ABORT',
     }
     const opts = {
@@ -2579,7 +2649,14 @@ t.test('trying to unpack a non-zlib gzip file should fail', t => {
 
 t.test('handle errors on fs.close', t => {
   const poop = new Error('poop')
-  t.teardown(mutateFS.fail('close', poop))
+  const { close, closeSync } = fs
+  // have to actually close them, or else windows gets mad
+  fs.close = (fd, cb) => close(fd, () => cb(poop))
+  fs.closeSync = (fd) => {
+    closeSync(fd)
+    throw poop
+  }
+  t.teardown(() => Object.assign(fs, { close, closeSync }))
   const dir = path.resolve(unpackdir, 'close-fail')
   mkdirp.sync(dir + '/sync')
   mkdirp.sync(dir + '/async')
@@ -2602,11 +2679,13 @@ t.test('handle errors on fs.close', t => {
     .on('error', er => t.equal(er, poop, 'async'))
     .end(data)
   t.throws(() => new UnpackSync({
-    cwd: dir + '/sync', strict: true,
+    cwd: normPath(dir + '/sync'), strict: true,
   }).end(data), poop, 'sync')
 })
 
-t.test('drop entry from dirCache if no longer a directory', t => {
+t.test('drop entry from dirCache if no longer a directory', {
+  skip: isWindows && 'symlinks not fully supported',
+}, t => {
   const dir = path.resolve(unpackdir, 'dir-cache-error')
   mkdirp.sync(dir + '/sync/y')
   mkdirp.sync(dir + '/async/y')
@@ -2679,13 +2758,24 @@ t.test('using strip option when top level file exists', t => {
       size: 'a'.length,
     },
     'a',
+    {
+      path: 'y',
+      type: 'GNUDumpDir',
+    },
+    {
+      path: 'y/b',
+      type: 'File',
+      size: 'b'.length,
+    },
+    'b',
     '',
     '',
   ])
   t.plan(2)
   const check = (t, path) => {
     t.equal(fs.statSync(path).isDirectory(), true)
-    t.equal(fs.lstatSync(path + '/a').isFile(), true)
+    t.equal(fs.readFileSync(path + '/a', 'utf8'), 'a')
+    t.equal(fs.readFileSync(path + '/b', 'utf8'), 'b')
     t.throws(() => fs.statSync(path + '/top'), { code: 'ENOENT' })
     t.end()
   }
