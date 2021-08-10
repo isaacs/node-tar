@@ -49,7 +49,7 @@ t.test('basic race', t => {
   }
 
   t.ok(reserve(['a/b/c/d'], file), 'file starts right away')
-  t.notOk(reserve(['a/b/c/d', 'a/b/e'], link), 'link waits')
+  t.notOk(reserve(['a/B/c////D', 'a/b/e'], link), 'link waits')
   t.notOk(reserve(['a/b/e/f'], dir), 'dir waits')
   t.notOk(reserve(['a/b'], dir2), 'dir2 waits')
   t.notOk(reserve(['a/b/x'], dir3), 'dir3 waits')
