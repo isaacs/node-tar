@@ -2693,3 +2693,146 @@ t.test('using strip option when top level file exists', t => {
     check(t, path)
   })
 })
+
+t.test('dirCache pruning unicode normalized collisions', {
+  skip: isWindows && 'symlinks not fully supported',
+}, t => {
+  const data = makeTar([
+    {
+      type: 'Directory',
+      path: 'foo',
+    },
+    {
+      type: 'File',
+      path: 'foo/bar',
+      size: 1,
+    },
+    'x',
+    {
+      type: 'Directory',
+      // café
+      path: Buffer.from([0x63, 0x61, 0x66, 0xc3, 0xa9]).toString(),
+    },
+    {
+      type: 'SymbolicLink',
+      // cafe with a `
+      path: Buffer.from([0x63, 0x61, 0x66, 0x65, 0xcc, 0x81]).toString(),
+      linkpath: 'foo',
+    },
+    {
+      type: 'File',
+      path: Buffer.from([0x63, 0x61, 0x66, 0xc3, 0xa9]).toString() + '/bar',
+      size: 1,
+    },
+    'y',
+    '',
+    '',
+  ])
+
+  const check = (path, dirCache, t) => {
+    path = path.replace(/\\/g, '/')
+    t.strictSame([...dirCache.entries()], [
+      [path, true],
+      [`${path}/foo`, true],
+    ])
+    t.equal(fs.readFileSync(path + '/foo/bar', 'utf8'), 'x')
+    t.end()
+  }
+
+  t.test('sync', t => {
+    const path = t.testdir()
+    const dirCache = new Map()
+    new UnpackSync({ cwd: path, dirCache }).end(data)
+    check(path, dirCache, t)
+  })
+  t.test('async', t => {
+    const path = t.testdir()
+    const dirCache = new Map()
+    new Unpack({ cwd: path, dirCache })
+      .on('close', () => check(path, dirCache, t))
+      .end(data)
+  })
+
+  t.end()
+})
+
+t.test('dircache prune all on windows when symlink encountered', t => {
+  if (process.platform !== 'win32') {
+    process.env.TESTING_TAR_FAKE_PLATFORM = 'win32'
+    t.teardown(() => {
+      delete process.env.TESTING_TAR_FAKE_PLATFORM
+    })
+  }
+  const symlinks = []
+  const Unpack = requireInject('../lib/unpack.js', {
+    fs: {
+      ...fs,
+      symlink: (target, dest, cb) => {
+        symlinks.push(['async', target, dest])
+        process.nextTick(cb)
+      },
+      symlinkSync: (target, dest) => symlinks.push(['sync', target, dest]),
+    },
+  })
+  const UnpackSync = Unpack.Sync
+
+  const data = makeTar([
+    {
+      type: 'Directory',
+      path: 'foo',
+    },
+    {
+      type: 'File',
+      path: 'foo/bar',
+      size: 1,
+    },
+    'x',
+    {
+      type: 'Directory',
+      // café
+      path: Buffer.from([0x63, 0x61, 0x66, 0xc3, 0xa9]).toString(),
+    },
+    {
+      type: 'SymbolicLink',
+      // cafe with a `
+      path: Buffer.from([0x63, 0x61, 0x66, 0x65, 0xcc, 0x81]).toString(),
+      linkpath: 'safe/actually/but/cannot/be/too/careful',
+    },
+    {
+      type: 'File',
+      path: 'bar/baz',
+      size: 1,
+    },
+    'z',
+    '',
+    '',
+  ])
+
+  const check = (path, dirCache, t) => {
+    // symlink blew away all dirCache entries before it
+    path = path.replace(/\\/g, '/')
+    t.strictSame([...dirCache.entries()], [
+      [`${path}/bar`, true],
+    ])
+    t.equal(fs.readFileSync(`${path}/foo/bar`, 'utf8'), 'x')
+    t.equal(fs.readFileSync(`${path}/bar/baz`, 'utf8'), 'z')
+    t.end()
+  }
+
+  t.test('sync', t => {
+    const path = t.testdir()
+    const dirCache = new Map()
+    new UnpackSync({ cwd: path, dirCache }).end(data)
+    check(path, dirCache, t)
+  })
+
+  t.test('async', t => {
+    const path = t.testdir()
+    const dirCache = new Map()
+    new Unpack({ cwd: path, dirCache })
+      .on('close', () => check(path, dirCache, t))
+      .end(data)
+  })
+
+  t.end()
+})
