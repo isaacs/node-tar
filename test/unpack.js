@@ -3144,3 +3144,86 @@ t.test('dircache prune all on windows when symlink encountered', t => {
 
   t.end()
 })
+
+t.test('recognize C:.. as a dot path part', t => {
+  if (process.platform !== 'win32') {
+    process.env.TESTING_TAR_FAKE_PLATFORM = 'win32'
+    t.teardown(() => {
+      delete process.env.TESTING_TAR_FAKE_PLATFORM
+    })
+  }
+  const Unpack = t.mock('../lib/unpack.js', {
+    path: {
+      ...path.win32,
+      win32: path.win32,
+      posix: path.posix,
+    },
+  })
+  const UnpackSync = Unpack.Sync
+
+  const data = makeTar([
+    {
+      type: 'File',
+      path: 'C:../x/y/z',
+      size: 1,
+    },
+    'z',
+    {
+      type: 'File',
+      path: 'x:..\\y\\z',
+      size: 1,
+    },
+    'x',
+    {
+      type: 'File',
+      path: 'Y:foo',
+      size: 1,
+    },
+    'y',
+    '',
+    '',
+  ])
+
+  const check = (path, warnings, t) => {
+    t.equal(fs.readFileSync(`${path}/foo`, 'utf8'), 'y')
+    t.strictSame(warnings, [
+      [
+        'TAR_ENTRY_ERROR',
+        "path contains '..'",
+        'C:../x/y/z',
+        'C:../x/y/z',
+      ],
+      ['TAR_ENTRY_ERROR', "path contains '..'", 'x:../y/z', 'x:../y/z'],
+      [
+        'TAR_ENTRY_INFO',
+        'stripping Y: from absolute path',
+        'Y:foo',
+        'foo',
+      ],
+    ])
+    t.end()
+  }
+
+  t.test('async', t => {
+    const warnings = []
+    const path = t.testdir()
+    new Unpack({
+      cwd: path,
+      onwarn: (c, w, { entry, path }) => warnings.push([c, w, path, entry.path]),
+    })
+      .on('close', () => check(path, warnings, t))
+      .end(data)
+  })
+
+  t.test('sync', t => {
+    const warnings = []
+    const path = t.testdir()
+    new UnpackSync({
+      cwd: path,
+      onwarn: (c, w, { entry, path }) => warnings.push([c, w, path, entry.path]),
+    }).end(data)
+    check(path, warnings, t)
+  })
+
+  t.end()
+})
