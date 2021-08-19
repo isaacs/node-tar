@@ -3028,6 +3028,10 @@ t.test('dirCache pruning unicode normalized collisions', {
       linkpath: 'foo',
     },
     {
+      type: 'Directory',
+      path: 'foo',
+    },
+    {
       type: 'File',
       path: Buffer.from([0x63, 0x61, 0x66, 0xc3, 0xa9]).toString() + '/bar',
       size: 1,
@@ -3040,7 +3044,6 @@ t.test('dirCache pruning unicode normalized collisions', {
   const check = (path, dirCache, t) => {
     path = path.replace(/\\/g, '/')
     t.strictSame([...dirCache.entries()], [
-      [path, true],
       [`${path}/foo`, true],
     ])
     t.equal(fs.readFileSync(path + '/foo/bar', 'utf8'), 'x')
