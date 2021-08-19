@@ -2735,9 +2735,7 @@ t.test('dirCache pruning unicode normalized collisions', {
 
   const check = (path, dirCache, t) => {
     path = path.replace(/\\/g, '/')
-    t.strictSame([...dirCache.entries()], [
-      [`${path}/foo`, true],
-    ])
+    t.strictSame([...dirCache.entries()][0], [`${path}/foo`, true])
     t.equal(fs.readFileSync(path + '/foo/bar', 'utf8'), 'x')
     t.end()
   }
