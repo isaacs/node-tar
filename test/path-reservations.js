@@ -4,11 +4,15 @@ const requireInject = require('require-inject')
 // load up the posix and windows versions of the reserver
 if (process.platform === 'win32')
   process.env.TESTING_TAR_FAKE_PLATFORM = 'posix'
-const { reserve } = require('../lib/path-reservations.js')()
+const { reserve } = require('../lib/path-reservations.js', {
+  path: require('path').posix,
+})()
 delete process.env.TESTING_TAR_FAKE_PLATFORM
 if (process.platform !== 'win32')
   process.env.TESTING_TAR_FAKE_PLATFORM = 'win32'
-const { reserve: winReserve } = requireInject('../lib/path-reservations.js')()
+const { reserve: winReserve } = requireInject('../lib/path-reservations.js', {
+  path: require('path').win32,
+})()
 
 t.test('basic race', t => {
   // simulate the race conditions we care about
