@@ -154,7 +154,13 @@ t.test('gzipped tarball that makes some drain/resume stuff', t => {
   const cwd = path.dirname(__dirname)
   const out = path.resolve(dir, 'package.tgz')
 
-  c({ z: true, C: cwd }, ['node_modules'])
+  // don't include node_modules/.cache, since that gets written to
+  // by nyc during tests, and can result in spurious errors.
+  const entries = fs.readdirSync(`${cwd}/node_modules`)
+    .filter(e => !/^\./.test(e))
+    .map(e => `node_modules/${e}`)
+
+  c({ z: true, C: cwd }, entries)
     .pipe(fs.createWriteStream(out))
     .on('finish', _ => {
       const child = spawn('tar', ['tf', out], {
