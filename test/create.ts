@@ -1,23 +1,23 @@
 'use strict'
 
-const isWindows = process.platform === 'win32'
-const t = require('tap')
-const c = require('../lib/create.js')
-const list = require('../lib/list.js')
-const fs = require('fs')
-const path = require('path')
-const dir = path.resolve(__dirname, 'fixtures/create')
-const tars = path.resolve(__dirname, 'fixtures/tars')
-const rimraf = require('rimraf')
-const mkdirp = require('mkdirp')
-const spawn = require('child_process').spawn
-const Pack = require('../lib/pack.js')
-const mutateFS = require('mutate-fs')
-const {promisify} = require('util')
+ isWindows = process.platform === 'win32'
+ t = require('tap')
+ c = require('../lib/create.js')
+ list = require('../lib/list.js')
+ fs = require('fs')
+ path = require('path')
+ dir = path.resolve(__dirname, 'fixtures/create')
+ tars = path.resolve(__dirname, 'fixtures/tars')
+ rimraf = require('rimraf')
+ mkdirp = require('mkdirp')
+ spawn = require('child_process').spawn
+ Pack = require('../lib/pack.js')
+ mutateFS = require('mutate-fs')
+ {promisify} = require('util')
 
-const readtar = (file, cb) => {
-  const child = spawn('tar', ['tf', file])
-  const out = []
+ readtar = (file, cb) => {
+  child = spawn('tar', ['tf', file])
+   out = []
   child.stdout.on('data', c => out.push(c))
   child.on('close', (code, signal) =>
     cb(code, signal, Buffer.concat(out).toString()))
@@ -26,8 +26,8 @@ const readtar = (file, cb) => {
 t.teardown(() => new Promise(resolve => rimraf(dir, resolve)))
 
 t.before(async () => {
-  await promisify(rimraf)(dir)
-  await mkdirp(dir)
+        promisify(rimraf)(dir)
+        mkdirp(dir)
 })
 
 t.test('no cb if sync or without file', t => {
