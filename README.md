@@ -209,6 +209,19 @@ tar.t({
 })
 ```
 
+For example, to just get the list of filenames from an archive:
+
+```js
+const getEntryFilenames = async tarballFilename => {
+  const filenames = []
+  await tar.t({
+    file: tarballFilename,
+    onentry: entry => filenames.push(entry.path),
+  })
+  return filenames
+}
+```
+
 To replicate `cat my-tarball.tgz | tar t` do:
 
 ```js
@@ -222,6 +235,18 @@ that sync functions don't take a callback and don't return a promise.
 When the function returns, it's already done.  Sync methods without a
 file argument return a sync stream, which flushes immediately.  But,
 of course, it still won't be done until you `.end()` it.
+
+```js
+const getEntryFilenamesSync = tarballFilename => {
+  const filenames = []
+  tar.t({
+    file: tarballFilename,
+    onentry: entry => filenames.push(entry.path),
+    sync: true,
+  })
+  return filenames
+}
+```
 
 To filter entries, add `filter: <function>` to the options.
 Tar-creating methods call the filter with `filter(path, stat)`.
@@ -429,15 +454,18 @@ no paths are provided, then all the entries are listed.
 
 If the archive is gzipped, then tar will detect this and unzip it.
 
-Returns an event emitter that emits `entry` events with
-`tar.ReadEntry` objects.  However, they don't emit `'data'` or `'end'`
-events.  (If you want to get actual readable entries, use the
-`tar.Parse` class instead.)
+If the `file` option is _not_ provided, then returns an event emitter that
+emits `entry` events with `tar.ReadEntry` objects.  However, they don't
+emit `'data'` or `'end'` events.  (If you want to get actual readable
+entries, use the `tar.Parse` class instead.)
+
+If a `file` option _is_ provided, then the return value will be a promise
+that resolves when the file has been fully traversed in async mode, or
+`undefined` if `sync: true` is set.  Thus, you _must_ specify an `onentry`
+method in order to do anything useful with the data it parses.
 
 The following options are supported:
 
-- `cwd` Extract files relative to the specified directory.  Defaults
-  to `process.cwd()`. [Alias: `C`]
 - `file` The archive file to list.  If not specified, then a
   Writable stream is returned where the archive data should be
   written. [Alias: `f`]
@@ -449,8 +477,8 @@ The following options are supported:
   entry being listed.  Return `true` to emit the entry from the
   archive, or `false` to skip it.
 - `onentry` A function that gets called with `(entry)` for each entry
-  that passes the filter.  This is important for when both `file` and
-  `sync` are set, because it will be called synchronously.
+  that passes the filter.  This is important for when `file` is set,
+  because there is no other way to do anything useful with this method.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
 - `noResume` By default, `entry` streams are resumed immediately after
