@@ -799,7 +799,7 @@ t.test('absolute paths', t => {
   t.ok(path.isAbsolute(extraAbsolute))
   t.ok(path.isAbsolute(absolute))
   const parsed = path.parse(absolute)
-  const relative = absolute.substr(parsed.root.length)
+  const relative = absolute.slice(parsed.root.length)
   t.notOk(path.isAbsolute(relative))
 
   const data = makeTar([
