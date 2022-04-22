@@ -1,29 +1,25 @@
-# ignore most things, include some others
+# This file is automatically added by @npmcli/template-oss. Do not edit.
+
+# ignore everything in the root
 /*
-/.*
 
-!bin/
-!lib/
-!docs/
-!package.json
-!package-lock.json
-!README.md
-!CONTRIBUTING.md
-!LICENSE
-!CHANGELOG.md
-!example/
-!scripts/
-!tap-snapshots/
-!test/
-!.travis.yml
-!.gitignore
-!.gitattributes
-!map.js
-!index.js
-!.github
-!.eslintrc.json
-
-.*.swp
-node_modules/
-test/fixtures/unpack
-benchmarks/
+# keep these
+!/.eslintrc.local.*
+!**/.gitignore
+!/docs/
+!/tap-snapshots/
+!/test/
+!/map.js
+!/scripts/
+!/README*
+!/LICENSE*
+!/CHANGELOG*
+!/.commitlintrc.js
+!/.eslintrc.js
+!/.github/
+!/.gitignore
+!/.npmrc
+!/SECURITY.md
+!/index.js
+!/lib/
+!/package.json
