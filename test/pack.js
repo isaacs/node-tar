@@ -80,8 +80,9 @@ t.test('pack a file', t => {
       ps.on('data', chunk => sout.push(chunk))
       ps.add('one-byte.txt').end()
       const sync = Buffer.concat(sout)
-      if (sync.length === 0)
+      if (sync.length === 0) {
         throw new Error('no data!')
+      }
 
       t.equal(sync.slice(512).toString(), data.slice(512).toString())
       const hs = new Header(sync)
@@ -392,12 +393,13 @@ t.test('gzip, also a very deep path', t => {
       for (var i = 0; i < data.length; i += 512) {
         const slice = data.slice(i, i + 512)
         const h = new Header(slice)
-        if (h.nullBlock)
+        if (h.nullBlock) {
           entries.push('null block')
-        else if (h.cksumValid)
+        } else if (h.cksumValid) {
           entries.push([h.type, h.path])
-        else if (entries[entries.length - 1][0] === 'File')
+        } else if (entries[entries.length - 1][0] === 'File') {
           entries[entries.length - 1].push(slice.toString().replace(/\0.*$/, ''))
+        }
       }
 
       const expect = [
@@ -471,12 +473,13 @@ t.test('very deep gzip path, sync', t => {
   for (var i = 0; i < data.length; i += 512) {
     const slice = data.slice(i, i + 512)
     const h = new Header(slice)
-    if (h.nullBlock)
+    if (h.nullBlock) {
       entries.push('null block')
-    else if (h.cksumValid)
+    } else if (h.cksumValid) {
       entries.push([h.type, h.path])
-    else if (entries[entries.length - 1][0] === 'File')
+    } else if (entries[entries.length - 1][0] === 'File') {
       entries[entries.length - 1].push(slice.toString().replace(/\0.*$/, ''))
+    }
   }
 
   const expect = [
@@ -664,10 +667,12 @@ t.test('ignores mid-queue', t => {
   const p = new Pack({
     cwd: tars,
     filter: (p, st) => {
-      if (p === './')
+      if (p === './') {
         return true
-      if (!didFirst)
+      }
+      if (!didFirst) {
         return didFirst = true
+      }
       return false
     },
   })
@@ -1116,10 +1121,11 @@ t.test('prefix and hard links', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
-      if (typeof e === 'string')
+      if (typeof e === 'string') {
         t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
-      else
+      } else {
         t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+      }
     })
     t.end()
   }
@@ -1134,8 +1140,9 @@ t.test('prefix and hard links', t => {
     p.on('data', d => out.push(d))
     p.on('end', () => check(out, t))
     p.write(path)
-    if (path === '.')
+    if (path === '.') {
       path = './'
+    }
     p.write(`${path}target`)
     p.write(`${path}y`)
     p.write(`${path}z`)

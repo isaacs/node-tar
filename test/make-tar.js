@@ -1,7 +1,8 @@
 'use strict'
 // a little utility to create virtual tar data
-if (module === require.main)
+if (module === require.main) {
   return require('tap').pass('this is fine')
+}
 
 const Header = require('../lib/header.js')
 module.exports = chunks => {
@@ -16,10 +17,11 @@ module.exports = chunks => {
       : 512)
     dataLen += size
     const buf = Buffer.alloc(size)
-    if (typeof chunk === 'string')
+    if (typeof chunk === 'string') {
       buf.write(chunk)
-    else
+    } else {
       new Header(chunk).encode(buf, 0)
+    }
     return buf
   }), dataLen)
 }

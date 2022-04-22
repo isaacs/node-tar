@@ -1,4 +1,4 @@
-const {basename} = require('path')
+const { basename } = require('path')
 
 const map = test =>
   test === 'index.js' || test === 'map.js' ? test

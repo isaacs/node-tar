@@ -4,13 +4,14 @@ const mkdirp = require('mkdirp')
 
 // make our tests verify that windows link targets get turned into / paths
 const fs = require('fs')
-const {readlink, readlinkSync} = fs
+const { readlink, readlinkSync } = fs
 fs.readlink = (path, cb) => {
   readlink(path, (er, path) => {
-    if (er)
+    if (er) {
       return cb(er)
-    else
+    } else {
       cb(null, path.replace(/\//g, '\\'))
+    }
   })
 }
 fs.readlinkSync = path => readlinkSync(path).replace(/\//g, '\\')
@@ -568,8 +569,9 @@ t.test('read fail', t => {
   }
   // pretend everything is a file, then read something that isn't
   t.teardown(mutateFS.statMutate((er, st) => {
-    if (er)
+    if (er) {
       return [er, st]
+    }
     st.isFile = () => true
     st.size = 123
   }))
@@ -600,8 +602,9 @@ t.test('read invalid EOF', t => {
 
 t.test('read overflow expectation', t => {
   t.teardown(mutateFS.statMutate((er, st) => {
-    if (st)
+    if (st) {
       st.size = 3
+    }
   }))
   const f = '512-bytes.txt'
   const expect = {
@@ -698,8 +701,9 @@ t.test('win32 <|>? in paths', {
 
 t.test('uid doesnt match, dont set uname', t => {
   t.teardown(mutateFS.statMutate((er, st) => {
-    if (st)
+    if (st) {
       st.uid -= 1
+    }
   }))
   const ws = new WriteEntry('long-path/r', {
     cwd: files,
@@ -1246,12 +1250,13 @@ t.test('prefix and hard links', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
-      if (typeof e === 'string')
+      if (typeof e === 'string') {
         t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
-      else if (e instanceof RegExp)
+      } else if (e instanceof RegExp) {
         t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
-      else
+      } else {
         t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+      }
     })
   }
 
@@ -1273,8 +1278,9 @@ t.test('prefix and hard links', t => {
     })
 
     await entry(path)
-    if (path === '.')
+    if (path === '.') {
       path = './'
+    }
     await entry(`${path}target`)
     await entry(`${path}y`)
     await entry(`${path}${long}`)
@@ -1418,12 +1424,13 @@ t.test('prefix and hard links from tar entries', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
-      if (typeof e === 'string')
+      if (typeof e === 'string') {
         t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
-      else if (e instanceof RegExp)
+      } else if (e instanceof RegExp) {
         t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
-      else
+      } else {
         t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+      }
     })
   }
 
@@ -1512,10 +1519,11 @@ t.test('hard links and no prefix', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
-      if (typeof e === 'string')
+      if (typeof e === 'string') {
         t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
-      else
+      } else {
         t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+      }
     })
   }
 
@@ -1535,8 +1543,9 @@ t.test('hard links and no prefix', t => {
     })
 
     await entry(path)
-    if (path === '.')
+    if (path === '.') {
       path = './'
+    }
     await entry(`${path}target`)
     await entry(`${path}y`)
     await entry(`${path}z`)
@@ -1655,12 +1664,13 @@ t.test('hard links from tar entries and no prefix', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
-      if (typeof e === 'string')
+      if (typeof e === 'string') {
         t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
-      else if (e instanceof RegExp)
+      } else if (e instanceof RegExp) {
         t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
-      else
+      } else {
         t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+      }
     })
   }
 
@@ -1690,7 +1700,7 @@ t.test('hard links from tar entries and no prefix', t => {
 })
 
 t.test('myuid set by getuid() if available, otherwise 0', t => {
-  const {getuid} = process
+  const { getuid } = process
   process.getuid = null
   const noUid = new WriteEntry(__filename)
   t.equal(noUid.myuid, 0, 'set to zero if no getuid function')

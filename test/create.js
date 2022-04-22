@@ -13,7 +13,7 @@ const mkdirp = require('mkdirp')
 const spawn = require('child_process').spawn
 const Pack = require('../lib/pack.js')
 const mutateFS = require('mutate-fs')
-const {promisify} = require('util')
+const { promisify } = require('util')
 
 const readtar = (file, cb) => {
   const child = spawn('tar', ['tf', file])
@@ -62,8 +62,9 @@ t.test('create file', t => {
       file: file,
       cwd: __dirname,
     }, files, er => {
-      if (er)
+      if (er) {
         throw er
+      }
       readtar(file, (code, signal, list) => {
         t.equal(code, 0)
         t.equal(signal, null)
@@ -114,8 +115,9 @@ t.test('create file', t => {
         file: file,
         cwd: __dirname,
       }, files, er => {
-        if (er)
+        if (er) {
           throw er
+        }
         readtar(file, (code, signal, list) => {
           t.equal(code, 0)
           t.equal(signal, null)
@@ -193,16 +195,17 @@ t.test('create tarball out of another tarball', t => {
     list({ f: out,
       sync: true,
       onentry: entry => {
-        if (entry.path === 'hardlink-2')
+        if (entry.path === 'hardlink-2') {
           t.equal(entry.type, 'Link')
-        else if (entry.path === 'symlink')
+        } else if (entry.path === 'symlink') {
           t.equal(entry.type, 'SymbolicLink')
-        else if (entry.path === 'dir/')
+        } else if (entry.path === 'dir/') {
           t.equal(entry.type, 'Directory')
-        else
+        } else {
           t.equal(entry.type, 'File')
+        }
         t.equal(entry.path, expect.shift())
-      }})
+      } })
     t.same(expect, [])
     t.end()
   }

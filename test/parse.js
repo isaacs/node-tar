@@ -14,8 +14,9 @@ const EE = require('events').EventEmitter
 t.test('fixture tests', t => {
   class ByteStream extends MiniPass {
     write (chunk) {
-      for (let i = 0; i < chunk.length - 1; i++)
+      for (let i = 0; i < chunk.length - 1; i++) {
         super.write(chunk.slice(i, i + 1))
+      }
 
       return super.write(chunk.slice(chunk.length - 1, chunk.length))
     }
@@ -26,10 +27,11 @@ t.test('fixture tests', t => {
     let cursor = 0
     p.on('entry', entry => {
       ok = ok && t.match(['entry', entry], expect[cursor++], entry.path)
-      if (slow)
+      if (slow) {
         setTimeout(_ => entry.resume())
-      else
+      } else {
         entry.resume()
+      }
     })
     p.on('ignoredEntry', entry => {
       ok = ok && t.match(['ignoredEntry', entry], expect[cursor++],
@@ -331,21 +333,24 @@ t.test('drain event timings', t => {
     onentry: entry => {
       t.equal(entry.path, expect.shift())
       currentEntry = entry
-      if (autoPipe)
+      if (autoPipe) {
         setTimeout(_ => entry.pipe(new SlowStream()))
+      }
     },
   })
 
   data.forEach(d => {
-    if (!t.equal(p.write(d), false, 'write should return false'))
+    if (!t.equal(p.write(d), false, 'write should return false')) {
       return t.end()
+    }
   })
 
   let interval
   const go = _ => {
     const d = data.shift()
-    if (d === undefined)
+    if (d === undefined) {
       return p.end()
+    }
 
     let paused
     if (currentEntry) {
@@ -366,13 +371,15 @@ t.test('drain event timings', t => {
       paused = true
     }
 
-    if (!t.equal(p.write(hunks[1]), false, 'write should return false: ' + d))
+    if (!t.equal(p.write(hunks[1]), false, 'write should return false: ' + d)) {
       return t.end()
+    }
 
     p.once('drain', go)
 
-    if (paused)
+    if (paused) {
       currentEntry.resume()
+    }
   }
 
   p.once('drain', go)
@@ -444,8 +451,9 @@ t.test('consume while consuming', t => {
     const first = data.slice(0, size)
     const rest = data.slice(size)
     p.once('entry', entry => {
-      for (let pos = 0; pos < rest.length; pos += size)
+      for (let pos = 0; pos < rest.length; pos += size) {
         p.write(rest.slice(pos, pos + size))
+      }
 
       p.end()
     })

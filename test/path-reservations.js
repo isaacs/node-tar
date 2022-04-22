@@ -1,14 +1,16 @@
 const t = require('tap')
 
 // load up the posix and windows versions of the reserver
-if (process.platform === 'win32')
+if (process.platform === 'win32') {
   process.env.TESTING_TAR_FAKE_PLATFORM = 'posix'
+}
 const { reserve } = t.mock('../lib/path-reservations.js', {
   path: require('path').posix,
 })()
 delete process.env.TESTING_TAR_FAKE_PLATFORM
-if (process.platform !== 'win32')
+if (process.platform !== 'win32') {
   process.env.TESTING_TAR_FAKE_PLATFORM = 'win32'
+}
 const { reserve: winReserve } = t.mock('../lib/path-reservations.js', {
   path: require('path').win32,
 })()
@@ -105,8 +107,9 @@ t.test('absolute paths and trailing slash', t => {
     t.equal(calledA2, false, 'called a2 only once')
     calledA2 = true
     done()
-    if (calledR2)
+    if (calledR2) {
       t.end()
+    }
   }
   let calledR1 = false
   let calledR2 = false
@@ -121,8 +124,9 @@ t.test('absolute paths and trailing slash', t => {
     t.equal(calledR2, false, 'called r1 only once')
     calledR2 = true
     done()
-    if (calledA2)
+    if (calledA2) {
       t.end()
+    }
   }
   t.ok(reserve(['/p/a/t/h'], a1))
   t.notOk(reserve(['/p/a/t/h/'], a2))
