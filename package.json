@@ -1,5 +1,5 @@
 {
-  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "author": "GitHub Inc.",
   "name": "tar",
   "description": "tar for node",
   "version": "6.1.11",
@@ -8,18 +8,17 @@
     "url": "https://github.com/npm/node-tar.git"
   },
   "scripts": {
-    "test:posix": "tap",
-    "test:win32": "tap --lines=98 --branches=98 --statements=98 --functions=98",
-    "test": "node test/fixtures/test.js",
-    "posttest": "npm run lint",
-    "eslint": "eslint",
-    "lint": "npm run eslint -- test lib",
+    "genparse": "node scripts/generate-parse-fixtures.js",
+    "template-oss-apply": "template-oss-apply --force",
+    "lint": "eslint \"**/*.js\"",
+    "postlint": "template-oss-check",
     "lintfix": "npm run lint -- --fix",
     "preversion": "npm test",
     "postversion": "npm publish",
     "prepublishOnly": "git push origin --follow-tags",
-    "genparse": "node scripts/generate-parse-fixtures.js",
-    "bench": "for i in benchmarks/*/*.js; do echo $i; for j in {1..5}; do node $i || break; done; done"
+    "snap": "tap",
+    "test": "tap",
+    "posttest": "npm run lint"
   },
   "dependencies": {
     "chownr": "^2.0.0",
@@ -30,13 +29,10 @@
     "yallist": "^4.0.0"
   },
   "devDependencies": {
+    "@npmcli/eslint-config": "^3.0.1",
+    "@npmcli/template-oss": "3.4.2",
     "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.3",
-    "eslint": "^7.17.0",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^5.0.0",
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
     "rimraf": "^2.7.1",
@@ -46,14 +42,30 @@
   },
   "license": "ISC",
   "engines": {
-    "node": ">= 10"
+    "node": ">=10"
   },
   "files": [
     "index.js",
-    "lib/*.js"
+    "lib/"
   ],
   "tap": {
     "coverage-map": "map.js",
     "check-coverage": true
+  },
+  "templateOSS": {
+    "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
+    "version": "3.4.2",
+    "engines": ">=10",
+    "distPaths": [
+      "index.js",
+      "lib/"
+    ],
+    "ciVersions": [
+      "10.0.0",
+      "10.x",
+      "12.x",
+      "14.x",
+      "16.x"
+    ]
   }
 }
