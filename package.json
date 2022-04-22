@@ -36,7 +36,7 @@
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
     "rimraf": "^2.7.1",
-    "tap": "^15.0.9",
+    "tap": "^16.0.1",
     "tar-fs": "^1.16.3",
     "tar-stream": "^1.6.2"
   },
@@ -50,7 +50,7 @@
   ],
   "tap": {
     "coverage-map": "map.js",
-    "check-coverage": true
+    "timeout": 0
   },
   "templateOSS": {
     "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
