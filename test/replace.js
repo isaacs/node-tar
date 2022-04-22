@@ -5,7 +5,7 @@ const path = require('path')
 const fs = require('fs')
 const mutateFS = require('mutate-fs')
 const list = require('../lib/list.js')
-const {resolve} = require('path')
+const { resolve } = require('path')
 
 const fixtures = path.resolve(__dirname, 'fixtures')
 const tars = path.resolve(fixtures, 'tars')
@@ -80,8 +80,9 @@ t.test('basic file add to archive (good or truncated)', t => {
           file: resolve(dir, file),
           cwd: __dirname,
         }, fileList, er => {
-          if (er)
+          if (er) {
             throw er
+          }
           check(resolve(dir, file), t)
         })
       })
@@ -156,8 +157,9 @@ t.test('add to empty archive', t => {
           file: resolve(dir, file),
           cwd: __dirname,
         }, [path.basename(__filename)], er => {
-          if (er)
+          if (er) {
             throw er
+          }
           check(resolve(dir, file), t)
         })
       })
@@ -211,7 +213,7 @@ t.test('cannot append to gzipped archives', async t => {
 
 t.test('other throws', t => {
   t.throws(_ => r({}, ['asdf']), new TypeError('file is required'))
-  t.throws(_ => r({file: 'asdf'}, []),
+  t.throws(_ => r({ file: 'asdf' }, []),
     new TypeError('no files or directories specified'))
   t.end()
 })
@@ -322,8 +324,9 @@ t.test('mtime cache', async t => {
       cwd: __dirname,
       mtimeCache: mtimeCache = new Map(),
     }, [path.basename(__filename)], er => {
-      if (er)
+      if (er) {
         throw er
+      }
       check(file, t)
     })
   })
@@ -358,7 +361,7 @@ t.test('create tarball out of another tarball', t => {
       sync: true,
       onentry: entry => {
         t.equal(entry.path, expect.shift())
-      }})
+      } })
     t.same(expect, [])
     t.end()
   }
@@ -381,8 +384,9 @@ t.test('create tarball out of another tarball', t => {
       f: out,
       cwd: tars,
     }, ['@utf8.tar'], er => {
-      if (er)
+      if (er) {
         throw er
+      }
       check(out, t)
     })
   })

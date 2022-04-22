@@ -5,8 +5,8 @@ const path = require('path')
 const tardir = path.resolve(__dirname, '../test/fixtures/tars')
 const parsedir = path.resolve(__dirname, '../test/fixtures/parse')
 const maxMetaOpt = [250, null]
-const filterOpt = [ true, false ]
-const strictOpt = [ true, false ]
+const filterOpt = [true, false]
+const strictOpt = [true, false]
 
 const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
   const o =
@@ -19,7 +19,7 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
   const p = new Parse({
     maxMetaEntrySize: maxMeta,
     filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-    strict: strict
+    strict: strict,
   })
   const events = []
 
@@ -62,8 +62,8 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
         xstarPrefix: entry.header.xstarPrefix,
         prefixTerminator: entry.header.prefixTerminator,
         atime: entry.header.atime,
-        ctime: entry.header.atime
-      }
+        ctime: entry.header.atime,
+      },
     }])
     entry.resume()
   }
@@ -73,7 +73,7 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
   p.on('warn', (code, message, data) => events.push(['warn', code, message]))
   p.on('error', er => events.push(['error', {
     message: er.message,
-    code: er.code
+    code: er.code,
   }]))
   p.on('end', _ => events.push(['end']))
   p.on('nullBlock', _ => events.push(['nullBlock']))
@@ -85,13 +85,12 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
   fs.writeFileSync(eventsfile, JSON.stringify(events, null, 2) + '\n')
 }
 
-
 fs.readdirSync(tardir)
-.forEach(tar => {
-  const tarfile = tardir + '/' + tar
-  const tardata = fs.readFileSync(tarfile)
-  maxMetaOpt.forEach(maxMeta =>
-    filterOpt.forEach(filter =>
-      strictOpt.forEach(strict =>
-        makeTest(tarfile, tardata, maxMeta, filter, strict))))
-})
+  .forEach(tar => {
+    const tarfile = tardir + '/' + tar
+    const tardata = fs.readFileSync(tarfile)
+    maxMetaOpt.forEach(maxMeta =>
+      filterOpt.forEach(filter =>
+        strictOpt.forEach(strict =>
+          makeTest(tarfile, tardata, maxMeta, filter, strict))))
+  })

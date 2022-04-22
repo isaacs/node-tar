@@ -21,8 +21,9 @@ switch (process.argv[2]) {
       }
     }
     const { O_CREAT, O_TRUNC, O_WRONLY } = fs.constants
-    if (platform !== 'win32')
+    if (platform !== 'win32') {
       process.env.__FAKE_PLATFORM__ = 'win32'
+    }
     const getFlag = require('../lib/get-write-flag.js')
     t.equal(getFlag(1), UV_FS_O_FILEMAP | O_TRUNC | O_CREAT | O_WRONLY)
     t.equal(getFlag(512 * 1024 + 1), 'w')
@@ -38,8 +39,9 @@ switch (process.argv[2]) {
         },
       }
     }
-    if (platform !== 'win32')
+    if (platform !== 'win32') {
       process.env.__FAKE_PLATFORM__ = 'win32'
+    }
     const getFlag = require('../lib/get-write-flag.js')
     t.equal(getFlag(1), 'w')
     t.equal(getFlag(512 * 1024 + 1), 'w')
@@ -47,8 +49,9 @@ switch (process.argv[2]) {
   }
 
   case 'unix': {
-    if (platform === 'win32')
+    if (platform === 'win32') {
       process.env.__FAKE_PLATFORM__ = 'darwin'
+    }
     const getFlag = require('../lib/get-write-flag.js')
     t.equal(getFlag(1), 'w')
     t.equal(getFlag(512 * 1024 + 1), 'w')
