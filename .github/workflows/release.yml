@@ -30,7 +30,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Support Long Pathsg
+      - name: Support Long Paths
+        if: matrix.platform.os == 'windows-latest'
         run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
@@ -109,7 +110,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Support Long Pathsg
+      - name: Support Long Paths
+        if: matrix.platform.os == 'windows-latest'
         run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
@@ -215,7 +217,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Support Long Pathsg
+      - name: Support Long Paths
+        if: matrix.platform.os == 'windows-latest'
         run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
