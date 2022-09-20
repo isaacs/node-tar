@@ -13,9 +13,6 @@
     "lint": "eslint \"**/*.js\"",
     "postlint": "template-oss-check",
     "lintfix": "npm run lint -- --fix",
-    "preversion": "npm test",
-    "postversion": "npm publish",
-    "prepublishOnly": "git push origin --follow-tags",
     "snap": "tap",
     "test": "tap",
     "posttest": "npm run lint"
@@ -45,20 +42,27 @@
     "node": ">=10"
   },
   "files": [
-    "index.js",
-    "lib/"
+    "bin/",
+    "lib/",
+    "index.js"
   ],
   "tap": {
     "coverage-map": "map.js",
-    "timeout": 0
+    "timeout": 0,
+    "nyc-arg": [
+      "--exclude",
+      "tap-snapshots/**"
+    ]
   },
   "templateOSS": {
     "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
-    "version": "3.4.2",
+    "version": "4.3.2",
     "engines": ">=10",
     "distPaths": [
-      "index.js",
-      "lib/"
+      "index.js"
+    ],
+    "allowPaths": [
+      "index.js"
     ],
     "ciVersions": [
       "10.0.0",
