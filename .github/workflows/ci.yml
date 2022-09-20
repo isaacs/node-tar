@@ -34,7 +34,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
       - name: Install npm@latest
         run: npm i --prefer-online --no-fund --no-audit -g npm@latest
       - name: npm Version
@@ -68,6 +68,7 @@ jobs:
           - 12.x
           - 14.x
           - 16.x
+          - 18.x
     runs-on: ${{ matrix.platform.os }}
     defaults:
       run:
