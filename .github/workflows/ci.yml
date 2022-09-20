@@ -22,7 +22,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Support Long Pathsg
+      - name: Support Long Paths
+        if: matrix.platform.os == 'windows-latest'
         run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
@@ -72,7 +73,8 @@ jobs:
       run:
         shell: ${{ matrix.platform.shell }}
     steps:
-      - name: Support Long Pathsg
+      - name: Support Long Paths
+        if: matrix.platform.os == 'windows-latest'
         run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
@@ -106,5 +108,7 @@ jobs:
         run: npm i --ignore-scripts --no-audit --no-fund
       - name: Add Problem Matcher
         run: echo "::add-matcher::.github/matchers/tap.json"
+      - name: Set Tap RC
+        run: node ./test/fixtures/taprc.js
       - name: Test
         run: npm test --ignore-scripts -iwr
