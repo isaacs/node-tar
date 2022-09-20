@@ -30,6 +30,8 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Support Long Pathsg
+        run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
       - name: Setup Git User
@@ -107,6 +109,8 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Support Long Pathsg
+        run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -211,6 +215,8 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Support Long Pathsg
+        run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
       - name: Setup Git User

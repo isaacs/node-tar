@@ -16,6 +16,8 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Support Long Pathsg
+        run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
         with:

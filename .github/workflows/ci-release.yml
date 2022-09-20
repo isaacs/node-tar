@@ -36,6 +36,8 @@ jobs:
           # need to create a GitHub that would create on-demand tokens.
           # https://github.com/LouisBrunner/checks-action/issues/18
           # details_url:
+      - name: Support Long Pathsg
+        run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -108,6 +110,8 @@ jobs:
           # need to create a GitHub that would create on-demand tokens.
           # https://github.com/LouisBrunner/checks-action/issues/18
           # details_url:
+      - name: Support Long Pathsg
+        run: git config --system core.longpaths true
       - name: Checkout
         uses: actions/checkout@v3
         with:
