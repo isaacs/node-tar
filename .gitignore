@@ -16,6 +16,7 @@
 !/CHANGELOG*
 !/CODE_OF_CONDUCT.md
 !/docs/
+!/index.js
 !/lib/
 !/LICENSE*
 !/map.js
@@ -26,4 +27,3 @@
 !/SECURITY.md
 !/tap-snapshots/
 !/test/
-!index.js
