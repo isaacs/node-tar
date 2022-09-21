@@ -72,7 +72,7 @@ t.test('null pax', t => {
 t.test('tiny pax', t => {
   // weird to have a global setting a path.  Maybe this should be
   // an error?
-  const p = new Pax({path: 'ab'}, true)
+  const p = new Pax({ path: 'ab' }, true)
   const actual = p.encode()
   // console.log(actual.toString('hex').split('').reduce((s,c)=>{if(s[s.length-1].length<64)s[s.length-1]+=c;else s.push(c);return s},['']))
   // return Promise.resolve()

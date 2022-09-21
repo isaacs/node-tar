@@ -16,7 +16,7 @@ const fixtures = path.resolve(__dirname, 'fixtures')
 const tars = path.resolve(fixtures, 'tars')
 const parses = path.resolve(fixtures, 'parse')
 const unpackdir = path.resolve(fixtures, 'unpack')
-const {promisify} = require('util')
+const { promisify } = require('util')
 const rimraf = promisify(require('rimraf'))
 const mkdirp = require('mkdirp')
 const mutateFS = require('mutate-fs')
@@ -98,8 +98,9 @@ t.test('basic file unpack tests', t => {
         const expect = cases[tarfile]
         Object.keys(expect).forEach(file => {
           const f = path.resolve(dir, file)
-          if (isWindows && isLongFile(file))
+          if (isWindows && isLongFile(file)) {
             return
+          }
           t.equal(fs.readFileSync(f, 'utf8'), expect[file], file)
         })
         t.end()
@@ -639,11 +640,11 @@ t.test('unsupported entries', t => {
     const c = 'TAR_ENTRY_UNSUPPORTED'
     const expect = [
       [c, 'unsupported entry type: CharacterDevice', {
-        entry: { path: 'dev/random' }}],
+        entry: { path: 'dev/random' } }],
       [c, 'unsupported entry type: BlockDevice', {
-        entry: { path: 'dev/hd0' }}],
+        entry: { path: 'dev/hd0' } }],
       [c, 'unsupported entry type: FIFO', {
-        entry: { path: 'dev/fifo0' }}],
+        entry: { path: 'dev/fifo0' } }],
     ]
     u.on('close', _ => {
       t.equal(fs.readdirSync(dir).length, 0)
@@ -1019,13 +1020,15 @@ t.test('fail all stats', t => {
   const mutate = () => {
     fs.stat = fs.lstat = fs.fstat = (...args) => {
       // don't fail statting the cwd, or we get different errors
-      if (normPath(args[0]) === dir)
+      if (normPath(args[0]) === dir) {
         return lstat(dir, args.pop())
+      }
       process.nextTick(() => args.pop()(poop))
     }
     fs.statSync = fs.lstatSync = fs.fstatSync = (...args) => {
-      if (normPath(args[0]) === dir)
+      if (normPath(args[0]) === dir) {
         return lstatSync(dir)
+      }
       throw poop
     }
   }
@@ -2008,7 +2011,7 @@ t.test('dont use explicit chmod if noChmod flag set', t => {
 
   return t.test('sync', t => {
     mkdirp.sync(basedir)
-    const unpack = new Unpack.Sync({ cwd: basedir, noChmod: true})
+    const unpack = new Unpack.Sync({ cwd: basedir, noChmod: true })
     unpack.end(data)
     check(t)
   })
@@ -2620,7 +2623,7 @@ t.test('trying to unpack a non-zlib gzip file should fail', t => {
     const skip = !/^v([0-9]|1[0-3])\./.test(process.version) ? false
       : 'node prior to v14 did not raise sync zlib errors properly'
     t.throws(() => new UnpackSync(opts).end(dataGzip),
-      expect, 'sync throws', {skip})
+      expect, 'sync throws', { skip })
   })
 
   t.test('bad archive if no gzip', t => {
@@ -2882,7 +2885,7 @@ t.test('close fd when error writing', t => {
   t.teardown(mutateFS.fail('write', new Error('nope')))
   const CLOSES = []
   const OPENS = {}
-  const {open} = require('fs')
+  const { open } = require('fs')
   t.teardown(() => fs.open = open)
   fs.open = (...args) => {
     const cb = args.pop()
@@ -2904,8 +2907,9 @@ t.test('close fd when error writing', t => {
     onwarn: (code, msg) => WARNINGS.push([code, msg]),
   })
   unpack.on('end', () => {
-    for (const [path, fd] of Object.entries(OPENS))
+    for (const [path, fd] of Object.entries(OPENS)) {
       t.equal(CLOSES.includes(fd), true, 'closed fd for ' + path)
+    }
     t.end()
   })
   unpack.end(data)
@@ -2934,7 +2938,7 @@ t.test('close fd when error setting mtime', t => {
   t.teardown(mutateFS.fail('utimes', new Error('nooooope')))
   const CLOSES = []
   const OPENS = {}
-  const {open} = require('fs')
+  const { open } = require('fs')
   t.teardown(() => fs.open = open)
   fs.open = (...args) => {
     const cb = args.pop()
@@ -2956,8 +2960,9 @@ t.test('close fd when error setting mtime', t => {
     onwarn: (code, msg) => WARNINGS.push([code, msg]),
   })
   unpack.on('end', () => {
-    for (const [path, fd] of Object.entries(OPENS))
+    for (const [path, fd] of Object.entries(OPENS)) {
       t.equal(CLOSES.includes(fd), true, 'closed fd for ' + path)
+    }
     t.end()
   })
   unpack.end(data)

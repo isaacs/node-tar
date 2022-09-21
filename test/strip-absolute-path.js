@@ -12,8 +12,9 @@ t.test('basic', t => {
     'c:\\c:\\c:\\c:\\\\d:\\e/f/g': ['c:\\c:\\c:\\c:\\\\d:\\', 'e/f/g'],
   }
 
-  for (const [input, [root, stripped]] of Object.entries(cases))
+  for (const [input, [root, stripped]] of Object.entries(cases)) {
     t.strictSame(stripAbsolutePath(input, cwd), [root, stripped], input)
+  }
   t.end()
 })
 
@@ -44,8 +45,9 @@ t.test('drive-local paths', t => {
     '\\\\?\\X:\\y\\z': ['\\\\?\\X:\\', 'y\\z'],
   }
   for (const [input, [root, stripped]] of Object.entries(cases)) {
-    if (!t.strictSame(stripAbsolutePath(input, cwd), [root, stripped], input))
+    if (!t.strictSame(stripAbsolutePath(input, cwd), [root, stripped], input)) {
       break
+    }
   }
   t.end()
 })

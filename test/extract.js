@@ -7,7 +7,7 @@ const fs = require('fs')
 const extractdir = path.resolve(__dirname, 'fixtures/extract')
 const tars = path.resolve(__dirname, 'fixtures/tars')
 const mkdirp = require('mkdirp')
-const {promisify} = require('util')
+const { promisify } = require('util')
 const rimraf = promisify(require('rimraf'))
 const mutateFS = require('mutate-fs')
 
@@ -44,8 +44,9 @@ t.test('basic extracting', t => {
 
   t.test('async cb', t => {
     return x({ file: file, cwd: dir }, files, er => {
-      if (er)
+      if (er) {
         throw er
+      }
       return check(t)
     })
   })
@@ -87,8 +88,9 @@ t.test('file list and filter', t => {
 
   t.test('async cb', t => {
     return x({ filter: filter, file: file, cwd: dir }, ['🌟.txt', 'Ω.txt'], er => {
-      if (er)
+      if (er) {
         throw er
+      }
       return check(t)
     })
   })
@@ -127,8 +129,9 @@ t.test('no file list', t => {
 
   t.test('async cb', t => {
     return x({ file: file, cwd: dir }, er => {
-      if (er)
+      if (er) {
         throw er
+      }
       return check(t)
     })
   })
@@ -168,8 +171,9 @@ t.test('read in itty bits', t => {
 
   t.test('async cb', t => {
     return x({ file: file, cwd: dir, maxReadSize: maxReadSize }, er => {
-      if (er)
+      if (er) {
         throw er
+      }
       return check(t)
     })
   })
@@ -179,8 +183,8 @@ t.test('read in itty bits', t => {
 
 t.test('bad calls', t => {
   t.throws(_ => x(_ => _))
-  t.throws(_ => x({sync: true}, _ => _))
-  t.throws(_ => x({sync: true}, [], _ => _))
+  t.throws(_ => x({ sync: true }, _ => _))
+  t.throws(_ => x({ sync: true }, [], _ => _))
   t.end()
 })
 
@@ -188,12 +192,12 @@ t.test('no file', t => {
   const Unpack = require('../lib/unpack.js')
   t.type(x(), Unpack)
   t.type(x(['asdf']), Unpack)
-  t.type(x({sync: true}), Unpack.Sync)
+  t.type(x({ sync: true }), Unpack.Sync)
   t.end()
 })
 
 t.test('nonexistent', t => {
-  t.throws(_ => x({sync: true, file: 'does not exist' }))
+  t.throws(_ => x({ sync: true, file: 'does not exist' }))
   x({ file: 'does not exist' }).catch(_ => t.end())
 })
 
@@ -201,7 +205,7 @@ t.test('read fail', t => {
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('read', poop))
 
-  t.throws(_ => x({maxReadSize: 10, sync: true, file: __filename }), poop)
+  t.throws(_ => x({ maxReadSize: 10, sync: true, file: __filename }), poop)
   t.end()
 })
 

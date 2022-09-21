@@ -1,5 +1,5 @@
 const platform = process.platform === 'win32' ? 'win32' : 'posix'
-const {spawn} = require('child_process')
+const { spawn } = require('child_process')
 const c = spawn(process.execPath, [
   process.env.npm_execpath,
   'run',

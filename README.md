@@ -1,6 +1,6 @@
 # node-tar
 
-[Fast](./benchmarks) and full-featured Tar for Node.js
+Fast and full-featured Tar for Node.js
 
 The API is designed to mimic the behavior of `tar(1)` on unix systems.
 If you are familiar with how tar works, most of this will hopefully be

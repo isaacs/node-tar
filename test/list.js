@@ -48,8 +48,9 @@ t.test('basic', t => {
           onentry: onentry,
           maxReadSize: maxReadSize,
         }, er => {
-          if (er)
+          if (er) {
             throw er
+          }
           check(actual, t)
           t.end()
         })

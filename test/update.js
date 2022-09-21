@@ -5,7 +5,7 @@ const path = require('path')
 const fs = require('fs')
 const mutateFS = require('mutate-fs')
 
-const {resolve} = require('path')
+const { resolve } = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const tars = path.resolve(fixtures, 'tars')
 const zlib = require('zlib')
@@ -79,8 +79,9 @@ t.test('basic file add to archive (good or truncated)', t => {
           file: resolve(dir, file),
           cwd: __dirname,
         }, fileList, er => {
-          if (er)
+          if (er) {
             throw er
+          }
           check(resolve(dir, file), t)
         })
       })
@@ -155,8 +156,9 @@ t.test('add to empty archive', t => {
           file: resolve(dir, file),
           cwd: __dirname,
         }, [path.basename(__filename)], er => {
-          if (er)
+          if (er) {
             throw er
+          }
           check(resolve(dir, file), t)
         })
       })
@@ -213,7 +215,7 @@ t.test('cannot append to gzipped archives', t => {
 
 t.test('other throws', t => {
   t.throws(_ => u({}, ['asdf']), new TypeError('file is required'))
-  t.throws(_ => u({file: 'asdf'}, []),
+  t.throws(_ => u({ file: 'asdf' }, []),
     new TypeError('no files or directories specified'))
   t.end()
 })
@@ -306,8 +308,9 @@ t.test('do not add older file', t => {
 
   t.test('async cb', t => {
     u({ file, cwd: dir }, ['1024-bytes.txt'], er => {
-      if (er)
+      if (er) {
         throw er
+      }
       check(t)
     })
   })
@@ -359,8 +362,9 @@ t.test('do add newer file', t => {
     const dir = setup(t)
     const file = resolve(dir, 'body-byte-counts.tar')
     u({ file, cwd: dir }, ['1024-bytes.txt'], er => {
-      if (er)
+      if (er) {
         throw er
+      }
       check(file, t)
     })
   })
