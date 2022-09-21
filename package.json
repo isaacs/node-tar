@@ -32,7 +32,7 @@
     "end-of-stream": "^1.4.3",
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
-    "rimraf": "^2.7.1",
+    "rimraf": "^3.0.2",
     "tap": "^16.0.1",
     "tar-fs": "^2.1.1",
     "tar-stream": "^2.2.0"
