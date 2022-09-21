@@ -111,4 +111,4 @@ jobs:
       - name: Set Tap RC
         run: node ./test/fixtures/taprc.js
       - name: Test
-        run: npm test --ignore-scripts -iwr
+        run: npm test --ignore-scripts

@@ -3,4 +3,4 @@
 - name: Set Tap RC
   run: node ./test/fixtures/taprc.js
 - name: Test
-  run: {{ rootNpmPath }} test --ignore-scripts {{~#if jobRunFlags}} {{ jobRunFlags }}{{/if}}
+  run: {{ rootNpmPath }} test --ignore-scripts
