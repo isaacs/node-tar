@@ -35,7 +35,7 @@
     "rimraf": "^2.7.1",
     "tap": "^16.0.1",
     "tar-fs": "^2.1.1",
-    "tar-stream": "^1.6.2"
+    "tar-stream": "^2.2.0"
   },
   "license": "ISC",
   "engines": {
