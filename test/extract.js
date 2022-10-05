@@ -10,6 +10,8 @@ const mkdirp = require('mkdirp')
 const { promisify } = require('util')
 const rimraf = promisify(require('rimraf'))
 const mutateFS = require('mutate-fs')
+const pipeline = promisify(require('stream').pipeline)
+const https = require('https')
 
 t.teardown(_ => rimraf(extractdir))
 
@@ -48,6 +50,32 @@ t.test('basic extracting', t => {
         throw er
       }
       return check(t)
+    })
+  })
+
+  t.end()
+})
+
+t.test('ensure an open stream is not prematuraly closed', t => {
+  const dir = path.resolve(extractdir, 'basic-with-stream')
+
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
+  })
+
+  const check = async t => {
+    fs.lstatSync(dir + '/node-tar-main/LICENSE')
+    await rimraf(dir)
+    t.end()
+  }
+
+  t.test('async promisey', t => {
+    https.get('https://codeload.github.com/npm/node-tar/tar.gz/main', (stream) => {
+      return pipeline(
+        stream,
+        x({ cwd: dir }, ['node-tar-main/LICENSE'])
+      ).then(_ => check(t))
     })
   })
 
