@@ -25,6 +25,11 @@ jobs:
             os: ubuntu-latest
             shell: bash
         node-version:
+          - 10.0.0
+          - 12.0.0
+          - 14.0.0
+          - 16.0.0
+          - 18.0.0
     runs-on: ${{ matrix.platform.os }}
     defaults:
       run:
@@ -54,10 +59,10 @@ jobs:
           cd ..
           rmdir /s /q package
       - name: Install npm@7
-        if: startsWith(matrix.node-version, '10.')
+        if: startsWith(matrix.node-version, '10.') || startsWith(matrix.node-version, '12.')
         run: npm i --prefer-online --no-fund --no-audit -g npm@7
       - name: Install npm@latest
-        if: ${{ !startsWith(matrix.node-version, '10.') }}
+        if: ${{ !startsWith(matrix.node-version, '10.') && !startsWith(matrix.node-version, '12.') }}
         run: npm i --prefer-online --no-fund --no-audit -g npm@latest
       - name: npm Version
         run: npm -v
@@ -147,10 +152,10 @@ jobs:
           cd ..
           rmdir /s /q package
       - name: Install npm@7
-        if: startsWith(matrix.node-version, '10.')
+        if: startsWith(matrix.node-version, '10.') || startsWith(matrix.node-version, '12.')
         run: npm i --prefer-online --no-fund --no-audit -g npm@7
       - name: Install npm@latest
-        if: ${{ !startsWith(matrix.node-version, '10.') }}
+        if: ${{ !startsWith(matrix.node-version, '10.') && !startsWith(matrix.node-version, '12.') }}
         run: npm i --prefer-online --no-fund --no-audit -g npm@latest
       - name: npm Version
         run: npm -v
