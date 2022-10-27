@@ -691,7 +691,7 @@ t.test('win32 <|>? in paths', {
   wc.on('data', c => out.push(c))
   wc.on('end', _ => {
     const data = Buffer.concat(out).toString()
-    t.equal(data.substr(0, 4), '<|>?')
+    t.equal(data.slice(0, 4), '<|>?')
     t.end()
   })
 
