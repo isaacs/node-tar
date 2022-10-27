@@ -32,6 +32,7 @@
     "end-of-stream": "^1.4.3",
     "events-to-array": "^1.1.2",
     "mutate-fs": "^2.1.1",
+    "nock": "^13.2.9",
     "rimraf": "^3.0.2",
     "tap": "^16.0.1"
   },

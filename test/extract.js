@@ -1,6 +1,7 @@
 'use strict'
 
 const t = require('tap')
+const nock = require('nock')
 const x = require('../lib/extract.js')
 const path = require('path')
 const fs = require('fs')
@@ -11,7 +12,17 @@ const { promisify } = require('util')
 const rimraf = promisify(require('rimraf'))
 const mutateFS = require('mutate-fs')
 const pipeline = promisify(require('stream').pipeline)
-const https = require('https')
+const http = require('http')
+
+const tnock = (t, host, opts) => {
+  nock.disableNetConnect()
+  const server = nock(host, opts)
+  t.teardown(function () {
+    nock.enableNetConnect()
+    server.done()
+  })
+  return server
+}
 
 t.teardown(_ => rimraf(extractdir))
 
@@ -57,6 +68,9 @@ t.test('basic extracting', t => {
 })
 
 t.test('ensure an open stream is not prematuraly closed', t => {
+  t.plan(1)
+
+  const file = path.resolve(tars, 'long-paths.tar')
   const dir = path.resolve(extractdir, 'basic-with-stream')
 
   t.beforeEach(async () => {
@@ -65,16 +79,51 @@ t.test('ensure an open stream is not prematuraly closed', t => {
   })
 
   const check = async t => {
-    fs.lstatSync(dir + '/node-tar-main/LICENSE')
+    t.ok(fs.lstatSync(dir + '/long-path'))
     await rimraf(dir)
     t.end()
   }
 
   t.test('async promisey', t => {
-    https.get('https://codeload.github.com/npm/node-tar/tar.gz/main', (stream) => {
+    const stream = fs.createReadStream(file, {
+      highWaterMark: 1,
+    })
+    pipeline(
+      stream,
+      x({ cwd: dir })
+    ).then(_ => check(t))
+  })
+
+  t.end()
+})
+
+t.test('ensure an open stream is not prematuraly closed http', t => {
+  t.plan(1)
+
+  const file = path.resolve(tars, 'long-paths.tar')
+  const dir = path.resolve(extractdir, 'basic-with-stream-http')
+
+  t.beforeEach(async () => {
+    await rimraf(dir)
+    await mkdirp(dir)
+  })
+
+  const check = async t => {
+    t.ok(fs.lstatSync(dir + '/long-path'))
+    await rimraf(dir)
+    t.end()
+  }
+
+  t.test('async promisey', t => {
+    tnock(t, 'http://codeload.github.com/')
+      .get('/npm/node-tar/tar.gz/main')
+      .delay(250)
+      .reply(200, () => fs.createReadStream(file))
+
+    http.get('http://codeload.github.com/npm/node-tar/tar.gz/main', (stream) => {
       return pipeline(
         stream,
-        x({ cwd: dir }, ['node-tar-main/LICENSE'])
+        x({ cwd: dir })
       ).then(_ => check(t))
     })
   })
