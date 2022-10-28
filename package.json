@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@npmcli/eslint-config": "^4.0.0",
-    "@npmcli/template-oss": "4.7.1",
+    "@npmcli/template-oss": "4.8.0",
     "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.3",
     "events-to-array": "^1.1.2",
