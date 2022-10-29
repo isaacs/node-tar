@@ -1,15 +1,4 @@
 - name: Support Long Paths
   if: matrix.platform.os == 'windows-latest'
   run: git config --system core.longpaths true
-- name: Checkout
-  uses: actions/checkout@v3
-  {{#if jobCheckout}}
-  with:
-  {{#each jobCheckout}}
-    {{ @key }}: {{ this }}
-  {{/each}}
-  {{/if}}
-- name: Setup Git User
-  run: |
-    git config --global user.email "npm-cli+bot@github.com"
-    git config --global user.name "npm CLI robot"
+{{> defaultStepGit }}

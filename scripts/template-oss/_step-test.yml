@@ -1,6 +1,3 @@
-- name: Add Problem Matcher
-  run: echo "::add-matcher::.github/matchers/tap.json"
 - name: Set Tap RC
   run: node ./test/fixtures/taprc.js
-- name: Test
-  run: {{ rootNpmPath }} test --ignore-scripts
+{{> defaultStepTest }}
