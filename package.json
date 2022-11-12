@@ -30,7 +30,7 @@
     "@npmcli/template-oss": "4.10.0",
     "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.3",
-    "events-to-array": "^1.1.2",
+    "events-to-array": "^2.0.3",
     "mutate-fs": "^2.1.1",
     "nock": "^13.2.9",
     "rimraf": "^3.0.2",
