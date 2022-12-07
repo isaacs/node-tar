@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.1.13](https://github.com/npm/node-tar/compare/v6.1.12...v6.1.13) (2022-12-07)
+
+### Dependencies
+
+* [`cc4e0dd`](https://github.com/npm/node-tar/commit/cc4e0ddfe523a0bce383846a67442c637a65d486) [#343](https://github.com/npm/node-tar/pull/343) bump minipass from 3.3.6 to 4.0.0
+
 ## [6.1.12](https://github.com/npm/node-tar/compare/v6.1.11...v6.1.12) (2022-10-31)
 
 ### Bug Fixes
