@@ -22,7 +22,7 @@
     "fs-minipass": "^2.0.0",
     "minipass": "^4.0.0",
     "minizlib": "^2.1.1",
-    "mkdirp": "^1.0.3",
+    "mkdirp": "^2.1.5",
     "yallist": "^4.0.0"
   },
   "devDependencies": {
