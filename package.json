@@ -5,7 +5,7 @@
   "version": "6.1.13",
   "repository": {
     "type": "git",
-    "url": "https://github.com/npm/node-tar.git"
+    "url": "https://github.com/isaacs/node-tar.git"
   },
   "scripts": {
     "genparse": "node scripts/generate-parse-fixtures.js",
