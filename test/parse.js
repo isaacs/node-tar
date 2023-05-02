@@ -7,12 +7,12 @@ const fs = require('fs')
 const path = require('path')
 const tardir = path.resolve(__dirname, 'fixtures/tars')
 const zlib = require('zlib')
-const MiniPass = require('minipass')
+const { Minipass } = require('minipass')
 const Header = require('../lib/header.js')
 const EE = require('events').EventEmitter
 
 t.test('fixture tests', t => {
-  class ByteStream extends MiniPass {
+  class ByteStream extends Minipass {
     write (chunk) {
       for (let i = 0; i < chunk.length - 1; i++) {
         super.write(chunk.slice(i, i + 1))
@@ -604,7 +604,7 @@ t.test('end while consuming', t => {
     'package/node_modules/b/package.json',
   ]
 
-  const mp = new MiniPass()
+  const mp = new Minipass()
   const p = new Parse({
     onentry: entry => {
       actual.push(entry.path)

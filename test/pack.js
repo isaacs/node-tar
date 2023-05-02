@@ -12,7 +12,7 @@ const Header = require('../lib/header.js')
 const zlib = require('zlib')
 const miniz = require('minizlib')
 const mutateFS = require('mutate-fs')
-const MiniPass = require('minipass')
+const { Minipass } = require('minipass')
 process.env.USER = 'isaacs'
 const EE = require('events').EventEmitter
 const rimraf = require('rimraf')
@@ -563,8 +563,8 @@ t.test('readdir fail', t => {
 
 t.test('pipe into a slow reader', t => {
   const out = []
-  const mp = new MiniPass()
-  const mp2 = new MiniPass()
+  const mp = new Minipass()
+  const mp2 = new Minipass()
   const p = new Pack({ cwd: files }).add('long-path').end()
   p.pause()
   p.pipe(mp).pipe(mp2)
