@@ -5,7 +5,7 @@ process.umask(0o022)
 const Unpack = require('../lib/unpack.js')
 const UnpackSync = Unpack.Sync
 const t = require('tap')
-const MiniPass = require('minipass')
+const { Minipass } = require('minipass')
 
 const makeTar = require('./make-tar.js')
 const Header = require('../lib/header.js')
@@ -2252,7 +2252,7 @@ t.test('transform', t => {
     }
   }
 
-  class Bracer extends MiniPass {
+  class Bracer extends Minipass {
     write (data) {
       const d = data.toString().split('').map(c => '[' + c + ']').join('')
       return super.write(d)
@@ -2324,7 +2324,7 @@ t.test('transform error', t => {
   const poop = new Error('poop')
 
   const txFn = () => {
-    const tx = new MiniPass()
+    const tx = new Minipass()
     tx.write = () => tx.emit('error', poop)
     tx.resume()
     return tx
