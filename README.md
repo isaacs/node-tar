@@ -451,8 +451,6 @@ The following options are supported:
   Pathnames with fewer elements will be silently skipped. Note that
   the pathname is edited after applying the filter, but before
   security checks. [Alias: `strip-components`, `stripComponents`]
-- `onwarn` A function that will get called with `(code, message, data)` for
-  any warnings encountered. (See "Warnings and Errors")
 - `preserveOwner` If true, tar will set the `uid` and `gid` of
   extracted entries to the `uid` and `gid` fields in the archive.
   This defaults to true when run as root, and false otherwise. If
@@ -779,8 +777,6 @@ Most unpack errors will cause a `warn` event to be emitted. If the
   Pathnames with fewer elements will be silently skipped. Note that
   the pathname is edited after applying the filter, but before
   security checks.
-- `onwarn` A function that will get called with `(code, message, data)` for
-  any warnings encountered. (See "Warnings and Errors")
 - `umask` Filter the modes of entries like `process.umask()`.
 - `dmode` Default mode for directories
 - `fmode` Default mode for files
