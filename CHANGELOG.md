@@ -48,7 +48,7 @@
 
 - remove dead link to benchmarks (#313) (@yetzt)
 - add examples/explanation of using tar.t (@isaacs)
-- ensure close event is emited after stream has ended (@webark)
+- ensure close event is emitted after stream has ended (@webark)
 - replace deprecated String.prototype.substr() (@CommanderRoot,
   @lukekarrys)
 
