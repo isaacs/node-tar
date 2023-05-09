@@ -990,7 +990,7 @@ The following options are supported:
 
 If strict, emit an error with the provided message.
 
-Othewise, emit a `'warn'` event with the provided message and data.
+Otherwise, emit a `'warn'` event with the provided message and data.
 
 ### class tar.WriteEntry.Sync
 

@@ -463,7 +463,7 @@ t.test('absolute path', t => {
 
   t.test('preservePaths=true', t => {
     t.plan(2)
-    // with preservePaths, strictness doens't matter
+    // with preservePaths, strictness doesn't matter
     ;[true, false].forEach(strict => {
       t.test('strict=' + strict, t => {
         const warnings = []
