@@ -1135,6 +1135,7 @@ t.test('prefix and hard links', t => {
       cwd: dir + '/in',
       prefix: 'out/x',
       noDirRecurse: true,
+      jobs: 1,
     })
     const out = []
     p.on('data', d => out.push(d))
