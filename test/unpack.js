@@ -514,7 +514,8 @@ t.test('symlink in dir path', {
 
   t.test('clobber through symlink with busted unlink', t => {
     const poop = new Error('poop')
-    t.teardown(mutateFS.fail('unlink', poop))
+    // for some reason, resetting fs.unlink in the teardown was breaking
+    const reset = mutateFS.fail('unlink', poop)
     const warnings = []
     const u = new Unpack({
       cwd: dir,
@@ -523,6 +524,7 @@ t.test('symlink in dir path', {
     })
     u.on('close', _ => {
       t.same(warnings, [['TAR_ENTRY_ERROR', 'poop', poop]])
+      reset()
       t.end()
     })
     u.end(data)
