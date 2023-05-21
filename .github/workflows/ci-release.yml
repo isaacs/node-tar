@@ -51,7 +51,7 @@ jobs:
 
             const shaUrl = `${context.serverUrl}/${owner}/${repo}/commit/${{ inputs.check-sha }}`
 
-            let summary = `This check is assosciated with ${shaUrl}\n\n`
+            let summary = `This check is associated with ${shaUrl}\n\n`
 
             if (jobUrl) {
               summary += `For run logs, click here: ${jobUrl}`
@@ -154,7 +154,7 @@ jobs:
 
             const shaUrl = `${context.serverUrl}/${owner}/${repo}/commit/${{ inputs.check-sha }}`
 
-            let summary = `This check is assosciated with ${shaUrl}\n\n`
+            let summary = `This check is associated with ${shaUrl}\n\n`
 
             if (jobUrl) {
               summary += `For run logs, click here: ${jobUrl}`

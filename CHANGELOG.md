@@ -10,7 +10,7 @@
 
 ### Bug Fixes
 
-* [`57493ee`](https://github.com/npm/node-tar/commit/57493ee66ece50d62114e02914282fc37be3a91a) [#332](https://github.com/npm/node-tar/pull/332) ensuring close event is emited after stream has ended (@webark)
+* [`57493ee`](https://github.com/npm/node-tar/commit/57493ee66ece50d62114e02914282fc37be3a91a) [#332](https://github.com/npm/node-tar/pull/332) ensuring close event is emitted after stream has ended (@webark)
 * [`b003c64`](https://github.com/npm/node-tar/commit/b003c64f624332e24e19b30dc011069bb6708680) [#314](https://github.com/npm/node-tar/pull/314) replace deprecated String.prototype.substr() (#314) (@CommanderRoot, @lukekarrys)
 
 ### Documentation
