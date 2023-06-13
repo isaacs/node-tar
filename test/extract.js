@@ -310,3 +310,30 @@ t.test('sync gzip error edge case test', async t => {
 
   t.end()
 })
+
+t.test('brotli', async t => {
+  const file = path.resolve(__dirname, 'fixtures/example.tbr')
+  const dir = path.resolve(__dirname, 'brotli')
+
+  t.beforeEach(async () => {
+    await mkdirp(dir)
+  })
+
+  t.afterEach(async () => {
+    await rimraf(dir)
+  })
+
+  t.test('fails if brotli', async t => {
+    const expect = new Error("TAR_BAD_ARCHIVE: Unrecognized archive format")
+    t.throws(_ => x({ sync: true, file: file }), expect)
+  })
+
+  t.test('succeeds', t => {
+    x({ sync: true, file: file, C: dir, brotli: true })
+
+    t.same(fs.readdirSync(dir + '/x').sort(),
+        ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9'])
+    t.end()
+  })
+})
+

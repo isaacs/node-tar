@@ -125,6 +125,30 @@ t.test('fixture tests', t => {
         bs.end(zlib.gzipSync(tardata))
       })
 
+      t.test('compress with brotli all at once', t => {
+        const p = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          brotli: {}
+        })
+        trackEvents(t, expect, p)
+        p.end(zlib.brotliCompressSync(tardata))
+      })
+
+      t.test('compress with brotli byte at a time', t => {
+        const bs = new ByteStream()
+        const bp = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          brotli: {},
+        })
+        trackEvents(t, expect, bp)
+        bs.pipe(bp)
+        bs.end(zlib.brotliCompressSync(tardata))
+      })
+
       t.test('async chunks', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,

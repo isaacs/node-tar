@@ -23,6 +23,7 @@ const fixtureDef = {
   'zero.tar': Buffer.from(''),
   'empty.tar': Buffer.alloc(512),
   'compressed.tgz': zlib.gzipSync(data),
+  'compressed.tbr': zlib.brotliCompressSync(data),
 }
 
 t.test('basic file add to archive (good or truncated)', t => {
@@ -209,6 +210,30 @@ t.test('cannot append to gzipped archives', async t => {
     file,
     cwd: __dirname,
   }, [path.basename(__filename)], er => t.match(er, expect))
+})
+
+t.test('cannot append to brotli compressed archives', async t => {
+  const dir = t.testdir({
+    'compressed.tbr': fixtureDef['compressed.tbr'],
+  })
+  const file = resolve(dir, 'compressed.tbr')
+
+  const expect = new Error('cannot append to compressed archives')
+  const expectT = new TypeError('cannot append to compressed archives')
+
+  t.throws(_ => r({
+    file,
+    cwd: __dirname,
+    brotli: true,
+  }, [path.basename(__filename)]), expectT)
+
+  t.throws(_ => r({
+    file,
+    cwd: __dirname,
+    sync: true,
+  }, [path.basename(__filename)]), expect)
+
+  t.end()
 })
 
 t.test('other throws', t => {
