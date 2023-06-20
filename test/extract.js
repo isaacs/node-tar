@@ -323,12 +323,25 @@ t.test('brotli', async t => {
     await rimraf(dir)
   })
 
-  t.test('fails if brotli', async t => {
-    const expect = new Error("TAR_BAD_ARCHIVE: Unrecognized archive format")
-    t.throws(_ => x({ sync: true, file: file }), expect)
+  t.test('fails if unknown file extension', async t => {
+    const filename = path.resolve(__dirname, 'brotli/example.unknown')
+    const f = fs.openSync(filename, 'a')
+    fs.closeSync(f)
+
+    const expect = new Error('TAR_BAD_ARCHIVE: Unrecognized archive format')
+
+    t.throws(_ => x({ sync: true, file: filename }), expect)
   })
 
-  t.test('succeeds', t => {
+  t.test('succeeds based on file extension', t => {
+    x({ sync: true, file: file, C: dir })
+
+    t.same(fs.readdirSync(dir + '/x').sort(),
+      ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9'])
+    t.end()
+  })
+
+  t.test('succeeds when passed explicit option', t => {
     x({ sync: true, file: file, C: dir, brotli: true })
 
     t.same(fs.readdirSync(dir + '/x').sort(),

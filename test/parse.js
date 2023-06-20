@@ -125,6 +125,28 @@ t.test('fixture tests', t => {
         bs.end(zlib.gzipSync(tardata))
       })
 
+      t.test('compress with brotli based on filename .tar.br', t => {
+        const p = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          file: 'example.tar.br',
+        })
+        trackEvents(t, expect, p)
+        p.end(zlib.brotliCompressSync(tardata))
+      })
+
+      t.test('compress with brotli based on filename .tbr', t => {
+        const p = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          file: 'example.tbr',
+        })
+        trackEvents(t, expect, p)
+        p.end(zlib.brotliCompressSync(tardata))
+      })
+
       t.test('compress with brotli all at once', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,

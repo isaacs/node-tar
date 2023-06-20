@@ -382,6 +382,12 @@ t.test('if brotli is truthy, make it an object', t => {
   t.end()
 })
 
+t.test('throws if both gzip and brotli are truthy', t => {
+  const opt = { gzip: true, brotli: true }
+  t.throws(_ => new Pack(opt), new TypeError('gzip and brotli are mutually exclusive'))
+  t.end()
+})
+
 t.test('gzip, also a very deep path', t => {
   const out = []
 
