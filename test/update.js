@@ -9,7 +9,6 @@ const { resolve } = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const tars = path.resolve(fixtures, 'tars')
 const zlib = require('zlib')
-const r = require("../lib/replace");
 
 const spawn = require('child_process').spawn
 

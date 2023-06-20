@@ -332,8 +332,7 @@ t.test('brotli', async t => {
     x({ sync: true, file: file, C: dir, brotli: true })
 
     t.same(fs.readdirSync(dir + '/x').sort(),
-        ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9'])
+      ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9'])
     t.end()
   })
 })
-

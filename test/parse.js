@@ -130,7 +130,7 @@ t.test('fixture tests', t => {
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict,
-          brotli: {}
+          brotli: {},
         })
         trackEvents(t, expect, p)
         p.end(zlib.brotliCompressSync(tardata))
