@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.2
+
+* Add support for brotli compression
+
 ## [6.1.13](https://github.com/npm/node-tar/compare/v6.1.12...v6.1.13) (2022-12-07)
 
 ### Dependencies
