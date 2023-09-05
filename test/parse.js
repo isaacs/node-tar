@@ -80,7 +80,7 @@ t.test('fixture tests', t => {
       const eventsFile = parsedir + '/' + base + tail
       const expect = require(eventsFile)
 
-      t.test('one byte at a time', t => {
+      t.test('uncompressed one byte at a time', t => {
         const bs = new ByteStream()
         const opt = (maxMeta || filter || strict) ? {
           maxMetaEntrySize: maxMeta,
@@ -93,11 +93,36 @@ t.test('fixture tests', t => {
         bs.end(tardata)
       })
 
-      t.test('all at once', t => {
+      t.test('uncompressed all at once', t => {
         const p = new Parse({
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict,
+        })
+        trackEvents(t, expect, p)
+        p.end(tardata)
+      })
+
+      t.test('uncompressed one byte at a time, filename .tbr', t => {
+        const bs = new ByteStream()
+        const opt = (maxMeta || filter || strict) ? {
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          file: 'example.tbr',
+        } : null
+        const bp = new Parse(opt)
+        trackEvents(t, expect, bp)
+        bs.pipe(bp)
+        bs.end(tardata)
+      })
+
+      t.test('uncompressed all at once, filename .tar.br', t => {
+        const p = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          file: 'example.tar.br',
         })
         trackEvents(t, expect, p)
         p.end(tardata)
@@ -108,6 +133,17 @@ t.test('fixture tests', t => {
           maxMetaEntrySize: maxMeta,
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict,
+        })
+        trackEvents(t, expect, p)
+        p.end(zlib.gzipSync(tardata))
+      })
+
+      t.test('gzipped all at once, filename .tbr', t => {
+        const p = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          file: 'example.tbr',
         })
         trackEvents(t, expect, p)
         p.end(zlib.gzipSync(tardata))
@@ -165,6 +201,19 @@ t.test('fixture tests', t => {
           filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
           strict: strict,
           brotli: {},
+        })
+        trackEvents(t, expect, bp)
+        bs.pipe(bp)
+        bs.end(zlib.brotliCompressSync(tardata))
+      })
+
+      t.test('compress with brotli .tbr byte at a time', t => {
+        const bs = new ByteStream()
+        const bp = new Parse({
+          maxMetaEntrySize: maxMeta,
+          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+          strict: strict,
+          file: 'example.tbr',
         })
         trackEvents(t, expect, bp)
         bs.pipe(bp)
