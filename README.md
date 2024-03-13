@@ -81,7 +81,7 @@ Handlers receive 3 arguments:
   `data.code`, which preserves the original error code from fs and zlib.
 - `message` String.  More details about the error.
 - `data` Metadata about the error.  An `Error` object for errors raised by
-  fs and zlib.  All fields are attached to errors raisd by tar.  Typically
+  fs and zlib.  All fields are attached to errors raised by tar.  Typically
   contains the following fields, as relevant:
   - `tarCode` The tar error code.
   - `code` Either the tar error code, or the error code set by the
@@ -302,6 +302,8 @@ The following options are supported:
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
   object with settings for `zlib.Gzip()` [Alias: `z`]
+- `brotli` Set to any truthy value to create a brotli-compressed archive,
+  or an object with settings for `zlib.BrotliCompress()`.
 - `filter` A function that gets called with `(path, stat)` for each
   entry being added.  Return `true` to add the entry to the archive,
   or `false` to omit it.
@@ -512,8 +514,6 @@ The following options are supported:
 - `cwd` The current working directory for adding entries to the
   archive.  Defaults to `process.cwd()`.  [Alias: `C`]
 - `prefix` A path portion to prefix onto the entries in the archive.
-- `gzip` Set to any truthy value to create a gzipped archive, or an
-  object with settings for `zlib.Gzip()` [Alias: `z`]
 - `filter` A function that gets called with `(path, stat)` for each
   entry being added.  Return `true` to add the entry to the archive,
   or `false` to omit it.
@@ -564,8 +564,6 @@ The following options are supported:
 - `cwd` The current working directory for adding entries to the
   archive.  Defaults to `process.cwd()`.  [Alias: `C`]
 - `prefix` A path portion to prefix onto the entries in the archive.
-- `gzip` Set to any truthy value to create a gzipped archive, or an
-  object with settings for `zlib.Gzip()` [Alias: `z`]
 - `filter` A function that gets called with `(path, stat)` for each
   entry being added.  Return `true` to add the entry to the archive,
   or `false` to omit it.
@@ -614,6 +612,8 @@ The following options are supported:
 - `prefix` A path portion to prefix onto the entries in the archive.
 - `gzip` Set to any truthy value to create a gzipped archive, or an
   object with settings for `zlib.Gzip()`
+- `brotli` Set to any truthy value to create a brotli-compressed archive,
+  or an object with settings for `zlib.BrotliCompress()`.
 - `filter` A function that gets called with `(path, stat)` for each
   entry being added.  Return `true` to add the entry to the archive,
   or `false` to omit it.
@@ -909,7 +909,7 @@ The following options are supported:
 
 If strict, emit an error with the provided message.
 
-Othewise, emit a `'warn'` event with the provided message and data.
+Otherwise, emit a `'warn'` event with the provided message and data.
 
 ### class tar.WriteEntry.Sync
 
