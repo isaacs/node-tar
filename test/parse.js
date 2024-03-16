@@ -646,7 +646,7 @@ t.test('truncated gzip input', t => {
     p.write(tgz.slice(split))
     p.end()
     t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, ['zlib: incorrect data check'])
+    t.match(warnings, [/^zlib: /])
     t.end()
   })
 

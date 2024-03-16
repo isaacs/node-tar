@@ -22,6 +22,7 @@ const mkdirp = require('mkdirp')
 const mutateFS = require('mutate-fs')
 const eos = require('end-of-stream')
 const normPath = require('../lib/normalize-windows-path.js')
+const ReadEntry = require('../lib/read-entry.js')
 
 // On Windows in particular, the "really deep folder path" file
 // often tends to cause problems, which don't indicate a failure
@@ -3234,4 +3235,64 @@ t.test('recognize C:.. as a dot path part', t => {
   })
 
   t.end()
+})
+
+t.test('excessively deep subfolder nesting', async t => {
+  const tf = path.resolve(fixtures, 'excessively-deep.tar')
+  const data = fs.readFileSync(tf)
+  const warnings = []
+  const onwarn = (c, w, { entry, path, depth, maxDepth }) =>
+    warnings.push([c, w, { entry, path, depth, maxDepth }])
+
+  const check = (t, maxDepth = 1024) => {
+    t.match(warnings, [
+      ['TAR_ENTRY_ERROR',
+        'path excessively deep',
+        {
+          entry: ReadEntry,
+          path: /^\.(\/a){1024,}\/foo.txt$/,
+          depth: 222372,
+          maxDepth,
+        }
+      ]
+    ])
+    warnings.length = 0
+    t.end()
+  }
+
+  t.test('async', t => {
+    const cwd = t.testdir()
+    new Unpack({
+      cwd,
+      onwarn
+    }).on('end', () => check(t)).end(data)
+  })
+
+  t.test('sync', t => {
+    const cwd = t.testdir()
+    new UnpackSync({
+      cwd,
+      onwarn
+    }).end(data)
+    check(t)
+  })
+
+  t.test('async set md', t => {
+    const cwd = t.testdir()
+    new Unpack({
+      cwd,
+      onwarn,
+      maxDepth: 64,
+    }).on('end', () => check(t, 64)).end(data)
+  })
+
+  t.test('sync set md', t => {
+    const cwd = t.testdir()
+    new UnpackSync({
+      cwd,
+      onwarn,
+      maxDepth: 64,
+    }).end(data)
+    check(t, 64)
+  })
 })
