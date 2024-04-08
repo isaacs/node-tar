@@ -630,6 +630,7 @@ The following options are supported:
   default" for most unix systems, based on a `umask` value of `0o22`.
 - `preservePaths` Allow absolute paths.  By default, `/` is stripped
   from absolute paths.
+
 - `linkCache` A Map object containing the device and inode value for
   any file whose nlink is > 1, to identify hard links.
 - `statCache` A Map object that caches calls `lstat`.

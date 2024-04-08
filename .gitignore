@@ -5,6 +5,7 @@
 
 # keep these
 !**/.gitignore
+!/src
 !/.commitlintrc.js
 !/.eslintrc.js
 !/.eslintrc.local.*
@@ -15,7 +16,6 @@
 !/bin/
 !/CHANGELOG*
 !/CODE_OF_CONDUCT.md
-!/docs/
 !/index.js
 !/lib/
 !/LICENSE*

@@ -1,0 +1,397 @@
+// parse a 512-byte header block to a data object, or vice-versa
+// encode returns `true` if a pax extended header is needed, because
+// the data could not be faithfully encoded in a simple header.
+// (Also, check header.needPax to see if it needs a pax header.)
+
+import { posix as pathModule } from 'node:path'
+import * as large from './large-numbers.js'
+import type { EntryTypeCode, EntryTypeName } from './types.js'
+import * as types from './types.js'
+
+export type HeaderData = {
+  path?: string
+  mode?: number
+  uid?: number
+  gid?: number
+  size?: number
+  cksum?: number
+  type?: EntryTypeCode | EntryTypeName
+  linkpath?: string
+  uname?: string
+  gname?: string
+  devmaj?: number
+  devmin?: number
+  atime?: Date
+  ctime?: Date
+  mtime?: Date
+
+  // fields that are common in extended PAX headers, but not in the
+  // "standard" tar header block
+  charset?: string
+  comment?: string
+  dev?: number
+  ino?: number
+  nlink?: number
+}
+
+export class Header implements HeaderData {
+  cksumValid: boolean = false
+  needPax: boolean = false
+  nullBlock: boolean = false
+
+  block?: Buffer
+  path?: string
+  mode?: number
+  uid?: number
+  gid?: number
+  size?: number
+  cksum?: number
+  #type: EntryTypeCode = '0'
+  linkpath?: string
+  uname?: string
+  gname?: string
+  devmaj: number = 0
+  devmin: number = 0
+  atime?: Date
+  ctime?: Date
+  mtime?: Date
+
+  charset?: string
+  comment?: string
+
+  constructor(
+    data?: Buffer | HeaderData,
+    off: number = 0,
+    ex?: HeaderData,
+    gex?: HeaderData,
+  ) {
+    if (Buffer.isBuffer(data)) {
+      this.decode(data, off || 0, ex, gex)
+    } else if (data) {
+      this.#slurp(data)
+    }
+  }
+
+  decode(
+    buf: Buffer,
+    off: number,
+    ex?: HeaderData,
+    gex?: HeaderData,
+  ) {
+    if (!off) {
+      off = 0
+    }
+
+    if (!buf || !(buf.length >= off + 512)) {
+      throw new Error('need 512 bytes for header')
+    }
+
+    this.path = decString(buf, off, 100)
+    this.mode = decNumber(buf, off + 100, 8)
+    this.uid = decNumber(buf, off + 108, 8)
+    this.gid = decNumber(buf, off + 116, 8)
+    this.size = decNumber(buf, off + 124, 12)
+    this.mtime = decDate(buf, off + 136, 12)
+    this.cksum = decNumber(buf, off + 148, 12)
+
+    // if we have extended or global extended headers, apply them now
+    // See https://github.com/npm/node-tar/pull/187
+    if (ex) this.#slurp(ex)
+    if (gex) this.#slurp(gex, true)
+
+    // old tar versions marked dirs as a file with a trailing /
+    const t = decString(buf, off + 156, 1)
+    if (types.isCode(t)) this.#type = t
+    else this.#type = '0'
+    if (this.#type === '') {
+      this.#type = '0'
+    }
+    if (this.#type === '0' && this.path.slice(-1) === '/') {
+      this.#type = '5'
+    }
+
+    // tar implementations sometimes incorrectly put the stat(dir).size
+    // as the size in the tarball, even though Directory entries are
+    // not able to have any body at all.  In the very rare chance that
+    // it actually DOES have a body, we weren't going to do anything with
+    // it anyway, and it'll just be a warning about an invalid header.
+    if (this.#type === '5') {
+      this.size = 0
+    }
+
+    this.linkpath = decString(buf, off + 157, 100)
+    if (
+      buf.subarray(off + 257, off + 265).toString() ===
+      'ustar\u000000'
+    ) {
+      this.uname = decString(buf, off + 265, 32)
+      this.gname = decString(buf, off + 297, 32)
+      this.devmaj = decNumber(buf, off + 329, 8) ?? 0
+      this.devmin = decNumber(buf, off + 337, 8) ?? 0
+      if (buf[off + 475] !== 0) {
+        // definitely a prefix, definitely >130 chars.
+        const prefix = decString(buf, off + 345, 155)
+        this.path = prefix + '/' + this.path
+      } else {
+        const prefix = decString(buf, off + 345, 130)
+        if (prefix) {
+          this.path = prefix + '/' + this.path
+        }
+        this.atime = decDate(buf, off + 476, 12)
+        this.ctime = decDate(buf, off + 488, 12)
+      }
+    }
+
+    let sum = 8 * 0x20
+    for (let i = off; i < off + 148; i++) {
+      sum += buf[i] as number
+    }
+
+    for (let i = off + 156; i < off + 512; i++) {
+      sum += buf[i] as number
+    }
+
+    this.cksumValid = sum === this.cksum
+    if (this.cksum === null && sum === 8 * 0x20) {
+      this.nullBlock = true
+    }
+  }
+
+  #slurp(ex: HeaderData, gex: boolean = false) {
+    Object.assign(
+      this,
+      Object.fromEntries(
+        Object.entries(ex).filter(([k, v]) => {
+          // we slurp in everything except for the path attribute in
+          // a global extended header, because that's weird. Also, any
+          // null/undefined values are ignored.
+          return !(
+            v === null ||
+            v === undefined ||
+            (k === 'path' && gex)
+          )
+        }),
+      ),
+    )
+  }
+
+  encode(buf?: Buffer, off: number = 0) {
+    if (!buf) {
+      buf = this.block = Buffer.alloc(512)
+    }
+
+    if (!(buf.length >= off + 512)) {
+      throw new Error('need 512 bytes for header')
+    }
+
+    const prefixSize = this.ctime || this.atime ? 130 : 155
+    const split = splitPrefix(this.path || '', prefixSize)
+    const path = split[0]
+    const prefix = split[1]
+    this.needPax = !!split[2]
+
+    this.needPax = encString(buf, off, 100, path) || this.needPax
+    this.needPax =
+      encNumber(buf, off + 100, 8, this.mode) || this.needPax
+    this.needPax =
+      encNumber(buf, off + 108, 8, this.uid) || this.needPax
+    this.needPax =
+      encNumber(buf, off + 116, 8, this.gid) || this.needPax
+    this.needPax =
+      encNumber(buf, off + 124, 12, this.size) || this.needPax
+    this.needPax =
+      encDate(buf, off + 136, 12, this.mtime) || this.needPax
+    buf[off + 156] = this.#type.charCodeAt(0)
+    this.needPax =
+      encString(buf, off + 157, 100, this.linkpath) || this.needPax
+    buf.write('ustar\u000000', off + 257, 8)
+    this.needPax =
+      encString(buf, off + 265, 32, this.uname) || this.needPax
+    this.needPax =
+      encString(buf, off + 297, 32, this.gname) || this.needPax
+    this.needPax =
+      encNumber(buf, off + 329, 8, this.devmaj) || this.needPax
+    this.needPax =
+      encNumber(buf, off + 337, 8, this.devmin) || this.needPax
+    this.needPax =
+      encString(buf, off + 345, prefixSize, prefix) || this.needPax
+    if (buf[off + 475] !== 0) {
+      this.needPax =
+        encString(buf, off + 345, 155, prefix) || this.needPax
+    } else {
+      this.needPax =
+        encString(buf, off + 345, 130, prefix) || this.needPax
+      this.needPax =
+        encDate(buf, off + 476, 12, this.atime) || this.needPax
+      this.needPax =
+        encDate(buf, off + 488, 12, this.ctime) || this.needPax
+    }
+
+    let sum = 8 * 0x20
+    for (let i = off; i < off + 148; i++) {
+      sum += buf[i] as number
+    }
+
+    for (let i = off + 156; i < off + 512; i++) {
+      sum += buf[i] as number
+    }
+
+    this.cksum = sum
+    encNumber(buf, off + 148, 8, this.cksum)
+    this.cksumValid = true
+
+    return this.needPax
+  }
+
+  get type(): EntryTypeName {
+    return types.name.get(this.#type) as EntryTypeName
+  }
+
+  get typeKey(): EntryTypeCode {
+    return this.#type
+  }
+
+  set type(type: EntryTypeCode | EntryTypeName) {
+    const c = String(types.code.get(type as EntryTypeName))
+    if (types.isCode(c)) {
+      this.#type = c
+    } else if (types.isCode(type)) {
+      this.#type = type
+    } else {
+      throw new TypeError('invalid entry type: ' + type)
+    }
+  }
+}
+
+const splitPrefix = (
+  p: string,
+  prefixSize: number,
+): [string, string, boolean] => {
+  const pathSize = 100
+  let pp = p
+  let prefix = ''
+  let ret: undefined | [string, string, boolean] = undefined
+  const root = pathModule.parse(p).root || '.'
+
+  if (Buffer.byteLength(pp) < pathSize) {
+    ret = [pp, prefix, false]
+  } else {
+    // first set prefix to the dir, and path to the base
+    prefix = pathModule.dirname(pp)
+    pp = pathModule.basename(pp)
+
+    do {
+      if (
+        Buffer.byteLength(pp) <= pathSize &&
+        Buffer.byteLength(prefix) <= prefixSize
+      ) {
+        // both fit!
+        ret = [pp, prefix, false]
+      } else if (
+        Buffer.byteLength(pp) > pathSize &&
+        Buffer.byteLength(prefix) <= prefixSize
+      ) {
+        // prefix fits in prefix, but path doesn't fit in path
+        ret = [pp.slice(0, pathSize - 1), prefix, true]
+      } else {
+        // make path take a bit from prefix
+        pp = pathModule.join(pathModule.basename(prefix), pp)
+        prefix = pathModule.dirname(prefix)
+      }
+    } while (prefix !== root && ret === undefined)
+
+    // at this point, found no resolution, just truncate
+    if (!ret) {
+      ret = [p.slice(0, pathSize - 1), '', true]
+    }
+  }
+  return ret
+}
+
+const decString = (buf: Buffer, off: number, size: number) =>
+  buf
+    .subarray(off, off + size)
+    .toString('utf8')
+    .replace(/\0.*/, '')
+
+const decDate = (buf: Buffer, off: number, size: number) =>
+  numToDate(decNumber(buf, off, size))
+
+const numToDate = (num?: number) =>
+  num === undefined ? undefined : new Date(num * 1000)
+
+const decNumber = (buf: Buffer, off: number, size: number) =>
+  Number(buf[off]) & 0x80
+    ? large.parse(buf.subarray(off, off + size))
+    : decSmallNumber(buf, off, size)
+
+const nanUndef = (value: number) => (isNaN(value) ? undefined : value)
+
+const decSmallNumber = (buf: Buffer, off: number, size: number) =>
+  nanUndef(
+    parseInt(
+      buf
+        .subarray(off, off + size)
+        .toString('utf8')
+        .replace(/\0.*$/, '')
+        .trim(),
+      8,
+    ),
+  )
+
+// the maximum encodable as a null-terminated octal, by field size
+const MAXNUM = {
+  12: 0o77777777777,
+  8: 0o7777777,
+}
+
+const encNumber = (
+  buf: Buffer,
+  off: number,
+  size: 12 | 8,
+  num?: number,
+) =>
+  num === undefined
+    ? false
+    : num > MAXNUM[size] || num < 0
+      ? (large.encode(num, buf.subarray(off, off + size)), true)
+      : (encSmallNumber(buf, off, size, num), false)
+
+const encSmallNumber = (
+  buf: Buffer,
+  off: number,
+  size: number,
+  num: number,
+) => buf.write(octalString(num, size), off, size, 'ascii')
+
+const octalString = (num: number, size: number) =>
+  padOctal(Math.floor(num).toString(8), size)
+
+const padOctal = (str: string, size: number) =>
+  (str.length === size - 1
+    ? str
+    : new Array(size - str.length - 1).join('0') + str + ' ') + '\0'
+
+const encDate = (
+  buf: Buffer,
+  off: number,
+  size: 8 | 12,
+  date?: Date,
+) =>
+  date === undefined
+    ? false
+    : encNumber(buf, off, size, date.getTime() / 1000)
+
+// enough to fill the longest string we've got
+const NULLS = new Array(156).join('\0')
+// pad with nulls, return true if it's longer or non-ascii
+const encString = (
+  buf: Buffer,
+  off: number,
+  size: number,
+  str?: string,
+) =>
+  str === undefined
+    ? false
+    : (buf.write(str + NULLS, off, size, 'utf8'),
+      str.length !== Buffer.byteLength(str) || str.length > size)
