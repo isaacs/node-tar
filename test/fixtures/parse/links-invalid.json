@@ -17,8 +17,6 @@
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "SymbolicLink",
       "meta": false,
       "ignore": false,
@@ -30,8 +28,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T19:27:33.000Z",
-      "atime": null,
-      "ctime": null,
       "linkpath": "hardlink-2",
       "header": {
         "cksumValid": true,
@@ -47,9 +43,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],

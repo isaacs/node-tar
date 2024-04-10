@@ -8,23 +8,12 @@
     {
       "extended": {
         "atime": "2017-04-10T17:33:21.000Z",
-        "charset": null,
-        "comment": null,
-        "ctime": "2017-04-10T17:05:56.000Z",
-        "gid": null,
-        "gname": null,
-        "linkpath": null,
-        "mtime": null,
-        "path": "🌟.txt",
-        "size": null,
-        "uid": null,
-        "uname": null,
         "dev": 16777220,
         "ino": 9836716,
         "nlink": 1,
+        "path": "🌟.txt",
         "global": false
       },
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -37,8 +26,6 @@
       "size": 106,
       "mtime": "2017-04-10T17:05:55.000Z",
       "atime": "2017-04-10T17:33:21.000Z",
-      "ctime": "2017-04-10T17:05:56.000Z",
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -53,17 +40,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -75,9 +58,6 @@
       "gname": "staff",
       "size": 1,
       "mtime": "2017-04-10T16:58:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -92,9 +72,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],

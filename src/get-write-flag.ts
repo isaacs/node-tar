@@ -5,21 +5,19 @@
 // library is used for is extracting tarballs of many
 // relatively small files in npm packages and the like,
 // it can be a big boost on Windows platforms.
-// Only supported in Node v12.9.0 and above.
+
+import fs from 'fs'
+
 const platform = process.env.__FAKE_PLATFORM__ || process.platform
 const isWindows = platform === 'win32'
-const g = globalThis as typeof globalThis & {
-  __FAKE_TESTING_FS__: typeof import('fs')
-}
-const fs = g.__FAKE_TESTING_FS__ || require('fs')
 
-/* istanbul ignore next */
-const {
-  O_CREAT,
-  O_TRUNC,
-  O_WRONLY,
-  UV_FS_O_FILEMAP = 0,
-} = fs.constants
+/* c8 ignore start */
+const { O_CREAT, O_TRUNC, O_WRONLY } = fs.constants
+const UV_FS_O_FILEMAP =
+  Number(process.env.__FAKE_FS_O_FILENAME__) ||
+  fs.constants.UV_FS_O_FILEMAP ||
+  0
+/* c8 ignore stop */
 
 const fMapEnabled = isWindows && !!UV_FS_O_FILEMAP
 const fMapLimit = 512 * 1024

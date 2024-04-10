@@ -49,6 +49,7 @@ export type EntryTypeName =
   | 'SparseFile'
   | 'TapeVolumeHeader'
   | 'OldExtendedHeader'
+  | 'Unsupported'
 
 // map types from key to human-friendly name
 export const name = new Map<EntryTypeCode, EntryTypeName>([

@@ -1,8 +1,5 @@
-'use strict'
-const large = require('../lib/large-numbers.js')
-const encode = large.encode
-const parse = large.parse
-const t = require('tap')
+import t from 'tap'
+import { encode, parse }  from '../dist/esm/large-numbers.js'
 
 t.test('parse', t => {
   const cases = new Map([

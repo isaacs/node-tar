@@ -132,7 +132,7 @@ const extractFileSync = (opt: TarOptionsSyncFile) => {
 
 const extractFile = (
   opt: TarOptionsFile,
-  cb: () => void = () => {},
+  cb?: () => void,
 ) => {
   const u = new Unpack(opt)
   const readSize = opt.maxReadSize || 16 * 1024 * 1024

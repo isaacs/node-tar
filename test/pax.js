@@ -1,6 +1,5 @@
-'use strict'
-const t = require('tap')
-const Pax = require('../lib/pax.js')
+import t from 'tap'
+import { Pax } from '../dist/esm/pax.js'
 
 t.test('create a pax', t => {
   const p = new Pax({
@@ -17,8 +16,6 @@ t.test('create a pax', t => {
     ino: 7890,
     nlink: 1,
   })
-
-  // console.log(p.encode().toString('hex').split('').reduce((s,c)=>{if(s[s.length-1].length<64)s[s.length-1]+=c;else s.push(c);return s},['']))
 
   const buf = Buffer.from(
     // pax entry header
@@ -59,13 +56,13 @@ t.test('create a pax', t => {
     'hex')
 
   const actual = p.encode()
-  t.equal(actual.toString('hex'), buf.toString('hex'))
+  t.match(actual, buf)
   t.end()
 })
 
 t.test('null pax', t => {
   const p = new Pax({})
-  t.equal(p.encode(), null)
+  t.same(p.encode(), Buffer.allocUnsafe(0))
   t.end()
 })
 
@@ -74,8 +71,6 @@ t.test('tiny pax', t => {
   // an error?
   const p = new Pax({ path: 'ab' }, true)
   const actual = p.encode()
-  // console.log(actual.toString('hex').split('').reduce((s,c)=>{if(s[s.length-1].length<64)s[s.length-1]+=c;else s.push(c);return s},['']))
-  // return Promise.resolve()
 
   const buf = Buffer.from(
     // header
@@ -120,104 +115,112 @@ t.test('tiny pax', t => {
     '0000000000000000000000000000000000000000000000000000000000000000',
     'hex')
 
-  t.equal(actual.toString('hex'), buf.toString('hex'))
+  t.same(actual, buf)
 
   t.end()
 })
 
 t.test('parse', t => {
-  t.same(Pax.parse('11 path=ab\n', { uid: 24561 }, true), {
-    atime: null,
-    charset: null,
-    comment: null,
-    ctime: null,
-    gid: null,
-    gname: null,
-    linkpath: null,
-    mtime: null,
+  const p = Pax.parse('11 path=ab\n', { uid: 24561 }, true)
+  t.same(p, Object.assign(Object.create(Pax.prototype), {
+    atime: undefined,
+    mode: undefined,
+    charset: undefined,
+    comment: undefined,
+    ctime: undefined,
+    gid: undefined,
+    gname: undefined,
+    linkpath: undefined,
+    mtime: undefined,
     path: 'ab',
-    size: null,
+    size: undefined,
     uid: 24561,
-    uname: null,
-    dev: null,
-    ino: null,
-    nlink: null,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    nlink: undefined,
     global: true,
-  })
+  }))
 
-  t.same(Pax.parse('11 path=ab\n', null, false), {
-    atime: null,
-    charset: null,
-    comment: null,
-    ctime: null,
-    gid: null,
-    gname: null,
-    linkpath: null,
-    mtime: null,
+  t.same(Pax.parse('11 path=ab\n'), Object.assign(Object.create(Pax.prototype), {
+    atime: undefined,
+    mtime: undefined,
+    ctime: undefined,
+    charset: undefined,
+    comment: undefined,
+    gid: undefined,
+    gname: undefined,
+    uname: undefined,
+    linkpath: undefined,
     path: 'ab',
-    size: null,
-    uid: null,
-    uname: null,
-    dev: null,
-    ino: null,
-    nlink: null,
+    size: undefined,
+    mode: undefined,
+    uid: undefined,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    nlink: undefined,
     global: false,
-  })
+  }))
 
-  t.same(Pax.parse('9 gid=20\n9 path=x\n', null, false), {
-    atime: null,
-    charset: null,
-    comment: null,
-    ctime: null,
+  t.same(Pax.parse('9 gid=20\n9 path=x\n'), {
+    atime: undefined,
+    mtime: undefined,
+    ctime: undefined,
+    charset: undefined,
+    comment: undefined,
     gid: 20,
-    gname: null,
-    linkpath: null,
-    mtime: null,
+    gname: undefined,
+    linkpath: undefined,
+    mtime: undefined,
     path: 'x',
-    size: null,
-    uid: null,
-    uname: null,
-    dev: null,
-    ino: null,
-    nlink: null,
+    size: undefined,
+    uid: undefined,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    nlink: undefined,
+    mode: undefined,
     global: false,
   })
 
-  t.same(Pax.parse('9 gid=20\n9 path=x\n', null, false), {
-    atime: null,
-    charset: null,
-    comment: null,
-    ctime: null,
+  t.same(Pax.parse('9 gid=20\n9 path=x\n'), {
+    atime: undefined,
+    charset: undefined,
+    comment: undefined,
+    ctime: undefined,
     gid: 20,
-    gname: null,
-    linkpath: null,
-    mtime: null,
+    gname: undefined,
+    linkpath: undefined,
+    mtime: undefined,
     path: 'x',
-    size: null,
-    uid: null,
-    uname: null,
-    dev: null,
-    ino: null,
-    nlink: null,
+    size: undefined,
+    uid: undefined,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    mode: undefined,
+    nlink: undefined,
     global: false,
   })
 
-  t.same(Pax.parse('20 mtime=1491436800\n', null, false), {
-    atime: null,
-    charset: null,
-    comment: null,
-    ctime: null,
-    gid: null,
-    gname: null,
-    linkpath: null,
+  t.same(Pax.parse('20 mtime=1491436800\n'), {
+    atime: undefined,
+    charset: undefined,
+    comment: undefined,
+    ctime: undefined,
+    gid: undefined,
+    gname: undefined,
+    linkpath: undefined,
     mtime: new Date('2017-04-06'),
-    path: null,
-    size: null,
-    uid: null,
-    uname: null,
-    dev: null,
-    ino: null,
-    nlink: null,
+    path: undefined,
+    size: undefined,
+    uid: undefined,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    nlink: undefined,
+    mode: undefined,
     global: false,
   })
 
@@ -230,22 +233,23 @@ t.test('parse', t => {
 
   const noKey = '10 =pathx\n'
 
-  t.same(Pax.parse(breaky + '9 gid=20\n10 path=x\n' + noKey, null, false), {
-    atime: null,
-    charset: null,
-    comment: null,
-    ctime: null,
+  t.same(Pax.parse(breaky + '9 gid=20\n10 path=x\n' + noKey), {
+    atime: undefined,
+    charset: undefined,
+    comment: undefined,
+    ctime: undefined,
     gid: 20,
-    gname: null,
-    linkpath: null,
-    mtime: null,
+    gname: undefined,
+    linkpath: undefined,
+    mtime: undefined,
     path: 'x',
-    size: null,
-    uid: null,
-    uname: null,
-    dev: null,
-    ino: null,
-    nlink: null,
+    size: undefined,
+    uid: undefined,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    nlink: undefined,
+    mode: undefined,
     global: false,
   })
 

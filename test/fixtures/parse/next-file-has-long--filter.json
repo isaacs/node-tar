@@ -9,7 +9,6 @@
       "extended": {
         "path": "170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": true,
@@ -21,9 +20,6 @@
       "gname": "staff",
       "size": 100,
       "mtime": "2017-04-10T16:56:18.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -38,9 +34,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
@@ -54,7 +48,6 @@
       "extended": {
         "linkpath": "170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
-      "globalExtended": null,
       "type": "SymbolicLink",
       "meta": false,
       "ignore": true,
@@ -66,8 +59,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T23:22:33.000Z",
-      "atime": null,
-      "ctime": null,
       "linkpath": "170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "header": {
         "cksumValid": true,
@@ -83,9 +74,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],

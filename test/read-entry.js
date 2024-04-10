@@ -1,7 +1,6 @@
-'use strict'
-const t = require('tap')
-const ReadEntry = require('../lib/read-entry.js')
-const Header = require('../lib/header.js')
+import t from 'tap'
+import { ReadEntry } from '../dist/esm/read-entry.js'
+import { Header } from '../dist/esm/header.js'
 
 t.test('create read entry', t => {
   const h = new Header({
@@ -19,7 +18,11 @@ t.test('create read entry', t => {
   })
   h.encode()
 
-  const entry = new ReadEntry(h, { x: 'y', path: 'foo.txt' }, { z: 0, a: null, b: undefined })
+  const entry = new ReadEntry(
+    h,
+    { x: 'y', path: 'foo.txt' },
+    { z: 0, a: null, b: undefined },
+  )
 
   t.ok(entry.header.cksumValid, 'header checksum should be valid')
 
@@ -67,8 +70,8 @@ t.test('create read entry', t => {
 
   let data = ''
   let ended = false
-  entry.on('data', c => data += c)
-  entry.on('end', _ => ended = true)
+  entry.on('data', c => (data += c))
+  entry.on('end', _ => (ended = true))
 
   const body = Buffer.alloc(512)
   body.write(new Array(101).join('z'), 0)
@@ -77,6 +80,85 @@ t.test('create read entry', t => {
 
   t.equal(data, new Array(101).join('z'))
   t.ok(ended, 'saw end event')
+
+  t.end()
+})
+
+t.test('entry with extended linkpath', t => {
+  const h = new Header({
+    path: 'oof.txt',
+    mode: 0o755,
+    uid: 24561,
+    gid: 20,
+    size: 0,
+    mtime: new Date('2016-04-01T22:00Z'),
+    ctime: new Date('2016-04-01T22:00Z'),
+    atime: new Date('2016-04-01T22:00Z'),
+    type: 'SymbolicLink',
+    uname: 'isaacs',
+    gname: 'staff',
+  })
+  h.encode()
+
+  const entry = new ReadEntry(
+    h,
+    { x: 'y', linkpath: 'bar.txt', path: 'foo.txt' },
+    { z: 0, a: null, b: undefined },
+  )
+
+  t.ok(entry.header.cksumValid, 'header checksum should be valid')
+
+  t.match(entry, {
+    extended: { x: 'y', path: 'foo.txt', linkpath: 'bar.txt' },
+    globalExtended: { z: 0, a: null, b: undefined },
+    header: {
+      cksumValid: true,
+      needPax: false,
+      path: 'oof.txt',
+      mode: 0o755,
+      uid: 24561,
+      gid: 20,
+      size: 0,
+      mtime: new Date('2016-04-01T22:00:00.000Z'),
+      typeKey: '2',
+      type: 'SymbolicLink',
+      linkpath: null,
+      uname: 'isaacs',
+      gname: 'staff',
+      devmaj: 0,
+      devmin: 0,
+      atime: new Date('2016-04-01T22:00:00.000Z'),
+      ctime: new Date('2016-04-01T22:00:00.000Z'),
+    },
+    blockRemain: 0,
+    remain: 0,
+    type: 'SymbolicLink',
+    meta: false,
+    ignore: false,
+    path: 'foo.txt',
+    mode: 0o755,
+    uid: 24561,
+    gid: 20,
+    uname: 'isaacs',
+    gname: 'staff',
+    size: 0,
+    mtime: new Date('2016-04-01T22:00:00.000Z'),
+    atime: new Date('2016-04-01T22:00:00.000Z'),
+    ctime: new Date('2016-04-01T22:00:00.000Z'),
+    linkpath: 'bar.txt',
+    x: 'y',
+    z: 0,
+  })
+
+  let data = ''
+  entry.on('data', c => (data += c))
+
+  const body = Buffer.alloc(512)
+  body.write(new Array(101).join('z'), 0)
+  t.throws(() => entry.write(body))
+  entry.end()
+
+  t.equal(data, '')
 
   t.end()
 })
@@ -102,11 +184,11 @@ t.test('meta entry', t => {
   let actual = ''
 
   const entry = new ReadEntry(h)
-  entry.on('data', c => actual += c)
+  entry.on('data', c => (actual += c))
 
-  entry.write(body.slice(0, 1))
-  entry.write(body.slice(1, 25))
-  entry.write(body.slice(25))
+  entry.write(body.subarray(0, 1))
+  entry.write(body.subarray(1, 25))
+  entry.write(body.subarray(25))
   t.throws(_ => entry.write(Buffer.alloc(1024)))
 
   t.equal(actual, expect)
@@ -128,6 +210,8 @@ t.test('unknown entry type', t => {
     gname: 'staff',
   })
   h.encode()
+  // this triggers its type to be Unsupported, which means that any
+  // data written to it will be thrown away.
   h.block.write('9', 156, 1, 'ascii')
 
   const body = Buffer.alloc(512)
@@ -138,12 +222,12 @@ t.test('unknown entry type', t => {
 
   const entry = new ReadEntry(new Header(h.block))
 
-  entry.on('data', c => actual += c)
+  entry.on('data', c => (actual += c))
 
-  entry.write(body.slice(0, 1))
-  entry.write(body.slice(1, 25))
-  entry.write(body.slice(25))
-  t.throws(_ => entry.write(Buffer.alloc(1024)))
+  entry.write(body.subarray(0, 1))
+  entry.write(body.subarray(1, 25))
+  entry.write(body.subarray(25))
+  t.throws(() => entry.write(Buffer.alloc(1024)))
 
   t.equal(actual, expect)
   t.match(entry, { ignore: true })
@@ -209,8 +293,8 @@ t.test('entry without mode', t => {
 
   let data = ''
   let ended = false
-  entry.on('data', c => data += c)
-  entry.on('end', _ => ended = true)
+  entry.on('data', c => (data += c))
+  entry.on('end', _ => (ended = true))
 
   const body = Buffer.alloc(512)
   body.write(new Array(101).join('z'), 0)

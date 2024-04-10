@@ -1,9 +1,12 @@
-const { basename } = require('path')
+import { basename } from 'path'
 
 const map = test =>
-  test === 'index.js' || test === 'map.js' ? test
-  : test === 'unpack.js' ? ['lib/unpack.js', 'lib/mkdir.js']
-  : test === 'load-all.js' ? []
-  : `lib/${test}`
+  test === 'map.js'
+    ? test
+    : test === 'unpack.js'
+      ? ['src/unpack.ts', 'src/mkdir.ts']
+      : test === 'load-all.js'
+        ? []
+        : `src/${test.replace(/js$/, 'ts')}`
 
-module.exports = test => map(basename(test))
+export default test => map(basename(test))

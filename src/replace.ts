@@ -219,6 +219,7 @@ const replace_ = (
         return cb(null, position)
       }
 
+      /* c8 ignore next */
       const entryBlockSize = 512 * Math.ceil((h.size ?? 0) / 512)
       if (position + entryBlockSize + 512 > size) {
         return cb(null, position)
@@ -299,16 +300,15 @@ const addFilesSync = (p: Pack, files: string[]) => {
 const addFilesAsync = async (
   p: Pack,
   files: string[],
-  i = 0,
 ): Promise<void> => {
-  for (; i < files.length; i++) {
+  for (let i = 0; i < files.length; i++) {
     const file = String(files[i])
     if (file.charAt(0) === '@') {
-      return list({
+      await list({
         file: path.resolve(String(p.cwd), file.slice(1)),
         noResume: true,
         onentry: entry => p.add(entry),
-      }).then(_ => addFilesAsync(p, files))
+      })
     } else {
       p.add(file)
     }

@@ -1,7 +1,9 @@
-const t = require('tap')
-const map = require('../map.js')
-t.equal(map('test/index.js'), 'index.js')
-t.same(map('test/unpack.js'), ['lib/unpack.js', 'lib/mkdir.js'])
+import t from 'tap'
+import map from '../map.js'
+import { fileURLToPath } from 'url'
+const __filename = fileURLToPath(import.meta.url)
+t.equal(map('test/index.js'), 'src/index.ts')
+t.same(map('test/unpack.js'), ['src/unpack.ts', 'src/mkdir.ts'])
 t.same(map('test/load-all.js'), [])
 t.equal(map(__filename), 'map.js')
-t.equal(map('test/asdf'), 'lib/asdf')
+t.equal(map('test/asdf'), 'src/asdf')

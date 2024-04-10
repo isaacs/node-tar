@@ -95,10 +95,11 @@ export class PathReservations {
     dirs: (Handler | Set<Handler>)[][]
   } {
     const res = this.#reservations.get(fn)
-    /* istanbul ignore if - unpossible */
+    /* c8 ignore start */
     if (!res) {
       throw new Error('function does not have any path reservations')
     }
+    /* c8 ignore stop */
     return {
       paths: res.paths.map((path: string) =>
         this.#queues.get(path),
@@ -168,7 +169,8 @@ export class PathReservations {
     for (const dir of dirs) {
       const q = this.#queues.get(dir)
       const q0 = q?.[0]
-      if (!(q0 instanceof Set) || !q) continue
+      /* c8 ignore next - type safety only */
+      if (!q || !(q0 instanceof Set)) continue
       if (q0.size === 1 && q.length === 1) {
         this.#queues.delete(dir)
         continue

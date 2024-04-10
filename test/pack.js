@@ -1,37 +1,45 @@
-'use strict'
-const t = require('tap')
-const Pack = require('../lib/pack.js')
-const PackSync = Pack.Sync
-const fs = require('fs')
-const path = require('path')
+import t from 'tap'
+import { Pack, PackSync } from '../dist/esm/pack.js'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+import { Header } from '../dist/esm/header.js'
+import zlib from 'zlib'
+import * as miniz from 'minizlib'
+import mutateFS from 'mutate-fs'
+import { Minipass } from 'minipass'
+import EE from 'events'
+import { rimraf } from 'rimraf'
+import { mkdirp } from 'mkdirp'
+import { ReadEntry } from '../dist/esm/read-entry.js'
+import { normalizeWindowsPath as normPath } from '../dist/esm/normalize-windows-path.js'
+
+const { default: chmodr } = await import('chmodr')
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
 const tars = path.resolve(fixtures, 'tars')
-const chmodr = require('chmodr')
-const Header = require('../lib/header.js')
-const zlib = require('zlib')
-const miniz = require('minizlib')
-const mutateFS = require('mutate-fs')
-const { Minipass } = require('minipass')
+
 process.env.USER = 'isaacs'
-const EE = require('events').EventEmitter
-const rimraf = require('rimraf')
-const mkdirp = require('mkdirp')
-const ReadEntry = require('../lib/read-entry.js')
 const isWindows = process.platform === 'win32'
-const normPath = require('../lib/normalize-windows-path.js')
 
 const ctime = new Date('2017-05-10T01:03:12.000Z')
 const atime = new Date('2017-04-17T00:00:00.000Z')
 const mtime = new Date('2016-04-01T19:00:00.000Z')
 
-t.teardown(mutateFS.statMutate((er, st) => {
-  if (st) {
-    st.ctime = ctime
-    st.atime = atime
-    st.mtime = mtime
-  }
-}))
+t.teardown(
+  mutateFS.statMutate((_er, st) => {
+    if (st) {
+      st.ctime = ctime
+      st.atime = atime
+      st.mtime = mtime
+    }
+  }),
+)
 
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
@@ -54,7 +62,7 @@ t.test('pack a file', t => {
     .on('end', _ => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
-      t.match(data.slice(512).toString(), /^a\0{511}\0{1024}$/)
+      t.match(data.subarray(512).toString(), /^a\0{511}\0{1024}$/)
       const h = new Header(data)
       const expect = {
         cksumValid: true,
@@ -84,7 +92,7 @@ t.test('pack a file', t => {
         throw new Error('no data!')
       }
 
-      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -93,13 +101,13 @@ t.test('pack a file', t => {
 
 t.test('pack a file with a prefix', t => {
   const out = []
-  new Pack({ cwd: files, prefix: 'package/' })
+  new Pack({ mtime, cwd: files, prefix: 'package/' })
     .end('.dotfile')
     .on('data', c => out.push(c))
     .on('end', _ => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
-      t.match(data.slice(512).toString(), /^.\n\0{510}\0{1024}$/)
+      t.match(data.subarray(512).toString(), /^.\n\0{510}\0{1024}$/)
       const h = new Header(data)
       const expect = {
         cksumValid: true,
@@ -121,8 +129,10 @@ t.test('pack a file with a prefix', t => {
       }
       t.match(h, expect)
       const sync = new PackSync({ cwd: files, prefix: 'package' })
-        .add('.dotfile').end().read()
-      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+        .add('.dotfile')
+        .end()
+        .read()
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -163,15 +173,21 @@ t.test('portable pack a dir', t => {
       }
       t.match(h, expect)
       t.equal(data.length, 2048)
-      t.match(data.slice(1024).toString(), /^\0{1024}$/)
+      t.match(data.subarray(1024).toString(), /^\0{1024}$/)
 
-      const syncgz = new PackSync({ cwd: files, portable: true, gzip: true })
-        .add('dir').end().read()
+      const syncgz = new PackSync({
+        cwd: files,
+        portable: true,
+        gzip: true,
+      })
+        .add('dir')
+        .end()
+        .read()
 
       t.equal(syncgz[9], 255, 'gzip OS flag set to "unknown"')
       const sync = new miniz.Gunzip().end(zipped).read()
 
-      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
 
@@ -193,8 +209,8 @@ t.test('portable pack a dir', t => {
         ctime: null,
         nullBlock: false,
       }
-      t.match(new Header(data.slice(512)), expect2)
-      t.match(new Header(sync.slice(512)), expect2)
+      t.match(new Header(data.subarray(512)), expect2)
+      t.match(new Header(sync.subarray(512)), expect2)
       t.end()
     })
 })
@@ -235,11 +251,13 @@ t.test('use process cwd if cwd not specified', t => {
       }
       t.match(h, expect)
       t.equal(data.length, 2048)
-      t.match(data.slice(1024).toString(), /^\0{1024}$/)
+      t.match(data.subarray(1024).toString(), /^\0{1024}$/)
 
       const sync = new PackSync({ cwd: files })
-        .add('dir').end().read()
-      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+        .add('dir')
+        .end()
+        .read()
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
 
@@ -261,15 +279,15 @@ t.test('use process cwd if cwd not specified', t => {
         ctime: ctime,
         nullBlock: false,
       }
-      t.match(new Header(data.slice(512)), expect2)
-      t.match(new Header(sync.slice(512)), expect2)
+      t.match(new Header(data.subarray(512)), expect2)
+      t.match(new Header(sync.subarray(512)), expect2)
       t.end()
     })
 })
 
 t.test('filter', t => {
   const out = []
-  const filter = (path, stat) => stat.isDirectory()
+  const filter = (_path, stat) => stat.isDirectory()
 
   // only include directories, so dir/x should not appear
   new Pack({ cwd: files, filter: filter })
@@ -301,11 +319,13 @@ t.test('filter', t => {
       }
       t.match(h, expect)
       t.equal(data.length, 1536)
-      t.match(data.slice(512).toString(), /^\0{1024}$/)
+      t.match(data.subarray(512).toString(), /^\0{1024}$/)
 
       const sync = new PackSync({ cwd: files, filter: filter })
-        .add('dir').end().read()
-      t.equal(sync.slice(512).toString(), data.slice(512).toString())
+        .add('dir')
+        .end()
+        .read()
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -314,7 +334,7 @@ t.test('filter', t => {
 
 t.test('add the same dir twice (exercise cache code)', t => {
   const out = []
-  const filter = (path, stat) => stat.isDirectory()
+  const filter = (_path, stat) => stat.isDirectory()
 
   // only include directories, so dir/x should not appear
   const pack = new Pack({ cwd: files, filter: filter })
@@ -346,10 +366,10 @@ t.test('add the same dir twice (exercise cache code)', t => {
         nullBlock: false,
       }
       t.match(h, expect)
-      const h2 = new Header(data.slice(512))
+      const h2 = new Header(data.subarray(512))
       t.match(h2, expect)
       t.equal(data.length, 2048)
-      t.match(data.slice(1024).toString(), /^\0{1024}$/)
+      t.match(data.subarray(1024).toString(), /^\0{1024}$/)
 
       const sync = new PackSync({
         cwd: files,
@@ -358,11 +378,17 @@ t.test('add the same dir twice (exercise cache code)', t => {
         readdirCache: pack.readdirCache,
         statCache: pack.statCache,
       })
-        .add('dir').add('dir').end().read()
-      t.equal(sync.slice(1024).toString(), data.slice(1024).toString())
+        .add('dir')
+        .add('dir')
+        .end()
+        .read()
+      t.equal(
+        sync.subarray(1024).toString(),
+        data.subarray(1024).toString(),
+      )
       const hs = new Header(sync)
       t.match(hs, expect)
-      const hs2 = new Header(sync.slice(512))
+      const hs2 = new Header(sync.subarray(512))
       t.match(hs2, expect)
       t.end()
     })
@@ -384,7 +410,10 @@ t.test('if brotli is truthy, make it an object', t => {
 
 t.test('throws if both gzip and brotli are truthy', t => {
   const opt = { gzip: true, brotli: true }
-  t.throws(_ => new Pack(opt), new TypeError('gzip and brotli are mutually exclusive'))
+  t.throws(
+    _ => new Pack(opt),
+    new TypeError('gzip and brotli are mutually exclusive'),
+  )
   t.end()
 })
 
@@ -404,14 +433,16 @@ t.test('gzip, also a very deep path', t => {
       const data = zlib.unzipSync(zipped)
       const entries = []
       for (var i = 0; i < data.length; i += 512) {
-        const slice = data.slice(i, i + 512)
+        const slice = data.subarray(i, i + 512)
         const h = new Header(slice)
         if (h.nullBlock) {
           entries.push('null block')
         } else if (h.cksumValid) {
           entries.push([h.type, h.path])
         } else if (entries[entries.length - 1][0] === 'File') {
-          entries[entries.length - 1].push(slice.toString().replace(/\0.*$/, ''))
+          entries[entries.length - 1].push(
+            slice.toString().replace(/\0.*$/, ''),
+          )
         }
       }
 
@@ -436,27 +467,72 @@ t.test('gzip, also a very deep path', t => {
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'],
-        ['ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222'],
-        ['ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt',
+          'short\n',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111',
+        ],
+        [
+          'ExtendedHeader',
+          'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222',
+        ],
+        [
+          'ExtendedHeader',
+          'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc',
+          'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        ],
         ['ExtendedHeader', 'PaxHeader/Ω.txt'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω'],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+          'Ω',
+        ],
         'null block',
         'null block',
       ]
 
       let ok = true
       entries.forEach((entry, i) => {
-        ok = ok &&
+        ok =
+          ok &&
           t.equal(entry[0], expect[i][0]) &&
           t.equal(entry[1], expect[i][1]) &&
           (!entry[2] || t.equal(entry[2], expect[i][2]))
@@ -483,14 +559,16 @@ t.test('brotli, also a very deep path', t => {
       const data = zlib.brotliDecompressSync(zipped)
       const entries = []
       for (var i = 0; i < data.length; i += 512) {
-        const slice = data.slice(i, i + 512)
+        const slice = data.subarray(i, i + 512)
         const h = new Header(slice)
         if (h.nullBlock) {
           entries.push('null block')
         } else if (h.cksumValid) {
           entries.push([h.type, h.path])
         } else if (entries[entries.length - 1][0] === 'File') {
-          entries[entries.length - 1].push(slice.toString().replace(/\0.*$/, ''))
+          entries[entries.length - 1].push(
+            slice.toString().replace(/\0.*$/, ''),
+          )
         }
       }
 
@@ -515,30 +593,75 @@ t.test('brotli, also a very deep path', t => {
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/'],
-        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'],
-        ['ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222'],
-        ['ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt',
+          'short\n',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111',
+        ],
+        [
+          'ExtendedHeader',
+          'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222',
+        ],
+        [
+          'ExtendedHeader',
+          'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc',
+          'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        ],
         ['ExtendedHeader', 'PaxHeader/Ω.txt'],
-        ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω'],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+          'Ω',
+        ],
         'null block',
         'null block',
       ]
 
       let ok = true
       entries.forEach((entry, i) => {
-        ok = ok &&
-                    t.equal(entry[0], expect[i][0]) &&
-                    t.equal(entry[1], expect[i][1]) &&
-                    (!entry[2] || t.equal(entry[2], expect[i][2]))
+        ok =
+          ok &&
+          t.equal(entry[0], expect[i][0]) &&
+          t.equal(entry[1], expect[i][1]) &&
+          (!entry[2] || t.equal(entry[2], expect[i][2]))
       })
 
       t.end()
@@ -549,7 +672,8 @@ t.test('very deep gzip path, sync', t => {
   const pack = new PackSync({
     cwd: files,
     gzip: true,
-  }).add('dir')
+  })
+    .add('dir')
     .add('long-path')
     .end()
 
@@ -562,14 +686,16 @@ t.test('very deep gzip path, sync', t => {
   const data = zlib.unzipSync(zipped)
   const entries = []
   for (var i = 0; i < data.length; i += 512) {
-    const slice = data.slice(i, i + 512)
+    const slice = data.subarray(i, i + 512)
     const h = new Header(slice)
     if (h.nullBlock) {
       entries.push('null block')
     } else if (h.cksumValid) {
       entries.push([h.type, h.path])
     } else if (entries[entries.length - 1][0] === 'File') {
-      entries[entries.length - 1].push(slice.toString().replace(/\0.*$/, ''))
+      entries[entries.length - 1].push(
+        slice.toString().replace(/\0.*$/, ''),
+      )
     }
   }
 
@@ -596,25 +722,64 @@ t.test('very deep gzip path, sync', t => {
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'],
-    ['ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222'],
-    ['ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt',
+      'short\n',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111',
+    ],
+    [
+      'ExtendedHeader',
+      'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222',
+    ],
+    [
+      'ExtendedHeader',
+      'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc',
+      'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    ],
     ['ExtendedHeader', 'PaxHeader/Ω.txt'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω'],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+      'Ω',
+    ],
     'null block',
     'null block',
   ]
 
   let ok = true
   entries.forEach((entry, i) => {
-    ok = ok &&
+    ok =
+      ok &&
       t.equal(entry[0], expect[i][0]) &&
       t.equal(entry[1], expect[i][1]) &&
       (!entry[2] || t.equal(entry[2], expect[i][2]))
@@ -628,7 +793,8 @@ t.test('very deep brotli path, sync', t => {
   const pack = new PackSync({
     cwd: files,
     brotli: true,
-  }).add('dir')
+  })
+    .add('dir')
     .add('long-path')
     .end()
 
@@ -641,14 +807,16 @@ t.test('very deep brotli path, sync', t => {
   const data = zlib.brotliDecompressSync(zipped)
   const entries = []
   for (var i = 0; i < data.length; i += 512) {
-    const slice = data.slice(i, i + 512)
+    const slice = data.subarray(i, i + 512)
     const h = new Header(slice)
     if (h.nullBlock) {
       entries.push('null block')
     } else if (h.cksumValid) {
       entries.push([h.type, h.path])
     } else if (entries[entries.length - 1][0] === 'File') {
-      entries[entries.length - 1].push(slice.toString().replace(/\0.*$/, ''))
+      entries[entries.length - 1].push(
+        slice.toString().replace(/\0.*$/, ''),
+      )
     }
   }
 
@@ -675,28 +843,67 @@ t.test('very deep brotli path, sync', t => {
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/'],
-    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt', 'short\n'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'],
-    ['ExtendedHeader', 'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222'],
-    ['ExtendedHeader', 'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt',
+      'short\n',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111',
+    ],
+    [
+      'ExtendedHeader',
+      'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222',
+    ],
+    [
+      'ExtendedHeader',
+      'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc',
+      'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    ],
     ['ExtendedHeader', 'PaxHeader/Ω.txt'],
-    ['File', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt', 'Ω'],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+      'Ω',
+    ],
     'null block',
     'null block',
   ]
 
   let ok = true
   entries.forEach((entry, i) => {
-    ok = ok &&
+    ok =
+      ok &&
       t.equal(entry[0], expect[i][0]) &&
-    t.equal(entry[1], expect[i][1]) &&
-    (!entry[2] || t.equal(entry[2], expect[i][2]))
+      t.equal(entry[1], expect[i][1]) &&
+      (!entry[2] || t.equal(entry[2], expect[i][2]))
   })
 
   t.end()
@@ -711,8 +918,10 @@ t.test('write after end', t => {
 
 t.test('emit error when stat fail', t => {
   t.teardown(mutateFS.statFail(new Error('xyz')))
-  t.throws(_ => new PackSync({ cwd: files }).add('one-byte.txt'),
-    new Error('xyz'))
+  t.throws(
+    _ => new PackSync({ cwd: files }).add('one-byte.txt'),
+    new Error('xyz'),
+  )
 
   new Pack({ cwd: files }).add('one-byte.txt').on('error', e => {
     t.match(e, { message: 'xyz' })
@@ -722,7 +931,10 @@ t.test('emit error when stat fail', t => {
 
 t.test('readdir fail', t => {
   t.teardown(mutateFS.fail('readdir', new Error('xyz')))
-  t.throws(_ => new PackSync({ cwd: files }).add('dir'), new Error('xyz'))
+  t.throws(
+    _ => new PackSync({ cwd: files }).add('dir'),
+    new Error('xyz'),
+  )
 
   new Pack({ cwd: files }).add('dir').on('error', e => {
     t.match(e, { message: 'xyz' })
@@ -764,7 +976,7 @@ t.test('pipe into a slow reader', t => {
     }
     t.match(h, expect)
     t.equal(data.length, 21504)
-    t.match(data.slice(data.length - 1024).toString(), /^\0{1024}$/)
+    t.match(data.subarray(data.length - 1024).toString(), /^\0{1024}$/)
     t.end()
   })
 })
@@ -772,11 +984,13 @@ t.test('pipe into a slow reader', t => {
 t.test('pipe into a slow gzip reader', t => {
   const out = []
   const mp2 = new miniz.Unzip()
-  const p = new Pack({ cwd: files, gzip: true }).add('long-path').end()
+  const p = new Pack({ cwd: files, gzip: true })
+    .add('long-path')
+    .end()
   p.pause()
 
   class SlowStream extends EE {
-    write (chunk) {
+    write(chunk) {
       mp2.write(chunk)
       setTimeout(_ => {
         this.emit('drain')
@@ -785,7 +999,7 @@ t.test('pipe into a slow gzip reader', t => {
       return false
     }
 
-    end (chunk) {
+    end(chunk) {
       return mp2.end(chunk)
     }
   }
@@ -823,7 +1037,7 @@ t.test('pipe into a slow gzip reader', t => {
     }
     t.match(h, expect)
     t.equal(data.length, 21504)
-    t.match(data.slice(data.length - 1024).toString(), /^\0{1024}$/)
+    t.match(data.subarray(data.length - 1024).toString(), /^\0{1024}$/)
     t.end()
   })
 })
@@ -835,12 +1049,12 @@ t.test('ignores mid-queue', t => {
   let didFirst = false
   const p = new Pack({
     cwd: tars,
-    filter: (p, st) => {
+    filter: (p, _st) => {
       if (p === './') {
         return true
       }
       if (!didFirst) {
-        return didFirst = true
+        return (didFirst = true)
       }
       return false
     },
@@ -852,8 +1066,8 @@ t.test('ignores mid-queue', t => {
   p.on('data', c => out.push(c))
   p.on('end', _ => {
     const data = Buffer.concat(out)
-    t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), './')
-    const file = data.slice(512, 612).toString().replace(/\0.*$/, '')
+    t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), './')
+    const file = data.subarray(512, 612).toString().replace(/\0.*$/, '')
     t.not(files.indexOf(file), -1)
     t.end()
   })
@@ -869,17 +1083,21 @@ t.test('warnings', t => {
     const p = new Pack({
       cwd: files,
       onwarn: (c, m, p) => warnings.push([c, m, p]),
-    }).end(f).on('data', c => out.push(c))
+    })
+      .end(f)
+      .on('data', c => out.push(c))
 
     const out = []
     p.on('end', _ => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
-      t.match(warnings, [[
-        'TAR_ENTRY_INFO',
-        /stripping .* from absolute path/,
-        { path: normPath(f) },
-      ]])
+      t.match(warnings, [
+        [
+          'TAR_ENTRY_INFO',
+          /stripping .* from absolute path/,
+          { path: normPath(f) },
+        ],
+      ])
 
       t.match(new Header(data), {
         path: normPath(f).replace(/^(\/|[a-z]:\/)/i, ''),
@@ -900,7 +1118,9 @@ t.test('warnings', t => {
           strict: strict,
           preservePaths: true,
           onwarn: (c, m, p) => warnings.push([c, m, p]),
-        }).end(f).on('data', c => out.push(c))
+        })
+          .end(f)
+          .on('data', c => out.push(c))
         p.on('end', _ => {
           const data = Buffer.concat(out)
           t.equal(warnings.length, 0)
@@ -918,13 +1138,15 @@ t.test('warnings', t => {
     new Pack({
       strict: true,
       cwd: files,
-    }).end(f).on('error', e => {
-      t.match(e, {
-        message: /stripping .* from absolute path/,
-        path: normPath(f),
-      })
-      t.end()
     })
+      .end(f)
+      .on('error', e => {
+        t.match(e, {
+          message: /stripping .* from absolute path/,
+          path: normPath(f),
+        })
+        t.end()
+      })
   })
 
   t.end()
@@ -963,7 +1185,7 @@ t.test('no dir recurse', t => {
   })
 
   t.test('sync', t => {
-    const p = new Pack.Sync({
+    const p = new PackSync({
       cwd: dir,
       noDirRecurse: true,
     })
@@ -975,48 +1197,57 @@ t.test('no dir recurse', t => {
   t.end()
 })
 
-t.test('follow', { skip: isWindows && 'file symlinks not available' }, t => {
-  const check = (out, t) => {
-    const data = Buffer.concat(out)
-    t.equal(data.length, 2048)
-    t.match(new Header(data, 0), {
-      type: 'File',
-      cksumValid: true,
-      needPax: false,
-      path: 'symlink',
-      mode: isWindows ? 0o666 : 0o644,
-      size: 26,
+t.test(
+  'follow',
+  { skip: isWindows && 'file symlinks not available' },
+  t => {
+    const check = (out, t) => {
+      const data = Buffer.concat(out)
+      t.equal(data.length, 2048)
+      t.match(new Header(data, 0), {
+        type: 'File',
+        cksumValid: true,
+        needPax: false,
+        path: 'symlink',
+        mode: isWindows ? 0o666 : 0o644,
+        size: 26,
+      })
+      t.match(
+        data.subarray(512).toString(),
+        /this link is like diamond\n\0+$/,
+      )
+      t.end()
+    }
+
+    t.test('async', t => {
+      const out = []
+      const p = new Pack({ cwd: files, follow: true })
+      p.on('data', c => out.push(c))
+      p.on('end', _ => check(out, t))
+      p.end('symlink')
     })
-    t.match(data.slice(512).toString(), /this link is like diamond\n\0+$/)
+
+    t.test('sync', t => {
+      const out = []
+      const p = new PackSync({ cwd: files, follow: true })
+      p.on('data', c => out.push(c))
+      p.end('symlink')
+      check(out, t)
+    })
+
     t.end()
-  }
-
-  t.test('async', t => {
-    const out = []
-    const p = new Pack({ cwd: files, follow: true })
-    p.on('data', c => out.push(c))
-    p.on('end', _ => check(out, t))
-    p.end('symlink')
-  })
-
-  t.test('sync', t => {
-    const out = []
-    const p = new Pack.Sync({ cwd: files, follow: true })
-    p.on('data', c => out.push(c))
-    p.end('symlink')
-    check(out, t)
-  })
-
-  t.end()
-})
+  },
+)
 
 t.test('pack ReadEntries', t => {
   t.test('basic', t => {
-    const readEntry = new ReadEntry(new Header({
-      path: 'x',
-      type: 'File',
-      size: 1,
-    }))
+    const readEntry = new ReadEntry(
+      new Header({
+        path: 'x',
+        type: 'File',
+        size: 1,
+      }),
+    )
     const p = new Pack()
     p.end(readEntry)
     const out = []
@@ -1024,9 +1255,9 @@ t.test('pack ReadEntries', t => {
     p.on('end', _ => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
-      t.match(data.slice(1024).toString(), /^\0+$/)
-      t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), 'x')
-      t.equal(data.slice(512, 514).toString(), 'x\0')
+      t.match(data.subarray(1024).toString(), /^\0+$/)
+      t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), 'x')
+      t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
     const buf = Buffer.alloc(512)
@@ -1035,11 +1266,13 @@ t.test('pack ReadEntries', t => {
   })
 
   t.test('prefix', t => {
-    const readEntry = new ReadEntry(new Header({
-      path: 'x',
-      type: 'File',
-      size: 1,
-    }))
+    const readEntry = new ReadEntry(
+      new Header({
+        path: 'x',
+        type: 'File',
+        size: 1,
+      }),
+    )
     const p = new Pack({ prefix: 'y' })
     p.end(readEntry)
     const out = []
@@ -1047,9 +1280,12 @@ t.test('pack ReadEntries', t => {
     p.on('end', _ => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
-      t.match(data.slice(1024).toString(), /^\0+$/)
-      t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), 'y/x')
-      t.equal(data.slice(512, 514).toString(), 'x\0')
+      t.match(data.subarray(1024).toString(), /^\0+$/)
+      t.equal(
+        data.subarray(0, 100).toString().replace(/\0.*$/, ''),
+        'y/x',
+      )
+      t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
     const buf = Buffer.alloc(512)
@@ -1058,21 +1294,27 @@ t.test('pack ReadEntries', t => {
   })
 
   t.test('filter out', t => {
-    const re1 = new ReadEntry(new Header({
-      path: 'a',
-      type: 'File',
-      size: 1,
-    }))
-    const re2 = new ReadEntry(new Header({
-      path: 'x',
-      type: 'File',
-      size: 1,
-    }))
-    const re3 = new ReadEntry(new Header({
-      path: 'y',
-      type: 'File',
-      size: 1,
-    }))
+    const re1 = new ReadEntry(
+      new Header({
+        path: 'a',
+        type: 'File',
+        size: 1,
+      }),
+    )
+    const re2 = new ReadEntry(
+      new Header({
+        path: 'x',
+        type: 'File',
+        size: 1,
+      }),
+    )
+    const re3 = new ReadEntry(
+      new Header({
+        path: 'y',
+        type: 'File',
+        size: 1,
+      }),
+    )
     const p = new Pack({ filter: p => p === 'x' })
     p.add(re1)
     p.add(re2)
@@ -1082,9 +1324,9 @@ t.test('pack ReadEntries', t => {
     p.on('end', _ => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
-      t.match(data.slice(1024).toString(), /^\0+$/)
-      t.equal(data.slice(0, 100).toString().replace(/\0.*$/, ''), 'x')
-      t.equal(data.slice(512, 514).toString(), 'x\0')
+      t.match(data.subarray(1024).toString(), /^\0+$/)
+      t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), 'x')
+      t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
     {
@@ -1119,7 +1361,7 @@ t.test('filter out everything', t => {
 
   t.test('sync', t => {
     const out = []
-    const p = new Pack.Sync({ cwd: files, filter: filter })
+    const p = new PackSync({ cwd: files, filter: filter })
     p.on('data', c => out.push(c))
     p.end('./')
     check(out, t)
@@ -1127,7 +1369,7 @@ t.test('filter out everything', t => {
 
   t.test('async', t => {
     const out = []
-    const p = new Pack.Sync({ cwd: files, filter: filter })
+    const p = new PackSync({ cwd: files, filter: filter })
     p.on('data', c => out.push(c))
     p.on('end', _ => check(out, t))
     p.end('./')
@@ -1149,41 +1391,53 @@ t.test('fs.open fails', t => {
 
   t.test('sync', t => {
     t.plan(1)
-    t.throws(_ =>
-      new Pack.Sync({ cwd: files }).end('one-byte.txt'), poop)
+    t.throws(
+      _ => new PackSync({ cwd: files }).end('one-byte.txt'),
+      poop,
+    )
   })
 
   t.end()
 })
 
-const write = opts => new Promise((resolve, reject) => {
-  const p = new Pack()
-  let totalSize = 0
-  p.on('data', d => totalSize += d.length)
-  p.once('error', reject)
-  p.once('end', () => resolve(totalSize))
+const write = opts =>
+  new Promise((resolve, reject) => {
+    const p = new Pack()
+    let totalSize = 0
+    p.on('data', d => (totalSize += d.length))
+    p.once('error', reject)
+    p.once('end', () => resolve(totalSize))
 
-  const file1 = new ReadEntry(new Header({
-    path: 'file1.txt',
-    size: 5,
-  }))
-  if (opts.before) {
-    file1.end('file1')
-    p.add(file1)
-  } else {
-    p.add(file1)
-    file1.end('file1')
-  }
+    const file1 = new ReadEntry(
+      new Header({
+        path: 'file1.txt',
+        size: 5,
+        type: 'File',
+      }),
+    )
+    if (opts.before) {
+      file1.end('file1')
+      p.add(file1)
+    } else {
+      p.add(file1)
+      file1.end('file1')
+    }
 
-  p.end()
-})
+    p.end()
+  })
 
 t.test('padding works regardless of arite/add order', t =>
   Promise.all([
     write({ before: true }),
     write({ before: false }),
   ]).then(res =>
-    t.equal(res[0], res[1], 'length is the same regardless of write/add order')))
+    t.equal(
+      res[0],
+      res[1],
+      'length is the same regardless of write/add order',
+    ),
+  ),
+)
 
 t.test('prefix and subdirs', t => {
   const dir = path.resolve(fixtures, 'pack-prefix-subdirs')
@@ -1214,7 +1468,8 @@ t.test('prefix and subdirs', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) =>
-      t.equal(e, data.slice(i * 512, i * 512 + e.length).toString()))
+      t.equal(e, data.subarray(i * 512, i * 512 + e.length).toString()),
+    )
     t.end()
   }
 
@@ -1235,8 +1490,8 @@ t.test('prefix and subdirs', t => {
   })
 
   return t.test('sync', t => {
-    t.test('.', t => runTest(t, '.', Pack.Sync))
-    return t.test('./', t => runTest(t, './', Pack.Sync))
+    t.test('.', t => runTest(t, '.', PackSync))
+    return t.test('./', t => runTest(t, './', PackSync))
   })
 })
 
@@ -1291,9 +1546,9 @@ t.test('prefix and hard links', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else {
-        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+        t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }
     })
     t.end()
@@ -1330,8 +1585,8 @@ t.test('prefix and hard links', t => {
   })
 
   t.test('sync', t => {
-    t.test('.', t => runTest(t, '.', Pack.Sync))
-    return t.test('./', t => runTest(t, './', Pack.Sync))
+    t.test('.', t => runTest(t, '.', PackSync))
+    return t.test('./', t => runTest(t, './', PackSync))
   })
 
   t.end()

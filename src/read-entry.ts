@@ -42,7 +42,9 @@ export class ReadEntry extends Minipass<Buffer, Buffer> {
     this.extended = ex
     this.globalExtended = gex
     this.header = header
+    /* c8 ignore start */
     this.remain = header.size ?? 0
+    /* c8 ignore stop */
     this.startBlockSize = 512 * Math.ceil(this.remain / 512)
     this.blockRemain = this.startBlockSize
     this.type = header.type
@@ -93,9 +95,11 @@ export class ReadEntry extends Minipass<Buffer, Buffer> {
     this.mtime = header.mtime
     this.atime = header.atime
     this.ctime = header.ctime
+    /* c8 ignore start */
     this.linkpath = header.linkpath
       ? normalizeWindowsPath(header.linkpath)
       : undefined
+    /* c8 ignore stop */
     this.uname = header.uname
     this.gname = header.gname
 

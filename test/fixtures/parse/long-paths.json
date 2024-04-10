@@ -2,8 +2,6 @@
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -15,9 +13,6 @@
       "gname": "staff",
       "size": 100,
       "mtime": "2017-04-10T16:53:02.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -32,9 +27,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
@@ -47,23 +40,12 @@
     {
       "extended": {
         "atime": "2017-04-10T17:01:57.000Z",
-        "charset": null,
-        "comment": null,
-        "ctime": "2017-04-10T16:54:12.000Z",
-        "gid": null,
-        "gname": null,
-        "linkpath": null,
-        "mtime": null,
-        "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "size": null,
-        "uid": null,
-        "uname": null,
         "dev": 16777220,
         "ino": 9836297,
         "nlink": 1,
+        "path": "120-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "global": false
       },
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -76,8 +58,6 @@
       "size": 100,
       "mtime": "2017-04-10T16:54:12.000Z",
       "atime": "2017-04-10T17:01:57.000Z",
-      "ctime": "2017-04-10T16:54:12.000Z",
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -92,9 +72,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
@@ -107,23 +85,12 @@
     {
       "extended": {
         "atime": "2017-04-10T17:01:57.000Z",
-        "charset": null,
-        "comment": null,
-        "ctime": "2017-04-10T16:56:18.000Z",
-        "gid": null,
-        "gname": null,
-        "linkpath": null,
-        "mtime": null,
-        "path": "170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "size": null,
-        "uid": null,
-        "uname": null,
         "dev": 16777220,
         "ino": 9836326,
         "nlink": 1,
+        "path": "170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "global": false
       },
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -136,8 +103,6 @@
       "size": 100,
       "mtime": "2017-04-10T16:56:18.000Z",
       "atime": "2017-04-10T17:01:57.000Z",
-      "ctime": "2017-04-10T16:56:18.000Z",
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -152,17 +117,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -174,9 +135,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -191,17 +149,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -213,9 +167,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -230,17 +181,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -252,9 +199,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -269,17 +213,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -291,9 +231,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -308,17 +245,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -330,9 +263,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -347,17 +277,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -369,9 +295,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -386,17 +309,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -408,9 +327,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -425,17 +341,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -447,9 +359,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -464,17 +373,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -486,9 +391,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -503,17 +405,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -525,9 +423,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -542,17 +437,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -564,9 +455,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -581,17 +469,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -603,9 +487,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -620,17 +501,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -642,9 +519,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -659,17 +533,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -681,9 +551,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -698,17 +565,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -720,9 +583,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -737,17 +597,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -759,9 +615,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -776,17 +629,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -798,9 +647,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -815,17 +661,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -837,9 +679,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -854,17 +693,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -876,9 +711,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -893,17 +725,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -915,9 +743,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -932,17 +757,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -954,9 +775,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -971,17 +789,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -993,9 +807,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1010,17 +821,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -1032,9 +839,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1049,17 +853,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "Directory",
       "meta": false,
       "ignore": false,
@@ -1071,9 +871,6 @@
       "gname": "staff",
       "size": 0,
       "mtime": "2017-04-10T16:58:47.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1088,17 +885,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -1110,9 +903,6 @@
       "gname": "staff",
       "size": 6,
       "mtime": "2017-04-10T16:56:46.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1127,17 +917,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "entry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -1149,9 +935,6 @@
       "gname": "staff",
       "size": 100,
       "mtime": "2017-04-10T16:52:20.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1166,9 +949,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
@@ -1181,23 +962,12 @@
     {
       "extended": {
         "atime": "2017-04-10T17:01:57.000Z",
-        "charset": null,
-        "comment": null,
-        "ctime": "2017-04-10T16:52:20.000Z",
-        "gid": null,
-        "gname": null,
-        "linkpath": null,
-        "mtime": null,
-        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "size": null,
-        "uid": null,
-        "uname": null,
         "dev": 16777220,
         "ino": 9836253,
         "nlink": 1,
+        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "global": false
       },
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -1210,8 +980,6 @@
       "size": 100,
       "mtime": "2017-04-10T16:52:20.000Z",
       "atime": "2017-04-10T17:01:57.000Z",
-      "ctime": "2017-04-10T16:52:20.000Z",
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1226,9 +994,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
@@ -1241,23 +1007,12 @@
     {
       "extended": {
         "atime": "2017-04-10T17:01:57.000Z",
-        "charset": null,
-        "comment": null,
-        "ctime": "2017-04-10T16:52:20.000Z",
-        "gid": null,
-        "gname": null,
-        "linkpath": null,
-        "mtime": null,
-        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "size": null,
-        "uid": null,
-        "uname": null,
         "dev": 16777220,
         "ino": 9836254,
         "nlink": 1,
+        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "global": false
       },
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -1270,8 +1025,6 @@
       "size": 100,
       "mtime": "2017-04-10T16:52:20.000Z",
       "atime": "2017-04-10T17:01:57.000Z",
-      "ctime": "2017-04-10T16:52:20.000Z",
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1286,9 +1039,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
@@ -1301,23 +1052,12 @@
     {
       "extended": {
         "atime": "2017-04-10T17:07:25.000Z",
-        "charset": null,
-        "comment": null,
-        "ctime": "2017-04-10T16:58:47.000Z",
-        "gid": null,
-        "gname": null,
-        "linkpath": null,
-        "mtime": null,
-        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt",
-        "size": null,
-        "uid": null,
-        "uname": null,
         "dev": 16777220,
         "ino": 9836396,
         "nlink": 1,
+        "path": "long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt",
         "global": false
       },
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": false,
@@ -1330,8 +1070,6 @@
       "size": 2,
       "mtime": "2017-04-10T16:58:47.000Z",
       "atime": "2017-04-10T17:07:25.000Z",
-      "ctime": "2017-04-10T16:58:47.000Z",
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -1346,9 +1084,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],

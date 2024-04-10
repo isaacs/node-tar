@@ -1,24 +1,30 @@
-'use strict'
-const t = require('tap')
-const Parse = require('../lib/parse.js')
+import t from 'tap'
+import { Parser } from '../dist/esm/parse.js'
+import { makeTar } from './fixtures/make-tar.js'
+import fs, { readFileSync } from 'fs'
+import path, { dirname } from 'path'
+import zlib from 'zlib'
+import { Minipass } from 'minipass'
+import { Header } from '../dist/esm/header.js'
+import EE from 'events'
+import { fileURLToPath } from 'url'
 
-const makeTar = require('./make-tar.js')
-const fs = require('fs')
-const path = require('path')
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 const tardir = path.resolve(__dirname, 'fixtures/tars')
-const zlib = require('zlib')
-const { Minipass } = require('minipass')
-const Header = require('../lib/header.js')
-const EE = require('events').EventEmitter
 
 t.test('fixture tests', t => {
   class ByteStream extends Minipass {
-    write (chunk) {
+    write(chunk) {
       for (let i = 0; i < chunk.length - 1; i++) {
-        super.write(chunk.slice(i, i + 1))
+        super.write(chunk.subarray(i, i + 1))
       }
 
-      return super.write(chunk.slice(chunk.length - 1, chunk.length))
+      const ret = super.write(chunk.subarray(chunk.length - 1, chunk.length))
+      if (ret === false) {
+        throw new Error('BS write return false')
+      }
+      return ret
     }
   }
 
@@ -26,21 +32,28 @@ t.test('fixture tests', t => {
     let ok = true
     let cursor = 0
     p.on('entry', entry => {
-      ok = ok && t.match(['entry', entry], expect[cursor++], entry.path)
+      ok =
+        ok && t.match(['entry', entry], expect[cursor++], entry.path)
       if (slow) {
-        setTimeout(_ => entry.resume())
+        setTimeout(() => entry.resume())
       } else {
         entry.resume()
       }
     })
     p.on('ignoredEntry', entry => {
-      ok = ok && t.match(['ignoredEntry', entry], expect[cursor++],
-        'ignored: ' + entry.path)
+      ok =
+        ok &&
+        t.match(
+          ['ignoredEntry', entry],
+          expect[cursor++],
+          'ignored: ' + entry.path,
+        )
     })
-    p.on('warn', (c, message, data) => {
-      ok = ok && t.match(['warn', c, message], expect[cursor++], 'warn')
+    p.on('warn', (c, message, _data) => {
+      ok =
+        ok && t.match(['warn', c, message], expect[cursor++], 'warn')
     })
-    p.on('nullBlock', _ => {
+    p.on('nullBlock', () => {
       ok = ok && t.match(['nullBlock'], expect[cursor++], 'null')
     })
     p.on('error', er => {
@@ -49,204 +62,261 @@ t.test('fixture tests', t => {
     p.on('meta', meta => {
       ok = ok && t.match(['meta', meta], expect[cursor++], 'meta')
     })
-    p.on('eof', _ => {
+    p.on('eof', () => {
       ok = ok && t.match(['eof'], expect[cursor++], 'eof')
     })
-    p.on('end', _ => {
+    p.on('end', () => {
       ok = ok && t.match(['end'], expect[cursor++], 'end')
       t.end()
     })
   }
 
   t.jobs = 4
-  const path = require('path')
   const parsedir = path.resolve(__dirname, 'fixtures/parse')
   const files = fs.readdirSync(tardir)
-  const maxMetaOpt = [250, null]
+  const maxMetaOpt = [250, undefined]
   const filterOpt = [true, false]
   const strictOpt = [true, false]
   const runTest = (file, maxMeta, filter, strict) => {
     const tardata = fs.readFileSync(file)
     const base = path.basename(file, '.tar')
-    t.test('file=' + base + '.tar' +
-           ' maxmeta=' + maxMeta +
-           ' filter=' + filter +
-           ' strict=' + strict, t => {
-      const o =
-        (maxMeta ? '-meta-' + maxMeta : '') +
-        (filter ? '-filter' : '') +
-        (strict ? '-strict' : '')
-      const tail = (o ? '-' + o : '') + '.json'
-      const eventsFile = parsedir + '/' + base + tail
-      const expect = require(eventsFile)
+    t.test(
+      'file=' +
+        base +
+        '.tar' +
+        ' maxmeta=' +
+        maxMeta +
+        ' filter=' +
+        filter +
+        ' strict=' +
+        strict,
+      t => {
+        const o =
+          (maxMeta ? '-meta-' + maxMeta : '') +
+          (filter ? '-filter' : '') +
+          (strict ? '-strict' : '')
+        const tail = (o ? '-' + o : '') + '.json'
+        const eventsFile = parsedir + '/' + base + tail
+        const expect = JSON.parse(readFileSync(eventsFile, 'utf8'))
 
-      t.test('uncompressed one byte at a time', t => {
-        const bs = new ByteStream()
-        const opt = (maxMeta || filter || strict) ? {
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-        } : null
-        const bp = new Parse(opt)
-        trackEvents(t, expect, bp)
-        bs.pipe(bp)
-        bs.end(tardata)
-      })
-
-      t.test('uncompressed all at once', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
+        t.test('uncompressed one byte at a time', t => {
+          const bs = new ByteStream()
+          bs.on('data', c => {
+            if (!Buffer.isBuffer(c)) throw new Error('wat1')
+            if (c.length !== 1) throw new Error('wat2')
+          })
+          const opt =
+            maxMeta || filter || strict
+              ? {
+                  maxMetaEntrySize: maxMeta,
+                  filter: filter
+                    ? (_path, entry) => entry.size % 2 !== 0
+                    : undefined,
+                  strict: strict,
+                }
+              : undefined
+          const p = new Parser(opt)
+          trackEvents(t, expect, p)
+          bs.pipe(p)
+          bs.write(tardata)
+          bs.end()
         })
-        trackEvents(t, expect, p)
-        p.end(tardata)
-      })
 
-      t.test('uncompressed one byte at a time, filename .tbr', t => {
-        const bs = new ByteStream()
-        const opt = (maxMeta || filter || strict) ? {
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          file: 'example.tbr',
-        } : null
-        const bp = new Parse(opt)
-        trackEvents(t, expect, bp)
-        bs.pipe(bp)
-        bs.end(tardata)
-      })
-
-      t.test('uncompressed all at once, filename .tar.br', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          file: 'example.tar.br',
+        t.test('uncompressed all at once', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+          })
+          trackEvents(t, expect, p)
+          p.end(tardata)
         })
-        trackEvents(t, expect, p)
-        p.end(tardata)
-      })
 
-      t.test('gzipped all at once', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
+        t.test(
+          'uncompressed one byte at a time, filename .tbr',
+          t => {
+            const bs = new ByteStream()
+            const opt =
+              maxMeta || filter || strict
+                ? {
+                    maxMetaEntrySize: maxMeta,
+                    filter: filter
+                      ? (_path, entry) => entry.size % 2 !== 0
+                      : undefined,
+                    strict: strict,
+                    file: 'example.tbr',
+                  }
+                : undefined
+            const bp = new Parser(opt)
+            trackEvents(t, expect, bp)
+            bs.pipe(bp)
+            bs.end(tardata)
+          },
+        )
+
+        t.test('uncompressed all at once, filename .tar.br', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+            file: 'example.tar.br',
+          })
+          trackEvents(t, expect, p)
+          p.end(tardata)
         })
-        trackEvents(t, expect, p)
-        p.end(zlib.gzipSync(tardata))
-      })
 
-      t.test('gzipped all at once, filename .tbr', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          file: 'example.tbr',
+        t.test('gzipped all at once', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.gzipSync(tardata))
         })
-        trackEvents(t, expect, p)
-        p.end(zlib.gzipSync(tardata))
-      })
 
-      t.test('gzipped byte at a time', t => {
-        const bs = new ByteStream()
-        const bp = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
+        t.test('gzipped all at once, filename .tbr', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+            file: 'example.tbr',
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.gzipSync(tardata))
         })
-        trackEvents(t, expect, bp)
-        bs.pipe(bp)
-        bs.end(zlib.gzipSync(tardata))
-      })
 
-      t.test('compress with brotli based on filename .tar.br', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          file: 'example.tar.br',
+        t.test('gzipped byte at a time', t => {
+          const bs = new ByteStream()
+          const bp = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+          })
+          trackEvents(t, expect, bp)
+          bs.pipe(bp)
+          bs.end(zlib.gzipSync(tardata))
         })
-        trackEvents(t, expect, p)
-        p.end(zlib.brotliCompressSync(tardata))
-      })
 
-      t.test('compress with brotli based on filename .tbr', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          file: 'example.tbr',
+        t.test(
+          'compress with brotli based on filename .tar.br',
+          t => {
+            const p = new Parser({
+              maxMetaEntrySize: maxMeta,
+              filter: filter
+                ? (_path, entry) => entry.size % 2 !== 0
+                : undefined,
+              strict: strict,
+              file: 'example.tar.br',
+            })
+            trackEvents(t, expect, p)
+            p.end(zlib.brotliCompressSync(tardata))
+          },
+        )
+
+        t.test('compress with brotli based on filename .tbr', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+            file: 'example.tbr',
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.brotliCompressSync(tardata))
         })
-        trackEvents(t, expect, p)
-        p.end(zlib.brotliCompressSync(tardata))
-      })
 
-      t.test('compress with brotli all at once', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          brotli: {},
+        t.test('compress with brotli all at once', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+            brotli: {},
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.brotliCompressSync(tardata))
         })
-        trackEvents(t, expect, p)
-        p.end(zlib.brotliCompressSync(tardata))
-      })
 
-      t.test('compress with brotli byte at a time', t => {
-        const bs = new ByteStream()
-        const bp = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          brotli: {},
+        t.test('compress with brotli byte at a time', t => {
+          const bs = new ByteStream()
+          const bp = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+            brotli: {},
+          })
+          trackEvents(t, expect, bp)
+          bs.pipe(bp)
+          bs.end(zlib.brotliCompressSync(tardata))
         })
-        trackEvents(t, expect, bp)
-        bs.pipe(bp)
-        bs.end(zlib.brotliCompressSync(tardata))
-      })
 
-      t.test('compress with brotli .tbr byte at a time', t => {
-        const bs = new ByteStream()
-        const bp = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
-          file: 'example.tbr',
+        t.test('compress with brotli .tbr byte at a time', t => {
+          const bs = new ByteStream()
+          const bp = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+            file: 'example.tbr',
+          })
+          trackEvents(t, expect, bp)
+          bs.pipe(bp)
+          bs.end(zlib.brotliCompressSync(tardata))
         })
-        trackEvents(t, expect, bp)
-        bs.pipe(bp)
-        bs.end(zlib.brotliCompressSync(tardata))
-      })
 
-      t.test('async chunks', t => {
-        const p = new Parse({
-          maxMetaEntrySize: maxMeta,
-          filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
-          strict: strict,
+        t.test('async chunks', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter: filter
+              ? (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+          })
+          trackEvents(t, expect, p, true)
+          p.write(tardata.subarray(0, Math.floor(tardata.length / 2)))
+          process.nextTick(() =>
+            p.end(tardata.subarray(Math.floor(tardata.length / 2))),
+          )
         })
-        trackEvents(t, expect, p, true)
-        p.write(tardata.slice(0, Math.floor(tardata.length / 2)))
-        process.nextTick(_ => p.end(tardata.slice(Math.floor(tardata.length / 2))))
-      })
 
-      t.end()
-    })
+        t.end()
+      },
+    )
   }
 
   files
-    .map(f => path.resolve(tardir, f)).forEach(file =>
+    .map(f => path.resolve(tardir, f))
+    .forEach(file =>
       maxMetaOpt.forEach(maxMeta =>
         strictOpt.forEach(strict =>
           filterOpt.forEach(filter =>
-            runTest(file, maxMeta, filter, strict)))))
+            runTest(file, maxMeta, filter, strict),
+          ),
+        ),
+      ),
+    )
   t.end()
 })
 
 t.test('strict warn with an error emits that error', t => {
   t.plan(1)
-  const p = new Parse({
+  const p = new Parser({
     strict: true,
   })
   p.on('error', emitted => t.equal(emitted, er))
@@ -256,8 +326,8 @@ t.test('strict warn with an error emits that error', t => {
 
 t.test('onwarn gets added to the warn event', t => {
   t.plan(1)
-  const p = new Parse({
-    onwarn (code, message) {
+  const p = new Parser({
+    onwarn(_code, message) {
       t.equal(message, 'this is fine')
     },
   })
@@ -266,7 +336,7 @@ t.test('onwarn gets added to the warn event', t => {
 
 t.test('onentry gets added to entry event', t => {
   t.plan(1)
-  const p = new Parse({
+  const p = new Parser({
     onentry: entry => t.equal(entry, 'yes hello this is dog'),
   })
   p.emit('entry', 'yes hello this is dog')
@@ -400,36 +470,56 @@ t.test('drain event timings', t => {
   ].map(chunks => makeTar(chunks))
 
   const expect = [
-    'one', 'two', 'three',
-    'four', 'five', 'six', 'seven', 'eight',
-    'four', 'five', 'six', 'seven', 'eight',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
     'nine',
-    'one', 'two', 'three',
-    'four', 'five', 'six', 'seven', 'eight',
-    'four', 'five', 'six', 'seven', 'eight',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
     'nine',
   ]
 
   class SlowStream extends EE {
-    write () {
-      setTimeout(_ => this.emit('drain'))
+    write() {
+      setTimeout(() => this.emit('drain'))
       return false
     }
 
-    end () {
+    end() {
       return this.write()
     }
   }
 
   let currentEntry
   const autoPipe = true
-  const p = new Parse({
+  const p = new Parser({
     ondone,
     onentry: entry => {
       t.equal(entry.path, expect.shift())
       currentEntry = entry
       if (autoPipe) {
-        setTimeout(_ => entry.pipe(new SlowStream()))
+        setTimeout(() => entry.pipe(new SlowStream()))
       }
     },
   })
@@ -441,7 +531,7 @@ t.test('drain event timings', t => {
   })
 
   let interval
-  const go = _ => {
+  const go = () => {
     const d = data.shift()
     if (d === undefined) {
       return p.end()
@@ -454,19 +544,21 @@ t.test('drain event timings', t => {
     }
 
     const hunklen = Math.floor(d.length / 2)
-    const hunks = [
-      d.slice(0, hunklen),
-      d.slice(hunklen),
-    ]
+    const hunks = [d.subarray(0, hunklen), d.subarray(hunklen)]
     p.write(hunks[0])
 
     if (currentEntry && !paused) {
-      console.error('has current entry')
       currentEntry.pause()
       paused = true
     }
 
-    if (!t.equal(p.write(hunks[1]), false, 'write should return false: ' + d)) {
+    if (
+      !t.equal(
+        p.write(hunks[1]),
+        false,
+        'write should return false: ' + d,
+      )
+    ) {
       return t.end()
     }
 
@@ -478,7 +570,7 @@ t.test('drain event timings', t => {
   }
 
   p.once('drain', go)
-  p.on('end', _ => {
+  p.on('end', () => {
     clearInterval(interval)
     t.ok(sawOndone)
     t.end()
@@ -542,18 +634,18 @@ t.test('consume while consuming', t => {
   ])
 
   const runTest = (t, size) => {
-    const p = new Parse()
-    const first = data.slice(0, size)
-    const rest = data.slice(size)
-    p.once('entry', entry => {
+    const p = new Parser()
+    const first = data.subarray(0, size)
+    const rest = data.subarray(size)
+    p.once('entry', _entry => {
       for (let pos = 0; pos < rest.length; pos += size) {
-        p.write(rest.slice(pos, pos + size))
+        p.write(rest.subarray(pos, pos + size))
       }
 
       p.end()
     })
       .on('entry', entry => entry.resume())
-      .on('end', _ => t.end())
+      .on('end', () => t.end())
       .write(first)
   }
 
@@ -579,7 +671,9 @@ t.test('truncated input', t => {
 
   t.test('truncated at block boundary', t => {
     const warnings = []
-    const p = new Parse({ onwarn: (c, message) => warnings.push(message) })
+    const p = new Parser({
+      onwarn: (_c, message) => warnings.push(message),
+    })
     p.end(data)
     t.same(warnings, [
       'Truncated input (needed 512 more bytes, only 0 available)',
@@ -589,7 +683,9 @@ t.test('truncated input', t => {
 
   t.test('truncated mid-block', t => {
     const warnings = []
-    const p = new Parse({ onwarn: (c, message) => warnings.push(message) })
+    const p = new Parser({
+      onwarn: (_c, message) => warnings.push(message),
+    })
     p.write(data)
     p.end(Buffer.from('not a full block'))
     t.same(warnings, [
@@ -617,33 +713,37 @@ t.test('truncated gzip input', t => {
     '',
   ])
   const tgz = zlib.gzipSync(raw)
-  const split = Math.floor(tgz.length * 2 / 3)
-  const trunc = tgz.slice(0, split)
+  const split = Math.floor((tgz.length * 2) / 3)
+  const trunc = tgz.subarray(0, split)
 
   const skipEarlyEnd = process.version.match(/^v4\./)
-  t.test('early end', {
-    skip: skipEarlyEnd ? 'not a zlib error on v4' : false,
-  }, t => {
-    const warnings = []
-    const p = new Parse()
-    p.on('error', er => warnings.push(er.message))
-    let aborted = false
-    p.on('abort', _ => aborted = true)
-    p.end(trunc)
-    t.equal(aborted, true, 'aborted writing')
-    t.same(warnings, ['zlib: unexpected end of file'])
-    t.end()
-  })
+  t.test(
+    'early end',
+    {
+      skip: skipEarlyEnd ? 'not a zlib error on v4' : false,
+    },
+    t => {
+      const warnings = []
+      const p = new Parser()
+      p.on('error', er => warnings.push(er.message))
+      let aborted = false
+      p.on('abort', () => (aborted = true))
+      p.end(trunc)
+      t.equal(aborted, true, 'aborted writing')
+      t.same(warnings, ['zlib: unexpected end of file'])
+      t.end()
+    },
+  )
 
   t.test('just wrong', t => {
     const warnings = []
-    const p = new Parse()
+    const p = new Parser()
     p.on('error', er => warnings.push(er.message))
     let aborted = false
-    p.on('abort', _ => aborted = true)
+    p.on('abort', () => (aborted = true))
     p.write(trunc)
     p.write(trunc)
-    p.write(tgz.slice(split))
+    p.write(tgz.subarray(split))
     p.end()
     t.equal(aborted, true, 'aborted writing')
     t.match(warnings, [/^zlib: /])
@@ -655,40 +755,42 @@ t.test('truncated gzip input', t => {
 
 t.test('end while consuming', t => {
   // https://github.com/npm/node-tar/issues/157
-  const data = zlib.gzipSync(makeTar([
-    {
-      path: 'package/package.json',
-      type: 'File',
-      size: 130,
-    },
-    new Array(131).join('x'),
-    {
-      path: 'package/node_modules/@c/d/node_modules/e/package.json',
-      type: 'File',
-      size: 30,
-    },
-    new Array(31).join('e'),
-    {
-      path: 'package/node_modules/@c/d/package.json',
-      type: 'File',
-      size: 33,
-    },
-    new Array(34).join('d'),
-    {
-      path: 'package/node_modules/a/package.json',
-      type: 'File',
-      size: 59,
-    },
-    new Array(60).join('a'),
-    {
-      path: 'package/node_modules/b/package.json',
-      type: 'File',
-      size: 30,
-    },
-    new Array(31).join('b'),
-    '',
-    '',
-  ]))
+  const data = zlib.gzipSync(
+    makeTar([
+      {
+        path: 'package/package.json',
+        type: 'File',
+        size: 130,
+      },
+      new Array(131).join('x'),
+      {
+        path: 'package/node_modules/@c/d/node_modules/e/package.json',
+        type: 'File',
+        size: 30,
+      },
+      new Array(31).join('e'),
+      {
+        path: 'package/node_modules/@c/d/package.json',
+        type: 'File',
+        size: 33,
+      },
+      new Array(34).join('d'),
+      {
+        path: 'package/node_modules/a/package.json',
+        type: 'File',
+        size: 59,
+      },
+      new Array(60).join('a'),
+      {
+        path: 'package/node_modules/b/package.json',
+        type: 'File',
+        size: 30,
+      },
+      new Array(31).join('b'),
+      '',
+      '',
+    ]),
+  )
 
   const actual = []
   const expect = [
@@ -700,7 +802,7 @@ t.test('end while consuming', t => {
   ]
 
   const mp = new Minipass()
-  const p = new Parse({
+  const p = new Parser({
     onentry: entry => {
       actual.push(entry.path)
       entry.resume()
@@ -716,7 +818,7 @@ t.test('end while consuming', t => {
 })
 
 t.test('bad archives', t => {
-  const p = new Parse()
+  const p = new Parser()
   const warnings = []
   p.on('warn', (code, msg, data) => {
     warnings.push([code, msg, data])
@@ -735,8 +837,8 @@ t.test('bad archives', t => {
 })
 
 t.test('header that throws', t => {
-  const p = new Parse()
-  p.on('warn', (c, m, d) => {
+  const p = new Parser()
+  p.on('warn', (_c, m, d) => {
     t.equal(m, 'invalid base256 encoding')
     t.match(d, {
       code: 'TAR_ENTRY_INVALID',
@@ -753,14 +855,19 @@ t.test('header that throws', t => {
   })
   h.encode()
   const buf = h.block
-  const bad = Buffer.from([0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
+  const bad = Buffer.from([
+    0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  ])
   bad.copy(buf, 100)
-  t.throws(() => new Header(buf), 'the header with that buffer throws')
+  t.throws(
+    () => new Header(buf),
+    'the header with that buffer throws',
+  )
   p.write(buf)
 })
 
 t.test('warnings that are not so bad', t => {
-  const p = new Parse()
+  const p = new Parser()
   const warnings = []
   p.on('warn', (code, m, d) => {
     warnings.push([code, m, d])
@@ -768,7 +875,7 @@ t.test('warnings that are not so bad', t => {
   })
   // the parser doesn't actually decide what's "ok" or "supported",
   // it just parses.  So we have to set it ourselves like unpack does
-  p.once('entry', entry => entry.invalid = true)
+  p.once('entry', entry => (entry.invalid = true))
   p.on('entry', entry => entry.resume())
   const data = makeTar([
     {

@@ -1,19 +1,25 @@
-const t = require('tap')
+import t from 'tap'
+
+import { posix, win32 } from 'node:path'
 
 // load up the posix and windows versions of the reserver
 if (process.platform === 'win32') {
   process.env.TESTING_TAR_FAKE_PLATFORM = 'posix'
 }
-const { reserve } = t.mock('../lib/path-reservations.js', {
-  path: require('path').posix,
-})()
+
+
+const { PathReservations } = await t.mockImport('../dist/esm/path-reservations.js', {
+  path: posix,
+})
+
 delete process.env.TESTING_TAR_FAKE_PLATFORM
 if (process.platform !== 'win32') {
   process.env.TESTING_TAR_FAKE_PLATFORM = 'win32'
 }
-const { reserve: winReserve } = t.mock('../lib/path-reservations.js', {
-  path: require('path').win32,
-})()
+
+const { PathReservations: WinPathReservations } = await t.mockImport('../dist/esm/path-reservations.js', {
+  path: win32,
+})
 
 t.test('basic race', t => {
   // simulate the race conditions we care about
@@ -62,11 +68,13 @@ t.test('basic race', t => {
     t.end()
   }
 
-  t.ok(reserve(['a/b/c/d'], file), 'file starts right away')
-  t.notOk(reserve(['a/B/c////D', 'a/b/e'], link), 'link waits')
-  t.notOk(reserve(['a/b/e/f'], dir), 'dir waits')
-  t.notOk(reserve(['a/b'], dir2), 'dir2 waits')
-  t.notOk(reserve(['a/b/x'], dir3), 'dir3 waits')
+  const r = new PathReservations()
+
+  t.ok(r.reserve(['a/b/c/d'], file), 'file starts right away')
+  t.notOk(r.reserve(['a/B/c////D', 'a/b/e'], link), 'link waits')
+  t.notOk(r.reserve(['a/b/e/f'], dir), 'dir waits')
+  t.notOk(r.reserve(['a/b'], dir2), 'dir2 waits')
+  t.notOk(r.reserve(['a/b/x'], dir3), 'dir3 waits')
 })
 
 t.test('unicode shenanigans', t => {
@@ -89,8 +97,9 @@ t.test('unicode shenanigans', t => {
   }
   const cafePath1 = `c/a/f/${e1}`
   const cafePath2 = `c/a/f/${e2}`
-  t.ok(reserve([cafePath1], cafe1))
-  t.notOk(reserve([cafePath2], cafe2))
+  const r = new PathReservations()
+  t.ok(r.reserve([cafePath1], cafe1))
+  t.notOk(r.reserve([cafePath2], cafe2))
 })
 
 t.test('absolute paths and trailing slash', t => {
@@ -128,14 +137,15 @@ t.test('absolute paths and trailing slash', t => {
       t.end()
     }
   }
-  t.ok(reserve(['/p/a/t/h'], a1))
-  t.notOk(reserve(['/p/a/t/h/'], a2))
-  t.ok(reserve(['p/a/t/h'], r1))
-  t.notOk(reserve(['p/a/t/h/'], r2))
+  const r = new PathReservations()
+  t.ok(r.reserve(['/p/a/t/h'], a1))
+  t.notOk(r.reserve(['/p/a/t/h/'], a2))
+  t.ok(r.reserve(['p/a/t/h'], r1))
+  t.notOk(r.reserve(['p/a/t/h/'], r2))
 })
 
 t.test('on windows, everything collides with everything', t => {
-  const reserve = winReserve
+  const r = new WinPathReservations()
   let called1 = false
   let called2 = false
   const f1 = done => {
@@ -151,6 +161,6 @@ t.test('on windows, everything collides with everything', t => {
     done()
     t.end()
   }
-  t.equal(reserve(['some/path'], f1), true)
-  t.equal(reserve(['other/path'], f2), false)
+  t.equal(r.reserve(['some/path'], f1), true)
+  t.equal(r.reserve(['other/path'], f2), false)
 })

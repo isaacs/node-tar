@@ -1,25 +1,26 @@
-'use strict'
-const t = require('tap')
-const r = require('../lib/replace.js')
-const path = require('path')
-const fs = require('fs')
-const mutateFS = require('mutate-fs')
-const list = require('../lib/list.js')
-const { resolve } = require('path')
+import t from 'tap'
+import { replace as r } from '../dist/esm/replace.js'
+import path, {dirname, resolve } from 'path'
+import fs from 'fs'
+import mutateFS from 'mutate-fs'
+import { list } from '../dist/esm/list.js'
+import {fileURLToPath} from 'url'
+import zlib from 'zlib'
+import { spawn } from 'child_process'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 const fixtures = path.resolve(__dirname, 'fixtures')
 const tars = path.resolve(fixtures, 'tars')
-const zlib = require('zlib')
 
-const spawn = require('child_process').spawn
 
 const data = fs.readFileSync(tars + '/body-byte-counts.tar')
-const dataNoNulls = data.slice(0, data.length - 1024)
+const dataNoNulls = data.subarray(0, data.length - 1024)
 const fixtureDef = {
   'body-byte-counts.tar': data,
   'no-null-eof.tar': dataNoNulls,
-  'truncated-head.tar': Buffer.concat([dataNoNulls, data.slice(0, 500)]),
-  'truncated-body.tar': Buffer.concat([dataNoNulls, data.slice(0, 700)]),
+  'truncated-head.tar': Buffer.concat([dataNoNulls, data.subarray(0, 500)]),
+  'truncated-body.tar': Buffer.concat([dataNoNulls, data.subarray(0, 700)]),
   'zero.tar': Buffer.from(''),
   'empty.tar': Buffer.alloc(512),
   'compressed.tgz': zlib.gzipSync(data),
@@ -318,7 +319,7 @@ t.test('mtime cache', async t => {
         path.basename(__filename),
       ])
       const mtc = {}
-      mtimeCache.forEach((v, k) => mtc[k] = mtimeCache.get(k).toISOString())
+      mtimeCache.forEach((_v, k) => mtc[k] = mtimeCache.get(k).toISOString())
       t.same(mtc, {
         '1024-bytes.txt': '2017-04-10T16:57:47.000Z',
         '512-bytes.txt': '2017-04-10T17:08:55.000Z',

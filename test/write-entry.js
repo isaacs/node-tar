@@ -1,9 +1,27 @@
-'use strict'
-const t = require('tap')
-const mkdirp = require('mkdirp')
+import t from 'tap'
+import { mkdirp } from 'mkdirp'
+import fs from 'fs'
+import { ReadEntry } from '../dist/esm/read-entry.js'
+import { makeTar } from './fixtures/make-tar.js'
+import {
+  WriteEntry,
+  WriteEntrySync,
+  WriteEntryTar,
+} from '../dist/esm/write-entry.js'
+import path, { dirname } from 'path'
+import { Header } from '../dist/esm/header.js'
+import mutateFS from 'mutate-fs'
+import { Parser } from '../dist/esm/parse.js'
+import { rimraf } from 'rimraf'
+import { normalizeWindowsPath as normPath } from '../dist/esm/normalize-windows-path.js'
+import { fileURLToPath } from 'url'
+
+const { default: chmodr } = await import('chmodr')
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // make our tests verify that windows link targets get turned into / paths
-const fs = require('fs')
 const { readlink, readlinkSync } = fs
 fs.readlink = (path, cb) => {
   readlink(path, (er, path) => {
@@ -16,20 +34,10 @@ fs.readlink = (path, cb) => {
 }
 fs.readlinkSync = path => readlinkSync(path).replace(/\//g, '\\')
 
-const ReadEntry = require('../lib/read-entry.js')
-const makeTar = require('./make-tar.js')
-const WriteEntry = require('../lib/write-entry.js')
-const path = require('path')
 const fixtures = path.resolve(__dirname, 'fixtures')
 const files = path.resolve(fixtures, 'files')
-const Header = require('../lib/header.js')
-const mutateFS = require('mutate-fs')
 process.env.USER = 'isaacs'
-const chmodr = require('chmodr')
-const Parser = require('../lib/parse.js')
-const rimraf = require('rimraf')
 const isWindows = process.platform === 'win32'
-const normPath = require('../lib/normalize-windows-path.js')
 
 t.test('set up', t => {
   const one = fs.statSync(files + '/hardlink-1')
@@ -49,7 +57,8 @@ t.test('100 byte filename', t => {
   t.plan(2)
 
   const runTest = t => {
-    const f = '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+    const f =
+      '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
     const ws = new WriteEntry(f, {
       cwd: files,
       linkCache: linkCache,
@@ -75,7 +84,7 @@ t.test('100 byte filename', t => {
         },
       })
 
-      const wss = new WriteEntry.Sync(f, {
+      const wss = new WriteEntrySync(f, {
         cwd: files,
         linkCache: linkCache,
         statCache: statCache,
@@ -83,8 +92,10 @@ t.test('100 byte filename', t => {
       linkCache = ws.linkCache
       statCache = ws.statCache
 
-      t.equal(out.slice(512).toString('hex'),
-        wss.read().slice(512).toString('hex'))
+      t.equal(
+        out.slice(512).toString('hex'),
+        wss.read().subarray(512).toString('hex'),
+      )
 
       t.equal(out.length, 1024)
       t.equal(out.slice(0, 100).toString(), f)
@@ -102,23 +113,25 @@ t.test('100 byte filename', t => {
         devmin: 0,
       })
 
-      t.equal(out.slice(512).toString('hex'),
+      t.equal(
+        out.slice(512).toString('hex'),
         '6363636363636363636363636363636363636363636363636363636363636363' +
-        '6363636363636363636363636363636363636363636363636363636363636363' +
-        '6363636363636363636363636363636363636363636363636363636363636363' +
-        '6363636300000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000' +
-        '0000000000000000000000000000000000000000000000000000000000000000')
+          '6363636363636363636363636363636363636363636363636363636363636363' +
+          '6363636363636363636363636363636363636363636363636363636363636363' +
+          '6363636300000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000',
+      )
 
       t.end()
     })
@@ -151,7 +164,7 @@ t.test('directory', t => {
     })
     t.equal(out.length, 512)
 
-    const wss = new WriteEntry.Sync('dir', { cwd: files })
+    const wss = new WriteEntrySync('dir', { cwd: files })
     t.equal(wss.read().length, 512)
     t.match(wss.header, {
       cksumValid: true,
@@ -193,34 +206,38 @@ t.test('empty path for cwd', t => {
   })
 })
 
-t.test('symlink', {
-  skip: isWindows && 'symlinks not fully supported',
-}, t => {
-  const ws = new WriteEntry('symlink', { cwd: files })
-  let out = []
-  ws.on('data', c => out.push(c))
-  const header = {
-    cksumValid: true,
-    needPax: false,
-    path: 'symlink',
-    size: 0,
-    linkpath: 'hardlink-2',
-    uname: 'isaacs',
-    gname: null,
-    devmaj: 0,
-    devmin: 0,
-  }
+t.test(
+  'symlink',
+  {
+    skip: isWindows && 'symlinks not fully supported',
+  },
+  t => {
+    const ws = new WriteEntry('symlink', { cwd: files })
+    let out = []
+    ws.on('data', c => out.push(c))
+    const header = {
+      cksumValid: true,
+      needPax: false,
+      path: 'symlink',
+      size: 0,
+      linkpath: 'hardlink-2',
+      uname: 'isaacs',
+      gname: null,
+      devmaj: 0,
+      devmin: 0,
+    }
 
-  const wss = new WriteEntry.Sync('symlink', { cwd: files })
-  t.match(wss.header, header)
+    const wss = new WriteEntrySync('symlink', { cwd: files })
+    t.match(wss.header, header)
 
-  ws.on('end', _ => {
-    out = Buffer.concat(out)
-    t.equal(out.length, 512)
-    t.match(ws.header, header)
-    t.end()
-  })
-})
+    ws.on('end', _ => {
+      out = Buffer.concat(out)
+      t.equal(out.length, 512)
+      t.match(ws.header, header)
+      t.end()
+    })
+  },
+)
 
 t.test('zero-byte file', t => {
   const ws = new WriteEntry('files/zero-byte.txt', { cwd: fixtures })
@@ -253,7 +270,8 @@ t.test('zero-byte file, but close fails', t => {
   const ws = new WriteEntry('files/1024-bytes.txt', { cwd: fixtures })
 
   ws.on('end', _ =>
-    t.fail('should not get an end, because the close fails'))
+    t.fail('should not get an end, because the close fails'),
+  )
 
   ws.on('error', er => {
     t.match(er, { message: 'poop' })
@@ -263,7 +281,7 @@ t.test('zero-byte file, but close fails', t => {
 })
 
 t.test('hardlinks', t => {
-  const wss = new WriteEntry.Sync('hardlink-1', {
+  const wss = new WriteEntrySync('hardlink-1', {
     cwd: files,
   })
 
@@ -298,7 +316,9 @@ t.test('hardlinks far away', t => {
   const h1 = 'hardlink-1'
   const f = path.resolve(files, h1)
   const stat = fs.statSync(f)
-  const linkCache = new Map([[stat.dev + ':' + stat.ino, '/a/b/c/d/e']])
+  const linkCache = new Map([
+    [stat.dev + ':' + stat.ino, '/a/b/c/d/e'],
+  ])
 
   const ws = new WriteEntry('files/hardlink-2', {
     cwd: fixtures,
@@ -327,7 +347,8 @@ t.test('hardlinks far away', t => {
 })
 
 t.test('really deep path', t => {
-  const f = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+  const f =
+    'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
   const ws = new WriteEntry(f, { cwd: files })
   let out = []
   ws.on('data', c => out.push(c))
@@ -352,7 +373,8 @@ t.test('really deep path', t => {
 })
 
 t.test('no pax', t => {
-  const f = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+  const f =
+    'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
   const ws = new WriteEntry(f, { cwd: files, noPax: true })
   let out = []
   ws.on('data', c => out.push(c))
@@ -381,7 +403,7 @@ t.test('nonexistent file', t => {
   const ws = new WriteEntry('does not exist', { cwd: files })
   ws.on('error', er => {
     t.match(er, {
-      message: 'ENOENT: no such file or directory, lstat \'' + f + '\'',
+      message: "ENOENT: no such file or directory, lstat '" + f + "'",
       code: 'ENOENT',
       path: f,
       syscall: 'lstat',
@@ -395,7 +417,7 @@ t.test('absolute path', t => {
   const { root } = path.parse(absolute)
   const f = root + root + root + absolute
   const warn = normPath(isWindows ? root : root + root + root + root)
-  t.test('preservePaths=false strict=false', t => {
+  t.test('preservePaths=false strict=false warn='+warn, t => {
     const warnings = []
     // on windows, c:\c:\c:\... is a valid path, so just use the
     // single-root absolute version of it.
@@ -408,11 +430,13 @@ t.test('absolute path', t => {
     ws.on('end', _ => {
       out = Buffer.concat(out)
       t.equal(out.length, 1024)
-      t.match(warnings, [[
-        'TAR_ENTRY_INFO',
-        `stripping ${warn} from absolute path`,
-        { path: normPath(isWindows ? absolute : f) },
-      ]])
+      t.match(warnings, [
+        [
+          'TAR_ENTRY_INFO',
+          `stripping ${warn} from absolute path`,
+          { path: normPath(isWindows ? absolute : f) },
+        ],
+      ])
 
       t.match(ws.header, {
         cksumValid: true,
@@ -467,22 +491,25 @@ t.test('absolute path', t => {
   })
 
   t.test('preservePaths=false strict=true', t => {
-    t.throws(_ => {
-      new WriteEntry(isWindows ? absolute : f, {
-        strict: true,
-        cwd: files,
-      })
-    }, {
-      message: /stripping .* from absolute path/,
-      path: normPath(isWindows ? absolute : f),
-    })
+    t.throws(
+      _ => {
+        new WriteEntry(isWindows ? absolute : f, {
+          strict: true,
+          cwd: files,
+        })
+      },
+      {
+        message: /stripping .* from absolute path/,
+        path: normPath(isWindows ? absolute : f),
+      },
+    )
     t.end()
   })
 
   t.end()
 })
 
-t.throws(_ => new WriteEntry(null), new TypeError('path is required'))
+t.throws(() => new WriteEntry(null), TypeError)
 
 t.test('no user environ, sets uname to empty string', t => {
   delete process.env.USER
@@ -508,31 +535,35 @@ t.test('no user environ, sets uname to empty string', t => {
   })
 })
 
-t.test('an unsuppored type', {
-  skip: isWindows && '/dev/random on windows',
-}, t => {
-  const ws = new WriteEntry('/dev/random', { preservePaths: true })
-  ws.on('data', c => {
-    throw new Error('should not get data from random')
-  })
-  ws.on('stat', stat => {
-    t.match(stat, {
-      dev: Number,
-      mode: 0o020666,
-      nlink: 1,
-      rdev: Number,
-      blksize: Number,
-      ino: Number,
-      size: 0,
-      blocks: 0,
+t.test(
+  'an unsuppored type',
+  {
+    skip: isWindows && '/dev/random on windows',
+  },
+  t => {
+    const ws = new WriteEntry('/dev/random', { preservePaths: true })
+    ws.on('data', (_chunk) => {
+      throw new Error('should not get data from random')
     })
-    t.ok(stat.isCharacterDevice(), 'random is a character device')
-  })
-  ws.on('end', _ => {
-    t.match(ws, { type: 'Unsupported', path: '/dev/random' })
-    t.end()
-  })
-})
+    ws.on('stat', stat => {
+      t.match(stat, {
+        dev: Number,
+        mode: 0o020666,
+        nlink: 1,
+        rdev: Number,
+        blksize: Number,
+        ino: Number,
+        size: 0,
+        blocks: 0,
+      })
+      t.ok(stat.isCharacterDevice(), 'random is a character device')
+    })
+    ws.on('end', _ => {
+      t.match(ws, { type: 'Unsupported', path: '/dev/random' })
+      t.end()
+    })
+  },
+)
 
 t.test('readlink fail', t => {
   const expect = {
@@ -542,23 +573,31 @@ t.test('readlink fail', t => {
   // pretend everything is a symbolic link, then read something that isn't
   t.teardown(mutateFS.statType('SymbolicLink'))
   t.throws(_ => {
-    return new WriteEntry.Sync('write-entry.js', { cwd: __dirname })
+    return new WriteEntrySync('write-entry.js', { cwd: __dirname })
   }, expect)
-  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
-    t.match(er, expect)
-    t.equal(normPath(er.path), normPath(__filename))
-    t.end()
-  })
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on(
+    'error',
+    er => {
+      t.match(er, expect)
+      t.equal(normPath(er.path), normPath(__filename))
+      t.end()
+    },
+  )
 })
 
 t.test('open fail', t => {
   t.teardown(mutateFS.fail('open', new Error('pwn')))
-  t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
-    { message: 'pwn' })
-  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
-    t.match(er, { message: 'pwn' })
-    t.end()
-  })
+  t.throws(
+    _ => new WriteEntrySync('write-entry.js', { cwd: __dirname }),
+    { message: 'pwn' },
+  )
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on(
+    'error',
+    er => {
+      t.match(er, { message: 'pwn' })
+      t.end()
+    },
+  )
 })
 
 t.test('read fail', t => {
@@ -568,16 +607,22 @@ t.test('read fail', t => {
     syscall: 'read',
   }
   // pretend everything is a file, then read something that isn't
-  t.teardown(mutateFS.statMutate((er, st) => {
-    if (er) {
-      return [er, st]
-    }
-    st.isFile = () => true
-    st.size = 123
-  }))
-  t.throws(_ => new WriteEntry.Sync('fixtures', {
-    cwd: __dirname,
-  }), expect)
+  t.teardown(
+    mutateFS.statMutate((er, st) => {
+      if (er) {
+        return [er, st]
+      }
+      st.isFile = () => true
+      st.size = 123
+    }),
+  )
+  t.throws(
+    _ =>
+      new WriteEntrySync('fixtures', {
+        cwd: __dirname,
+      }),
+    expect,
+  )
   new WriteEntry('fixtures', { cwd: __dirname }).on('error', er => {
     t.match(er, expect)
     t.end()
@@ -585,27 +630,34 @@ t.test('read fail', t => {
 })
 
 t.test('read invalid EOF', t => {
-  t.teardown(mutateFS.mutate('read', (er, br) => [er, 0]))
+  t.teardown(mutateFS.mutate('read', (er, _bytesRead) => [er, 0]))
   const expect = {
     message: 'encountered unexpected EOF',
     path: normPath(__filename),
     syscall: 'read',
     code: 'EOF',
   }
-  t.throws(_ => new WriteEntry.Sync('write-entry.js', { cwd: __dirname }),
-    expect)
-  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
-    t.match(er, expect)
-    t.end()
-  })
+  t.throws(
+    _ => new WriteEntrySync('write-entry.js', { cwd: __dirname }),
+    expect,
+  )
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on(
+    'error',
+    er => {
+      t.match(er, expect)
+      t.end()
+    },
+  )
 })
 
 t.test('read overflow expectation', t => {
-  t.teardown(mutateFS.statMutate((er, st) => {
-    if (st) {
-      st.size = 3
-    }
-  }))
+  t.teardown(
+    mutateFS.statMutate((_er, st) => {
+      if (st) {
+        st.size = 3
+      }
+    }),
+  )
   const f = '512-bytes.txt'
   const expect = {
     message: 'did not encounter expected EOF',
@@ -614,17 +666,23 @@ t.test('read overflow expectation', t => {
     code: 'EOF',
   }
   t.plan(2)
-  t.throws(_ => new WriteEntry.Sync(f, { cwd: files, maxReadSize: 2 }), expect)
-  new WriteEntry(f, { cwd: files, maxReadSize: 2 }).on('error', er => {
-    t.match(er, expect)
-  }).resume()
+  t.throws(
+    _ => new WriteEntrySync(f, { cwd: files, maxReadSize: 2 }),
+    expect,
+  )
+  new WriteEntry(f, { cwd: files, maxReadSize: 2 })
+    .on('error', er => {
+      t.match(er, expect)
+    })
+    .resume()
 })
 
 t.test('short reads', t => {
   t.teardown(mutateFS.zenoRead())
   const cases = {
     '1024-bytes.txt': new Array(1024).join('x') + '\n',
-    '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc': new Array(101).join('c'),
+    '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc':
+      new Array(101).join('c'),
   }
 
   const maxReadSize = [null, 1024, 100, 111]
@@ -642,12 +700,21 @@ t.test('short reads', t => {
           ws.on('data', c => out.push(c))
           ws.on('end', _ => {
             out = Buffer.concat(out)
-            t.equal(out.length, 512 * Math.ceil(1 + contents.length / 512))
-            t.equal(out.slice(512).toString().replace(/\0.*$/, ''), contents)
-            const wss = new WriteEntry.Sync(filename, { cwd: files })
+            t.equal(
+              out.length,
+              512 * Math.ceil(1 + contents.length / 512),
+            )
+            t.equal(
+              out.slice(512).toString().replace(/\0.*$/, ''),
+              contents,
+            )
+            const wss = new WriteEntrySync(filename, { cwd: files })
             const syncOut = wss.read()
             t.equal(syncOut.length, out.length)
-            t.equal(syncOut.slice(512).toString(), out.slice(512).toString())
+            t.equal(
+              syncOut.subarray(512).toString(),
+              out.slice(512).toString(),
+            )
             t.end()
           })
         })
@@ -658,53 +725,67 @@ t.test('short reads', t => {
   t.end()
 })
 
-t.test('win32 path conversion', {
-  skip: isWindows && 'no need to test on windows',
-}, t => {
-  const ws = new WriteEntry('long-path\\r', {
-    cwd: files,
-    win32: true,
-  })
-  t.equal(ws.path, 'long-path/r')
-  t.end()
-})
-
-t.test('win32 <|>? in paths', {
-  skip: isWindows && 'do not create annoying junk on windows systems',
-}, t => {
-  const file = path.resolve(fixtures, '<|>?.txt')
-  const uglyName = Buffer.from('ef80bcef81bcef80beef80bf2e747874', 'hex').toString()
-  const ugly = path.resolve(fixtures, uglyName)
-  t.teardown(_ => {
-    rimraf.sync(file)
-    rimraf.sync(ugly)
-  })
-
-  fs.writeFileSync(ugly, '<|>?')
-
-  const wc = new WriteEntry(uglyName, {
-    cwd: fixtures,
-    win32: true,
-  })
-
-  const out = []
-  wc.on('data', c => out.push(c))
-  wc.on('end', _ => {
-    const data = Buffer.concat(out).toString()
-    t.equal(data.slice(0, 4), '<|>?')
+t.test(
+  'win32 path conversion',
+  {
+    skip: isWindows && 'no need to test on windows',
+  },
+  t => {
+    const ws = new WriteEntry('long-path\\r', {
+      cwd: files,
+      win32: true,
+    })
+    t.equal(ws.path, 'long-path/r')
     t.end()
-  })
+  },
+)
 
-  t.equal(wc.path, '<|>?.txt')
-  t.equal(wc.absolute, ugly)
-})
+t.test(
+  'win32 <|>? in paths',
+  {
+    skip:
+      isWindows && 'do not create annoying junk on windows systems',
+  },
+  t => {
+    const file = path.resolve(fixtures, '<|>?.txt')
+    const uglyName = Buffer.from(
+      'ef80bcef81bcef80beef80bf2e747874',
+      'hex',
+    ).toString()
+    const ugly = path.resolve(fixtures, uglyName)
+    t.teardown(_ => {
+      rimraf.sync(file)
+      rimraf.sync(ugly)
+    })
+
+    fs.writeFileSync(ugly, '<|>?')
+
+    const wc = new WriteEntry(uglyName, {
+      cwd: fixtures,
+      win32: true,
+    })
+
+    const out = []
+    wc.on('data', c => out.push(c))
+    wc.on('end', _ => {
+      const data = Buffer.concat(out).toString()
+      t.equal(data.slice(0, 4), '<|>?')
+      t.end()
+    })
+
+    t.equal(wc.path, '<|>?.txt')
+    t.equal(wc.absolute, ugly)
+  },
+)
 
 t.test('uid doesnt match, dont set uname', t => {
-  t.teardown(mutateFS.statMutate((er, st) => {
-    if (st) {
-      st.uid -= 1
-    }
-  }))
+  t.teardown(
+    mutateFS.statMutate((_er, st) => {
+      if (st) {
+        st.uid -= 1
+      }
+    }),
+  )
   const ws = new WriteEntry('long-path/r', {
     cwd: files,
   })
@@ -721,17 +802,17 @@ t.test('override absolute to some other file', t => {
   ws.on('end', _ => {
     const data = Buffer.concat(out)
     t.equal(data.length, 1024)
-    t.match(data.slice(512).toString(), /^a\0{511}$/)
+    t.match(data.subarray(512).toString(), /^a\0{511}$/)
     t.match(ws, {
       path: 'blerg',
       header: { size: 1 },
     })
-    const wss = new WriteEntry.Sync('blerg', {
+    const wss = new WriteEntrySync('blerg', {
       absolute: files + '/one-byte.txt',
     })
     const sdata = wss.read()
     t.equal(sdata.length, 1024)
-    t.match(sdata.slice(512).toString(), /^a\0{511}$/)
+    t.match(sdata.subarray(512).toString(), /^a\0{511}$/)
     t.match(wss, {
       path: 'blerg',
       header: { size: 1 },
@@ -741,7 +822,8 @@ t.test('override absolute to some other file', t => {
 })
 
 t.test('portable entries, nothing platform-specific', t => {
-  const om = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+  const om =
+    'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
   const ws = new WriteEntry(om, {
     cwd: files,
     portable: true,
@@ -775,7 +857,7 @@ t.test('portable entries, nothing platform-specific', t => {
   }
 
   const ps = new Parser()
-  const wss = new WriteEntry.Sync(om, {
+  const wss = new WriteEntrySync(om, {
     cwd: files,
     portable: true,
   })
@@ -795,7 +877,8 @@ t.test('portable entries, nothing platform-specific', t => {
 })
 
 t.test('no mtime', t => {
-  const om = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+  const om =
+    'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
   const ws = new WriteEntry(om, {
     cwd: files,
     noMtime: true,
@@ -832,7 +915,7 @@ t.test('no mtime', t => {
   }
 
   const ps = new Parser()
-  const wss = new WriteEntry.Sync(om, {
+  const wss = new WriteEntrySync(om, {
     cwd: files,
     portable: true,
     noMtime: true,
@@ -853,7 +936,8 @@ t.test('no mtime', t => {
 })
 
 t.test('force mtime', t => {
-  const om = 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
+  const om =
+    'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt'
   const date = new Date('1979-07-01T19:10:00.000Z')
   const ws = new WriteEntry(om, {
     cwd: files,
@@ -891,7 +975,7 @@ t.test('force mtime', t => {
   }
 
   const ps = new Parser()
-  const wss = new WriteEntry.Sync(om, {
+  const wss = new WriteEntrySync(om, {
     cwd: files,
     portable: true,
     mtime: new Date('1979-07-01T19:10:00.000Z'),
@@ -930,7 +1014,7 @@ t.test('portable dir entries, no mtime', t => {
   }
 
   const ps = new Parser()
-  const wss = new WriteEntry.Sync(dir, {
+  const wss = new WriteEntrySync(dir, {
     cwd: files,
     portable: true,
   })
@@ -985,19 +1069,19 @@ t.test('write entry from read entry', t => {
 
   t.test('basic file', t => {
     const fileEntry = new ReadEntry(new Header(data))
-    const wetFile = new WriteEntry.Tar(fileEntry)
+    const wetFile = new WriteEntryTar(fileEntry)
     const out = []
     let wetFileEnded = false
     wetFile.on('data', c => out.push(c))
-    wetFile.on('end', _ => wetFileEnded = true)
-    fileEntry.write(data.slice(512, 550))
-    fileEntry.write(data.slice(550, 1000))
-    fileEntry.end(data.slice(1000, 1024))
+    wetFile.on('end', _ => (wetFileEnded = true))
+    fileEntry.write(data.subarray(512, 550))
+    fileEntry.write(data.subarray(550, 1000))
+    fileEntry.end(data.subarray(1000, 1024))
     t.equal(wetFileEnded, true)
     const result = Buffer.concat(out)
     t.equal(result.length, 1024)
     t.equal(result.toString().replace(/\0.*$/, ''), '$')
-    const body = result.slice(512).toString().replace(/\0*$/, '')
+    const body = result.subarray(512).toString().replace(/\0*$/, '')
     t.equal(body, '$$$$$$$$$$')
     t.end()
   })
@@ -1019,11 +1103,11 @@ t.test('write entry from read entry', t => {
       '',
     ])
     const fileEntry = new ReadEntry(new Header(data))
-    const wetFile = new WriteEntry.Tar(fileEntry, { portable: true })
+    const wetFile = new WriteEntryTar(fileEntry, { portable: true })
     const out = []
     let wetFileEnded = false
     wetFile.on('data', c => out.push(c))
-    wetFile.on('end', _ => wetFileEnded = true)
+    wetFile.on('end', _ => (wetFileEnded = true))
     fileEntry.end()
     t.equal(wetFileEnded, true)
     const result = Buffer.concat(out)
@@ -1034,19 +1118,19 @@ t.test('write entry from read entry', t => {
   t.test('with pax header', t => {
     const fileEntryPax = new ReadEntry(new Header(data))
     fileEntryPax.path = new Array(200).join('$')
-    const wetPax = new WriteEntry.Tar(fileEntryPax)
+    const wetPax = new WriteEntryTar(fileEntryPax)
     let wetPaxEnded = false
     const out = []
     wetPax.on('data', c => out.push(c))
-    wetPax.on('end', _ => wetPaxEnded = true)
-    fileEntryPax.write(data.slice(512, 550))
-    fileEntryPax.write(data.slice(550, 1000))
-    fileEntryPax.end(data.slice(1000, 1024))
+    wetPax.on('end', _ => (wetPaxEnded = true))
+    fileEntryPax.write(data.subarray(512, 550))
+    fileEntryPax.write(data.subarray(550, 1000))
+    fileEntryPax.end(data.subarray(1000, 1024))
     t.equal(wetPaxEnded, true)
     const result = Buffer.concat(out)
     t.equal(result.length, 2048)
-    t.match(result.slice(1024, 1124).toString(), /^\$+\0?$/)
-    const body = result.slice(1536).toString().replace(/\0*$/, '')
+    t.match(result.subarray(1024, 1124).toString(), /^\$+\0?$/)
+    const body = result.subarray(1536).toString().replace(/\0*$/, '')
     t.match(new Header(result), { type: 'ExtendedHeader' })
     t.equal(body, '$$$$$$$$$$')
     t.end()
@@ -1055,26 +1139,28 @@ t.test('write entry from read entry', t => {
   t.test('pax and portable', t => {
     const fileEntryPax = new ReadEntry(new Header(data))
     fileEntryPax.path = new Array(200).join('$')
-    const wetPax = new WriteEntry.Tar(fileEntryPax, { portable: true })
+    const wetPax = new WriteEntryTar(fileEntryPax, {
+      portable: true,
+    })
     let wetPaxEnded = false
     const out = []
     wetPax.on('data', c => out.push(c))
-    wetPax.on('end', _ => wetPaxEnded = true)
-    fileEntryPax.write(data.slice(512, 550))
-    fileEntryPax.write(data.slice(550, 1000))
-    fileEntryPax.end(data.slice(1000, 1024))
+    wetPax.on('end', _ => (wetPaxEnded = true))
+    fileEntryPax.write(data.subarray(512, 550))
+    fileEntryPax.write(data.subarray(550, 1000))
+    fileEntryPax.end(data.subarray(1000, 1024))
     t.equal(wetPaxEnded, true)
     const result = Buffer.concat(out)
     t.equal(result.length, 2048)
-    t.match(result.slice(1024, 1124).toString(), /^\$+\0?$/)
+    t.match(result.subarray(1024, 1124).toString(), /^\$+\0?$/)
     t.match(new Header(result), { type: 'ExtendedHeader' })
-    t.match(new Header(result.slice(1024)), {
+    t.match(new Header(result.subarray(1024)), {
       ctime: null,
       atime: null,
       uname: '',
       gname: '',
     })
-    const body = result.slice(1536).toString().replace(/\0*$/, '')
+    const body = result.subarray(1536).toString().replace(/\0*$/, '')
     t.equal(body, '$$$$$$$$$$')
     t.end()
   })
@@ -1082,30 +1168,30 @@ t.test('write entry from read entry', t => {
   t.test('pax, portable, and noMtime', t => {
     const fileEntryPax = new ReadEntry(new Header(data))
     fileEntryPax.path = new Array(200).join('$')
-    const wetPax = new WriteEntry.Tar(fileEntryPax, {
+    const wetPax = new WriteEntryTar(fileEntryPax, {
       noMtime: true,
       portable: true,
     })
     let wetPaxEnded = false
     const out = []
     wetPax.on('data', c => out.push(c))
-    wetPax.on('end', _ => wetPaxEnded = true)
-    fileEntryPax.write(data.slice(512, 550))
-    fileEntryPax.write(data.slice(550, 1000))
-    fileEntryPax.end(data.slice(1000, 1024))
+    wetPax.on('end', _ => (wetPaxEnded = true))
+    fileEntryPax.write(data.subarray(512, 550))
+    fileEntryPax.write(data.subarray(550, 1000))
+    fileEntryPax.end(data.subarray(1000, 1024))
     t.equal(wetPaxEnded, true)
     const result = Buffer.concat(out)
     t.equal(result.length, 2048)
-    t.match(result.slice(1024, 1124).toString(), /^\$+\0?$/)
+    t.match(result.subarray(1024, 1124).toString(), /^\$+\0?$/)
     t.match(new Header(result), { type: 'ExtendedHeader' })
-    t.match(new Header(result.slice(1024)), {
+    t.match(new Header(result.subarray(1024)), {
       mtime: null,
       ctime: null,
       atime: null,
       uname: '',
       gname: '',
     })
-    const body = result.slice(1536).toString().replace(/\0*$/, '')
+    const body = result.subarray(1536).toString().replace(/\0*$/, '')
     t.equal(body, '$$$$$$$$$$')
     t.end()
   })
@@ -1116,18 +1202,22 @@ t.test('write entry from read entry', t => {
 
     t.test('warn', t => {
       const warnings = []
-      new WriteEntry.Tar(fileEntry, {
+      new WriteEntryTar(fileEntry, {
         onwarn: (code, msg, data) => warnings.push(code, msg, data),
       })
-      t.match(warnings, ['TAR_ENTRY_INFO', 'stripping / from absolute path', {
-        path: '/a/b/c',
-      }])
+      t.match(warnings, [
+        'TAR_ENTRY_INFO',
+        'stripping / from absolute path',
+        {
+          path: '/a/b/c',
+        },
+      ])
       t.end()
     })
 
     t.test('preserve', t => {
       const warnings = []
-      new WriteEntry.Tar(fileEntry, {
+      new WriteEntryTar(fileEntry, {
         onwarn: (code, msg, data) => warnings.push(code, msg, data),
         preservePaths: true,
       })
@@ -1136,41 +1226,48 @@ t.test('write entry from read entry', t => {
     })
 
     t.test('throw', t => {
-      t.throws(_ => new WriteEntry.Tar(fileEntry, {
-        strict: true,
-      }))
+      t.throws(
+        _ =>
+          new WriteEntryTar(fileEntry, {
+            strict: true,
+          }),
+      )
       t.end()
     })
     t.end()
   })
 
   t.test('no block remain', t => {
-    const readEntry = new ReadEntry(new Header({
-      size: 512,
-      type: 'File',
-      path: 'x',
-    }))
-    const wet = new WriteEntry.Tar(readEntry)
+    const readEntry = new ReadEntry(
+      new Header({
+        size: 512,
+        type: 'File',
+        path: 'x',
+      }),
+    )
+    const wet = new WriteEntryTar(readEntry)
     const out = []
     wet.on('data', c => out.push(c))
     let wetEnded = false
-    wet.on('end', _ => wetEnded = true)
+    wet.on('end', _ => (wetEnded = true))
     t.equal(wetEnded, false)
     readEntry.end(Buffer.from(new Array(513).join('@')))
     t.equal(wetEnded, true)
     const res = Buffer.concat(out)
     t.equal(res.length, 1024)
-    t.match(res.slice(512).toString(), /^@+$/)
+    t.match(res.subarray(512).toString(), /^@+$/)
     t.end()
   })
 
   t.test('write more than appropriate', t => {
-    const readEntry = new ReadEntry(new Header({
-      path: 'x',
-      type: 'File',
-      size: '1',
-    }))
-    const wet = new WriteEntry.Tar(readEntry)
+    const readEntry = new ReadEntry(
+      new Header({
+        path: 'x',
+        type: 'File',
+        size: '1',
+      }),
+    )
+    const wet = new WriteEntryTar(readEntry)
     t.throws(_ => wet.write(Buffer.from(new Array(1024).join('x'))))
     t.end()
   })
@@ -1212,7 +1309,9 @@ t.test('prefix and hard links', t => {
       path: 'PaxHeader/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
       type: 'ExtendedHeader',
     },
-    new RegExp('^266 path=out.x.' + long + '[\\w\\W]*linkpath=out.x.target'),
+    new RegExp(
+      '^266 path=out.x.' + long + '[\\w\\W]*linkpath=out.x.target',
+    ),
     {
       path: 'out/x/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
       type: 'Link',
@@ -1251,11 +1350,11 @@ t.test('prefix and hard links', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else if (e instanceof RegExp) {
-        t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
+        t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
-        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+        t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }
     })
   }
@@ -1271,11 +1370,12 @@ t.test('prefix and hard links', t => {
       statCache,
     }
     const out = []
-    const entry = (path) => new Promise(resolve => {
-      const p = new Class(path, opt)
-      p.on('end', resolve)
-      p.on('data', d => out.push(d))
-    })
+    const entry = path =>
+      new Promise(resolve => {
+        const p = new Class(path, opt)
+        p.on('end', resolve)
+        p.on('data', d => out.push(d))
+      })
 
     await entry(path)
     if (path === '.') {
@@ -1299,8 +1399,8 @@ t.test('prefix and hard links', t => {
   })
 
   t.test('sync', t => {
-    t.test('.', t => runTest(t, '.', WriteEntry.Sync))
-    return t.test('./', t => runTest(t, './', WriteEntry.Sync))
+    t.test('.', t => runTest(t, '.', WriteEntrySync))
+    return t.test('./', t => runTest(t, './', WriteEntrySync))
   })
 
   t.end()
@@ -1328,7 +1428,9 @@ t.test('prefix and hard links from tar entries', t => {
       path: 'PaxHeader/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
       type: 'ExtendedHeader',
     },
-    new RegExp('^266 path=out.x.' + long + '[\\w\\W]*linkpath=out.x.target'),
+    new RegExp(
+      '^266 path=out.x.' + long + '[\\w\\W]*linkpath=out.x.target',
+    ),
     {
       path: 'out/x/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
       type: 'Link',
@@ -1425,16 +1527,16 @@ t.test('prefix and hard links from tar entries', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else if (e instanceof RegExp) {
-        t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
+        t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
-        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+        t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }
     })
   }
 
-  const runTest = async (t, path) => {
+  const runTest = async (t, _path) => {
     const linkCache = new Map()
     const statCache = new Map()
     const opt = {
@@ -1447,7 +1549,7 @@ t.test('prefix and hard links from tar entries', t => {
     const parser = new Parser({
       strict: true,
       onentry: readEntry => {
-        const p = new WriteEntry.Tar(readEntry, opt)
+        const p = new WriteEntryTar(readEntry, opt)
         p.on('data', d => out.push(d))
       },
     })
@@ -1520,9 +1622,9 @@ t.test('hard links and no prefix', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else {
-        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+        t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }
     })
   }
@@ -1536,11 +1638,12 @@ t.test('hard links and no prefix', t => {
       statCache,
     }
     const out = []
-    const entry = (path) => new Promise(resolve => {
-      const p = new Class(path, opt)
-      p.on('end', resolve)
-      p.on('data', d => out.push(d))
-    })
+    const entry = path =>
+      new Promise(resolve => {
+        const p = new Class(path, opt)
+        p.on('end', resolve)
+        p.on('data', d => out.push(d))
+      })
 
     await entry(path)
     if (path === '.') {
@@ -1563,8 +1666,8 @@ t.test('hard links and no prefix', t => {
   })
 
   t.test('sync', t => {
-    t.test('.', t => runTest(t, '.', WriteEntry.Sync))
-    return t.test('./', t => runTest(t, './', WriteEntry.Sync))
+    t.test('.', t => runTest(t, '.', WriteEntrySync))
+    return t.test('./', t => runTest(t, './', WriteEntrySync))
   })
 
   t.end()
@@ -1665,16 +1768,16 @@ t.test('hard links from tar entries and no prefix', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.slice(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else if (e instanceof RegExp) {
-        t.match(data.slice(i * 512, (i + 1) * 512).toString(), e)
+        t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
-        t.match(new Header(data.slice(i * 512, (i + 1) * 512)), e)
+        t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }
     })
   }
 
-  const runTest = async (t, path) => {
+  const runTest = async (t, _path) => {
     const linkCache = new Map()
     const statCache = new Map()
     const opt = {
@@ -1685,7 +1788,7 @@ t.test('hard links from tar entries and no prefix', t => {
     const out = []
     const parser = new Parser({
       onentry: readEntry => {
-        const p = new WriteEntry.Tar(readEntry, opt)
+        const p = new WriteEntryTar(readEntry, opt)
         p.on('data', d => out.push(d))
       },
     })

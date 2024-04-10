@@ -1,18 +1,32 @@
+import t from 'tap'
+
 process.env.TESTING_TAR_FAKE_PLATFORM = 'win32'
-const t = require('tap')
-const normalize = require('../lib/normalize-unicode.js')
-const stripSlash = require('../lib/strip-trailing-slashes.js')
-const normPath = require('../lib/normalize-windows-path.js')
+
+const [
+  { normalizeUnicode },
+  { stripTrailingSlashes },
+  { normalizeWindowsPath },
+] = await Promise.all([
+  import('../dist/esm/normalize-unicode.js'),
+  import('../dist/esm/strip-trailing-slashes.js'),
+  import('../dist/esm/normalize-windows-path.js'),
+])
 
 // café
 const cafe1 = Buffer.from([0x63, 0x61, 0x66, 0xc3, 0xa9]).toString()
 
 // cafe with a `
-const cafe2 = Buffer.from([0x63, 0x61, 0x66, 0x65, 0xcc, 0x81]).toString()
+const cafe2 = Buffer.from([
+  0x63, 0x61, 0x66, 0x65, 0xcc, 0x81,
+]).toString()
 
-t.equal(normalize(cafe1), normalize(cafe2), 'matching unicodes')
-t.equal(normalize(cafe1), normalize(cafe2), 'cached')
-t.equal(normalize('foo'), 'foo', 'non-unicode string')
+t.equal(
+  normalizeUnicode(cafe1),
+  normalizeUnicode(cafe2),
+  'matching unicodes',
+)
+t.equal(normalizeUnicode(cafe1), normalizeUnicode(cafe2), 'cached')
+t.equal(normalizeUnicode('foo'), 'foo', 'non-unicode string')
 
 t.test('normalize with strip slashes', t => {
   const paths = [
@@ -28,8 +42,12 @@ t.test('normalize with strip slashes', t => {
 
   for (const path of paths) {
     t.test(JSON.stringify(path), t => {
-      const a = normalize(stripSlash(normPath(path)))
-      const b = stripSlash(normPath(normalize(path)))
+      const a = normalizeUnicode(
+        stripTrailingSlashes(normalizeWindowsPath(path)),
+      )
+      const b = stripTrailingSlashes(
+        normalizeWindowsPath(normalizeUnicode(path)),
+      )
       t.matchSnapshot(a, 'normalized')
       t.equal(a, b, 'order should not matter')
       t.end()

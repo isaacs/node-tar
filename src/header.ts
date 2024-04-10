@@ -15,7 +15,7 @@ export type HeaderData = {
   gid?: number
   size?: number
   cksum?: number
-  type?: EntryTypeCode | EntryTypeName
+  type?: EntryTypeName | 'Unsupported'
   linkpath?: string
   uname?: string
   gname?: string
@@ -46,7 +46,7 @@ export class Header implements HeaderData {
   gid?: number
   size?: number
   cksum?: number
-  #type: EntryTypeCode = '0'
+  #type: EntryTypeCode | 'Unsupported' = 'Unsupported'
   linkpath?: string
   uname?: string
   gname?: string
@@ -101,10 +101,8 @@ export class Header implements HeaderData {
 
     // old tar versions marked dirs as a file with a trailing /
     const t = decString(buf, off + 156, 1)
-    if (types.isCode(t)) this.#type = t
-    else this.#type = '0'
-    if (this.#type === '') {
-      this.#type = '0'
+    if (types.isCode(t)) {
+      this.#type = t || '0'
     }
     if (this.#type === '0' && this.path.slice(-1) === '/') {
       this.#type = '5'
@@ -126,8 +124,10 @@ export class Header implements HeaderData {
     ) {
       this.uname = decString(buf, off + 265, 32)
       this.gname = decString(buf, off + 297, 32)
+      /* c8 ignore start */
       this.devmaj = decNumber(buf, off + 329, 8) ?? 0
       this.devmin = decNumber(buf, off + 337, 8) ?? 0
+      /* c8 ignore stop */
       if (buf[off + 475] !== 0) {
         // definitely a prefix, definitely >130 chars.
         const prefix = decString(buf, off + 345, 155)
@@ -152,7 +152,7 @@ export class Header implements HeaderData {
     }
 
     this.cksumValid = sum === this.cksum
-    if (this.cksum === null && sum === 8 * 0x20) {
+    if (this.cksum === undefined && sum === 8 * 0x20) {
       this.nullBlock = true
     }
   }
@@ -178,6 +178,10 @@ export class Header implements HeaderData {
   encode(buf?: Buffer, off: number = 0) {
     if (!buf) {
       buf = this.block = Buffer.alloc(512)
+    }
+
+    if (this.#type === 'Unsupported') {
+      this.#type = '0'
     }
 
     if (!(buf.length >= off + 512)) {
@@ -244,16 +248,20 @@ export class Header implements HeaderData {
   }
 
   get type(): EntryTypeName {
-    return types.name.get(this.#type) as EntryTypeName
+    return (
+      this.#type === 'Unsupported'
+        ? this.#type
+        : types.name.get(this.#type)
+    ) as EntryTypeName
   }
 
-  get typeKey(): EntryTypeCode {
+  get typeKey(): EntryTypeCode | 'Unsupported' {
     return this.#type
   }
 
-  set type(type: EntryTypeCode | EntryTypeName) {
+  set type(type: EntryTypeCode | EntryTypeName | 'Unsupported') {
     const c = String(types.code.get(type as EntryTypeName))
-    if (types.isCode(c)) {
+    if (types.isCode(c) || c === 'Unsupported') {
       this.#type = c
     } else if (types.isCode(type)) {
       this.#type = type

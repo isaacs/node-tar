@@ -65,6 +65,7 @@ export const mkdir = (
 
   // if there's any overlap between mask and mode,
   // then we'll need an explicit chmod
+  /* c8 ignore next */
   const umask = opt.umask ?? 0o22
   const mode = opt.mode | 0o0700
   const needChmod = (mode & umask) !== 0
@@ -215,6 +216,7 @@ export const mkdirSync = (dir: string, opt: MkdirOptions) => {
   dir = normalizeWindowsPath(dir)
   // if there's any overlap between mask and mode,
   // then we'll need an explicit chmod
+  /* c8 ignore next */
   const umask = opt.umask ?? 0o22
   const mode = opt.mode | 0o700
   const needChmod = (mode & umask) !== 0

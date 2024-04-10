@@ -20,6 +20,7 @@
 
 import { EventEmitter as EE } from 'events'
 import { BrotliDecompress, Unzip } from 'minizlib'
+import { Yallist } from 'yallist'
 import { Header } from './header.js'
 import { TarOptions } from './options.js'
 import { Pax } from './pax.js'
@@ -78,7 +79,8 @@ export class Parser extends EE implements Warner {
   writable: true = true
   readable: false = false;
 
-  [QUEUE]: (ReadEntry | [string | symbol, any, any])[] = [];
+  [QUEUE]: Yallist<ReadEntry | [string | symbol, any, any]> =
+    new Yallist();
   [BUFFER]?: Buffer;
   [READENTRY]?: ReadEntry;
   [WRITEENTRY]?: ReadEntry;
@@ -161,7 +163,7 @@ export class Parser extends EE implements Warner {
   }
 
   [CONSUMEHEADER](chunk: Buffer, position: number) {
-    if (this[SAW_VALID_ENTRY] === null) {
+    if (this[SAW_VALID_ENTRY] === undefined) {
       this[SAW_VALID_ENTRY] = false
     }
     let header
@@ -322,8 +324,8 @@ export class Parser extends EE implements Warner {
     if (!entry) {
       throw new Error('attempt to consume body without entry??')
     }
-    /* c8 ignore stop */
     const br = entry.blockRemain ?? 0
+    /* c8 ignore stop */
     const c =
       br >= chunk.length && position === 0
         ? chunk
@@ -387,9 +389,10 @@ export class Parser extends EE implements Warner {
         break
       }
 
-      /* istanbul ignore next */
+      /* c8 ignore start */
       default:
         throw new Error('unknown meta: ' + entry.type)
+      /* c8 ignore stop */
     }
   }
 
@@ -422,7 +425,7 @@ export class Parser extends EE implements Warner {
       // look for gzip header
       for (
         let i = 0;
-        this[UNZIP] === null && i < gzipHeader.length;
+        this[UNZIP] === undefined && i < gzipHeader.length;
         i++
       ) {
         if (chunk[i] !== gzipHeader[i]) {
@@ -456,7 +459,7 @@ export class Parser extends EE implements Warner {
       }
 
       if (
-        this[UNZIP] === null ||
+        this[UNZIP] === undefined ||
         (this[UNZIP] === false && this.brotli)
       ) {
         const ended = this[ENDED]
@@ -595,9 +598,10 @@ export class Parser extends EE implements Warner {
           position += this[CONSUMEMETA](chunk, position)
           break
 
-        /* istanbul ignore next */
+        /* c8 ignore start */
         default:
           throw new Error('invalid state: ' + this[STATE])
+        /* c8 ignore stop */
       }
     }
 
@@ -616,13 +620,16 @@ export class Parser extends EE implements Warner {
   end(chunk?: Buffer) {
     if (!this[ABORTED]) {
       if (this[UNZIP]) {
+        /* c8 ignore start */
         if (chunk) this[UNZIP].write(chunk)
+        /* c8 ignore stop */
         this[UNZIP].end()
       } else {
         this[ENDED] = true
         if (this.brotli === undefined)
           chunk = chunk || Buffer.alloc(0)
         if (chunk) this.write(chunk)
+        this[MAYBEEND]()
       }
     }
   }

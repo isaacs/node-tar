@@ -80,7 +80,7 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
   type?: EntryTypeName | 'Unsupported'
   linkpath?: string
   stat?: Stats
-      /* c8 ignore start */
+  /* c8 ignore start */
 
   #hadError: boolean = false
 
@@ -107,12 +107,12 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
       this.on('warn', opt.onwarn)
     }
 
-    let pathWarn = false
+    let pathWarn: string | boolean = false
     if (!this.preservePaths) {
       const [root, stripped] = stripAbsolutePath(this.path)
       if (root && typeof stripped === 'string') {
         this.path = stripped
-        pathWarn = !!root
+        pathWarn = root
       }
     }
 
@@ -229,6 +229,7 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
       gid: this.portable ? undefined : this.stat.gid,
       size: this.stat.size,
       mtime: this.noMtime ? undefined : this.mtime || this.stat.mtime,
+      /* c8 ignore next */
       type: this.type === 'Unsupported' ? undefined : this.type,
       uname: this.portable
         ? undefined
@@ -385,7 +386,11 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
     })
   }
 
-  [CLOSE](cb: (er?: null | Error | NodeJS.ErrnoException) => any = () => {}) {
+  /* c8 ignore start */
+  [CLOSE](
+    cb: (er?: null | Error | NodeJS.ErrnoException) => any = () => {},
+  ) {
+    /* c8 ignore stop */
     if (this.fd !== undefined) fs.close(this.fd, cb)
   }
 
@@ -541,7 +546,11 @@ export class WriteEntrySync extends WriteEntry implements Warner {
     cb()
   }
 
-  [CLOSE](cb: (er?: null | Error | NodeJS.ErrnoException) => any = () => {}) {
+  /* c8 ignore start */
+  [CLOSE](
+    cb: (er?: null | Error | NodeJS.ErrnoException) => any = () => {},
+  ) {
+    /* c8 ignore stop */
     if (this.fd !== undefined) fs.closeSync(this.fd)
     cb()
   }
@@ -595,7 +604,13 @@ export class WriteEntryTar
     this.noMtime = !!opt.noMtime
 
     this.readEntry = readEntry
-    this.type = readEntry.type
+    const { type } = readEntry
+    /* c8 ignore start */
+    if (type === 'Unsupported') {
+      throw new Error('writing entry that should be ignored')
+    }
+    /* c8 ignore stop */
+    this.type = type
     if (this.type === 'Directory' && this.portable) {
       this.noMtime = true
     }

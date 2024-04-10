@@ -4,7 +4,7 @@ export class CwdError extends Error {
   syscall: 'chdir' = 'chdir'
 
   constructor(path: string, code: string) {
-    super(code + ": Cannot cd into '" + path + "'")
+    super(`${code}: Cannot cd into '${path}'`)
     this.path = path
     this.code = code
   }

@@ -1,24 +1,27 @@
-'use strict'
-const t = require('tap')
-const u = require('../lib/update.js')
-const path = require('path')
-const fs = require('fs')
-const mutateFS = require('mutate-fs')
+import t from 'tap'
+import { update as u } from '../dist/esm/update.js'
 
-const { resolve } = require('path')
+import path, {dirname} from 'path'
+import fs from 'fs'
+import mutateFS from 'mutate-fs'
+
+import { resolve } from 'path'
+import {fileURLToPath} from 'url'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 const fixtures = path.resolve(__dirname, 'fixtures')
 const tars = path.resolve(fixtures, 'tars')
-const zlib = require('zlib')
+import zlib from 'zlib'
+import { spawn } from 'child_process'
 
-const spawn = require('child_process').spawn
 
 const data = fs.readFileSync(tars + '/body-byte-counts.tar')
-const dataNoNulls = data.slice(0, data.length - 1024)
+const dataNoNulls = data.subarray(0, data.length - 1024)
 const fixtureDef = {
   'body-byte-counts.tar': data,
   'no-null-eof.tar': dataNoNulls,
-  'truncated-head.tar': Buffer.concat([dataNoNulls, data.slice(0, 500)]),
-  'truncated-body.tar': Buffer.concat([dataNoNulls, data.slice(0, 700)]),
+  'truncated-head.tar': Buffer.concat([dataNoNulls, data.subarray(0, 500)]),
+  'truncated-body.tar': Buffer.concat([dataNoNulls, data.subarray(0, 700)]),
   'zero.tar': Buffer.from(''),
   'empty.tar': Buffer.alloc(512),
   'compressed.tgz': zlib.gzipSync(data),

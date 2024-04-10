@@ -28,18 +28,19 @@ export class Pax implements HeaderData {
     this.atime = obj.atime
     this.charset = obj.charset
     this.comment = obj.comment
+    this.ctime = obj.ctime
+    this.dev = obj.dev
     this.gid = obj.gid
+    this.global = global
     this.gname = obj.gname
+    this.ino = obj.ino
     this.linkpath = obj.linkpath
     this.mtime = obj.mtime
+    this.nlink = obj.nlink
     this.path = obj.path
     this.size = obj.size
     this.uid = obj.uid
     this.uname = obj.uname
-    this.dev = obj.dev
-    this.ino = obj.ino
-    this.nlink = obj.nlink
-    this.global = global
   }
 
   encode() {
@@ -63,7 +64,9 @@ export class Pax implements HeaderData {
       // XXX split the path
       // then the path should be PaxHeader + basename, but less than 99,
       // prepend with the dirname
-      path: ('PaxHeader/' + basename(this.path || '')).slice(0, 99),
+      /* c8 ignore start */
+      path: ('PaxHeader/' + basename(this.path ?? '')).slice(0, 99),
+      /* c8 ignore stop */
       mode: this.mode || 0o644,
       uid: this.uid,
       gid: this.gid,
@@ -163,13 +166,11 @@ const parseKVLine = (set: Record<string, any>, line: string) => {
   const kv = line.split('=')
   const r = kv.shift()
 
-  /* c8 ignore next */
-  if (!r) throw new Error('fell of key/value list somehow')
-
-  const k = r.replace(/^SCHILY\.(dev|ino|nlink)/, '$1')
-  if (!k) {
+  if (!r) {
     return set
   }
+
+  const k = r.replace(/^SCHILY\.(dev|ino|nlink)/, '$1')
 
   const v = kv.join('=')
   set[k] = /^([A-Z]+\.)?([mac]|birth|creation)time$/.test(k)

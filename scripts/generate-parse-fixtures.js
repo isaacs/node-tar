@@ -1,9 +1,12 @@
-'use strict'
-const Parse = require('../lib/parse.js')
-const fs = require('fs')
-const path = require('path')
-const tardir = path.resolve(__dirname, '../test/fixtures/tars')
-const parsedir = path.resolve(__dirname, '../test/fixtures/parse')
+import { Parser } from '../dist/esm/parse.js'
+import fs from 'fs'
+import path, {dirname, resolve} from 'path'
+import {fileURLToPath} from 'url'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const tardir = resolve(__dirname, '../test/fixtures/tars')
+const parsedir = resolve(__dirname, '../test/fixtures/parse')
 const maxMetaOpt = [250, null]
 const filterOpt = [true, false]
 const strictOpt = [true, false]
@@ -16,9 +19,9 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
   const tail = (o ? '-' + o : '') + '.json'
   const eventsfile = parsedir + '/' + path.basename(tarfile, '.tar') + tail
 
-  const p = new Parse({
+  const p = new Parser({
     maxMetaEntrySize: maxMeta,
-    filter: filter ? (path, entry) => entry.size % 2 !== 0 : null,
+    filter: filter ? (_path, entry) => entry.size % 2 !== 0 : null,
     strict: strict,
   })
   const events = []
@@ -70,7 +73,7 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
 
   p.on('entry', pushEntry('entry'))
   p.on('ignoredEntry', pushEntry('ignoredEntry'))
-  p.on('warn', (code, message, data) => events.push(['warn', code, message]))
+  p.on('warn', (code, message, _data) => events.push(['warn', code, message]))
   p.on('error', er => events.push(['error', {
     message: er.message,
     code: er.code,

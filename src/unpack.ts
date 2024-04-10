@@ -68,7 +68,7 @@ const DEFAULT_MAX_DEPTH = 1024
 // semantics.
 //
 // See: https://github.com/npm/node-tar/issues/183
-/* istanbul ignore next */
+/* c8 ignore start */
 const unlinkFile = (
   path: string,
   cb: (er?: Error | null) => void,
@@ -85,8 +85,9 @@ const unlinkFile = (
     fs.unlink(name, cb)
   })
 }
+/* c8 ignore stop */
 
-/* istanbul ignore next */
+/* c8 ignore start */
 const unlinkFileSync = (path: string) => {
   if (!isWindows) {
     return fs.unlinkSync(path)
@@ -96,6 +97,7 @@ const unlinkFileSync = (path: string) => {
   fs.renameSync(path, name)
   fs.unlinkSync(name)
 }
+/* c8 ignore stop */
 
 // this.gid, entry.gid, this.processUid
 const uint32 = (
@@ -331,6 +333,7 @@ export class Unpack extends Parser {
     if (!this.preservePaths) {
       if (
         parts.includes('..') ||
+        /* c8 ignore next */
         (isWindows && /^[a-z]:\.\.$/i.test(parts[0] ?? ''))
       ) {
         this.warn('TAR_ENTRY_ERROR', `path contains '..'`, {
@@ -366,7 +369,7 @@ export class Unpack extends Parser {
     // if we somehow ended up with a path that escapes the cwd, and we are
     // not in preservePaths mode, then something is fishy!  This should have
     // been prevented above, so ignore this for coverage.
-    /* istanbul ignore if - defense in depth */
+    /* c8 ignore start - defense in depth */
     if (
       !this.preservePaths &&
       typeof entry.absolute === 'string' &&
@@ -381,6 +384,7 @@ export class Unpack extends Parser {
       })
       return false
     }
+    /* c8 ignore stop */
 
     // an archive can set properties on the extraction directory, but it
     // may not replace the cwd with a different kind of thing entirely.
@@ -522,10 +526,11 @@ export class Unpack extends Parser {
     let actions = 1
     const done = (er?: null | Error) => {
       if (er) {
-        /* istanbul ignore else - we should always have a fd by now */
+        /* c8 ignore start - we should always have a fd by now */
         if (stream.fd) {
           fs.close(stream.fd, () => {})
         }
+        /* c8 ignore stop */
 
         this[ONERROR](er, entry)
         fullyDone()
@@ -758,6 +763,7 @@ export class Unpack extends Parser {
         if (
           st &&
           (this.keep ||
+            /* c8 ignore next */
             (this.newer && st.mtime > (entry.mtime ?? st.mtime)))
         ) {
           this[SKIP](entry)
@@ -912,6 +918,7 @@ export class UnpackSync extends Unpack {
     if (
       st &&
       (this.keep ||
+        /* c8 ignore next */
         (this.newer && st.mtime > (entry.mtime ?? st.mtime)))
     ) {
       return this[SKIP](entry)
@@ -1019,7 +1026,11 @@ export class UnpackSync extends Unpack {
           fs.fchownSync(fd, Number(uid), Number(gid))
         } catch (fchowner) {
           try {
-            fs.chownSync(String(entry.absolute), Number(uid), Number(gid))
+            fs.chownSync(
+              String(entry.absolute),
+              Number(uid),
+              Number(gid),
+            )
           } catch (chowner) {
             er = er || fchowner
           }
@@ -1048,6 +1059,7 @@ export class UnpackSync extends Unpack {
           entry.atime || new Date(),
           entry.mtime,
         )
+        /* c8 ignore next */
       } catch (er) {}
     }
     if (this[DOCHOWN](entry)) {

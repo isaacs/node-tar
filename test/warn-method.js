@@ -1,8 +1,13 @@
-const t = require('tap')
-const EE = require('events').EventEmitter
-const warner = require('../lib/warn-mixin.js')
+import t from 'tap'
+import EE from 'events'
+import { warnMethod } from '../dist/esm/warn-method.js'
 
-const Warner = warner(EE)
+class Warner extends EE {
+  warn(code, message, data = {}) {
+    return warnMethod(this, code, message, data)
+  }
+}
+
 
 const w = new Warner()
 

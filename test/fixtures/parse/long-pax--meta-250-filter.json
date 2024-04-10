@@ -2,8 +2,6 @@
   [
     "ignoredEntry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "ExtendedHeader",
       "meta": true,
       "ignore": true,
@@ -15,9 +13,6 @@
       "gname": "staff",
       "size": 1282,
       "mtime": "2017-04-10T16:54:12.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -32,17 +27,13 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],
   [
     "ignoredEntry",
     {
-      "extended": null,
-      "globalExtended": null,
       "type": "File",
       "meta": false,
       "ignore": true,
@@ -54,9 +45,6 @@
       "gname": "staff",
       "size": 100,
       "mtime": "2017-04-10T16:54:12.000Z",
-      "atime": null,
-      "ctime": null,
-      "linkpath": "",
       "header": {
         "cksumValid": true,
         "needPax": false,
@@ -71,9 +59,7 @@
         "uname": "isaacs",
         "gname": "staff",
         "devmaj": 0,
-        "devmin": 0,
-        "atime": null,
-        "ctime": null
+        "devmin": 0
       }
     }
   ],

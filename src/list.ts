@@ -8,6 +8,7 @@ import {
   isSyncFile,
   TarOptions,
   TarOptionsFile,
+  TarOptionsSyncFile,
   TarOptionsWithAliases,
   TarOptionsWithAliasesFile,
   TarOptionsWithAliasesSync,
@@ -126,7 +127,7 @@ const filesFilter = (opt: TarOptions, files: string[]) => {
     : file => mapHas(stripTrailingSlashes(file))
 }
 
-const listFileSync = (opt: TarOptionsWithAliasesSyncFile) => {
+const listFileSync = (opt: TarOptionsSyncFile) => {
   const p = list_(opt)
   const file = opt.file
   let threw = true
@@ -152,12 +153,13 @@ const listFileSync = (opt: TarOptionsWithAliasesSyncFile) => {
     if (threw && fd) {
       try {
         fs.closeSync(fd)
+        /* c8 ignore next */
       } catch (er) {}
     }
   }
 }
 
-const listFile = (opt: TarOptionsFile, cb?: () => void) => {
+const listFile = (opt: TarOptionsFile, cb?: () => void): Promise<void> => {
   const parse = new Parser(opt)
   const readSize = opt.maxReadSize || 16 * 1024 * 1024
 

@@ -1,5 +1,6 @@
-const t = require('tap')
-const tar = require('../')
+import t from 'tap'
+import * as tar from '../dist/esm/index.js'
+
 t.match(tar, {
   create: Function,
   c: Function,
@@ -13,7 +14,7 @@ t.match(tar, {
   x: Function,
   Pack: Function,
   Unpack: Function,
-  Parse: Function,
+  Parser: Function,
   ReadEntry: Function,
   WriteEntry: Function,
   Header: Function,
@@ -67,7 +68,7 @@ t.match(tar, {
     ]),
   },
 })
-t.match(tar.Pack.Sync, Function)
-t.match(tar.WriteEntry.Sync, Function)
-t.match(tar.WriteEntry.Tar, Function)
+t.match(tar.PackSync, Function)
+t.match(tar.WriteEntrySync, Function)
+t.match(tar.WriteEntryTar, Function)
 t.match(tar.Pax.parse, Function)

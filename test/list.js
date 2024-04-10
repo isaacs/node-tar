@@ -1,15 +1,22 @@
-'use strict'
-const t = require('tap')
-const list = require('../lib/list.js')
-const path = require('path')
-const fs = require('fs')
-const mutateFS = require('mutate-fs')
+import fs, { readFileSync } from 'fs'
+import mutateFS from 'mutate-fs'
+import { dirname, resolve } from 'path'
+import t from 'tap'
+import { fileURLToPath } from 'url'
+import { list } from '../dist/esm/list.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const lp = JSON.parse(
+  readFileSync(__dirname + '/fixtures/parse/long-paths.json', 'utf8'),
+)
 
 t.test('basic', t => {
-  const file = path.resolve(__dirname, 'fixtures/tars/long-paths.tar')
-  const expect = require('./fixtures/parse/long-paths.json').filter(
-    e => Array.isArray(e) && e[0] === 'entry'
-  ).map(e => e[1].path)
+  const file = resolve(__dirname, 'fixtures/tars/long-paths.tar')
+  const expect = lp
+    .filter(e => Array.isArray(e) && e[0] === 'entry')
+    .map(e => e[1].path)
 
   const check = (actual, t) => {
     t.same(actual, expect)
@@ -30,30 +37,33 @@ t.test('basic', t => {
         return check(actual, t)
       })
 
-      t.test('async promise', t => {
+      t.test('async promise', async t => {
         const actual = []
         const onentry = entry => actual.push(entry.path)
-        return list({
-          file: file,
-          onentry: onentry,
-          maxReadSize: maxReadSize,
-        }).then(_ => check(actual, t))
+        return await list({
+          file,
+          onentry,
+          maxReadSize,
+        }).then(() => check(actual, t))
       })
 
       t.test('async cb', t => {
         const actual = []
         const onentry = entry => actual.push(entry.path)
-        list({
-          file: file,
-          onentry: onentry,
-          maxReadSize: maxReadSize,
-        }, er => {
-          if (er) {
-            throw er
-          }
-          check(actual, t)
-          t.end()
-        })
+        list(
+          {
+            file: file,
+            onentry: onentry,
+            maxReadSize: maxReadSize,
+          },
+          er => {
+            if (er) {
+              throw er
+            }
+            check(actual, t)
+            t.end()
+          },
+        )
       })
       t.end()
     })
@@ -79,7 +89,7 @@ t.test('basic', t => {
     t.end()
   })
 
-  t.test('no onentry function', t => list({ file: file }))
+  t.test('no onentry function', () => list({ file: file }))
 
   t.test('limit to specific files', t => {
     const fileList = [
@@ -98,35 +108,43 @@ t.test('basic', t => {
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
     ]
 
-    t.test('no filter function', t => {
+    t.test('no filter function', async t => {
       const check = _ => t.same(actual, expect)
       const actual = []
-      return list({
-        file: file,
-        onentry: entry => actual.push(entry.path),
-      }, fileList).then(check)
+      return list(
+        {
+          file: file,
+          onentry: entry => actual.push(entry.path),
+        },
+        fileList,
+      ).then(check)
     })
 
     t.test('no filter function, stream', t => {
       const check = _ => t.same(actual, expect)
       const actual = []
       const onentry = entry => actual.push(entry.path)
-      fs.createReadStream(file).pipe(list(fileList)
-        .on('entry', onentry)
-        .on('end', _ => {
-          check()
-          t.end()
-        }))
+      fs.createReadStream(file).pipe(
+        list(fileList)
+          .on('entry', onentry)
+          .on('end', _ => {
+            check()
+            t.end()
+          }),
+      )
     })
 
-    t.test('filter function', t => {
+    t.test('filter function', async t => {
       const check = _ => t.same(actual, expect.slice(0, 1))
       const actual = []
-      return list({
-        file: file,
-        filter: path => path === expect[0],
-        onentry: entry => actual.push(entry.path),
-      }, fileList).then(check)
+      return list(
+        {
+          file: file,
+          filter: path => path === expect[0],
+          onentry: entry => actual.push(entry.path),
+        },
+        fileList,
+      ).then(check)
     })
 
     return t.test('list is unmunged', t => {
@@ -142,10 +160,14 @@ t.test('basic', t => {
 })
 
 t.test('bad args', t => {
-  t.throws(_ => list({ file: __filename, sync: true }, _ => _),
-    new TypeError('callback not supported for sync tar functions'))
-  t.throws(_ => list(_ => _),
-    new TypeError('callback only supported with file option'))
+  t.throws(
+    _ => list({ file: __filename, sync: true }, _ => _),
+    new TypeError('callback not supported for sync tar functions'),
+  )
+  t.throws(
+    _ => list(_ => _),
+    new TypeError('callback only supported with file option'),
+  )
   t.end()
 })
 
@@ -172,11 +194,15 @@ t.test('read fail', t => {
     const poop = new Error('poop')
     t.teardown(mutateFS.fail('read', poop))
     t.plan(1)
-    t.throws(_ => list({
-      file: __filename,
-      sync: true,
-      maxReadSize: 10,
-    }), poop)
+    t.throws(
+      _ =>
+        list({
+          file: __filename,
+          sync: true,
+          maxReadSize: 10,
+        }),
+      poop,
+    )
   })
   t.test('cb', t => {
     const poop = new Error('poop')
@@ -194,7 +220,7 @@ t.test('read fail', t => {
 })
 
 t.test('noResume option', t => {
-  const file = path.resolve(__dirname, 'fixtures/tars/file.tar')
+  const file = resolve(__dirname, 'fixtures/tars/file.tar')
   t.test('sync', t => {
     let e
     list({
@@ -214,16 +240,18 @@ t.test('noResume option', t => {
     e.on('end', _ => t.end())
   })
 
-  t.test('async', t => list({
-    file: file,
-    onentry: entry => {
-      process.nextTick(_ => {
-        t.notOk(entry.flowing)
-        entry.resume()
-      })
-    },
-    noResume: true,
-  }))
+  t.test('async', t =>
+    list({
+      file: file,
+      onentry: entry => {
+        process.nextTick(_ => {
+          t.notOk(entry.flowing)
+          entry.resume()
+        })
+      },
+      noResume: true,
+    }),
+  )
 
   t.end()
 })

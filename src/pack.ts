@@ -8,17 +8,6 @@
 // streamOfPaths().pipe(new Pack()).pipe(new fs.WriteStream('out.tar'))
 
 import fs, { type Stats } from 'fs'
-import { Minipass } from 'minipass'
-import { BrotliCompress, Gzip } from 'minizlib'
-import path from 'path'
-import { normalizeWindowsPath } from './normalize-windows-path.js'
-import { dealias, LinkCacheKey, TarOptions } from './options.js'
-import { ReadEntry } from './read-entry.js'
-import {
-  warnMethod,
-  type WarnData,
-  type Warner,
-} from './warn-method.js'
 import {
   WriteEntry,
   WriteEntrySync,
@@ -34,12 +23,22 @@ export class PackJob {
   pending: boolean = false
   ignore: boolean = false
   piped: boolean = false
-
   constructor(path: string, absolute: string) {
     this.path = path || './'
     this.absolute = absolute
   }
 }
+
+import { Minipass } from 'minipass'
+import * as zlib from 'minizlib'
+//@ts-ignore
+import { Yallist } from 'yallist'
+import { ReadEntry } from './read-entry.js'
+import {
+  warnMethod,
+  type WarnData,
+  type Warner,
+} from './warn-method.js'
 
 const EOF = Buffer.alloc(1024)
 const ONSTAT = Symbol('onStat')
@@ -63,20 +62,24 @@ const WRITEENTRYCLASS = Symbol('writeEntryClass')
 const WRITE = Symbol('write')
 const ONDRAIN = Symbol('ondrain')
 
+import path from 'path'
+import { normalizeWindowsPath } from './normalize-windows-path.js'
+import { TarOptions } from './options.js'
+
 export class Pack extends Minipass implements Warner {
   opt: TarOptions
-  file: string
   cwd: string
   maxReadSize?: number
   preservePaths: boolean
   strict: boolean
   noPax: boolean
   prefix: string
-  linkCache: Map<LinkCacheKey, string>
-  statCache: Map<string, Stats>
-  readdirCache: Map<string, string[]>
+  linkCache: Exclude<TarOptions['linkCache'], undefined>
+  statCache: Exclude<TarOptions['statCache'], undefined>
+  file: string
   portable: boolean
-  zip?: Gzip | BrotliCompress
+  zip?: zlib.BrotliCompress | zlib.Gzip
+  readdirCache: Exclude<TarOptions['readdirCache'], undefined>
   noDirRecurse: boolean
   follow: boolean
   noMtime: boolean
@@ -84,17 +87,14 @@ export class Pack extends Minipass implements Warner {
   filter: Exclude<TarOptions['filter'], undefined>
   jobs: number;
 
-  [WRITEENTRYCLASS]:
-    | typeof WriteEntry
-    | typeof WriteEntrySync
-  [QUEUE]: PackJob[] = [];
+  [WRITEENTRYCLASS]: typeof WriteEntry | typeof WriteEntrySync;
+  [QUEUE]: Yallist<PackJob>;
   [JOBS]: number = 0;
   [PROCESSING]: boolean = false;
   [ENDED]: boolean = false
 
-  constructor(opt_: TarOptions = {}) {
+  constructor(opt: TarOptions = {}) {
     super()
-    const opt = dealias(opt_)
     this.opt = opt
     this.file = opt.file || ''
     this.cwd = opt.cwd || process.cwd()
@@ -125,15 +125,17 @@ export class Pack extends Minipass implements Warner {
         if (this.portable) {
           opt.gzip.portable = true
         }
-        this.zip = new Gzip(opt.gzip)
+        this.zip = new zlib.Gzip(opt.gzip)
       }
       if (opt.brotli) {
         if (typeof opt.brotli !== 'object') {
           opt.brotli = {}
         }
-        this.zip = new BrotliCompress(opt.brotli)
+        this.zip = new zlib.BrotliCompress(opt.brotli)
       }
-      const zip = this.zip as Gzip | BrotliCompress
+      /* c8 ignore next */
+      if (!this.zip) throw new Error('impossible')
+      const zip = this.zip
       zip.on('data', chunk => super.write(chunk))
       zip.on('end', () => super.end())
       zip.on('drain', () => this[ONDRAIN]())
@@ -145,19 +147,16 @@ export class Pack extends Minipass implements Warner {
     this.noDirRecurse = !!opt.noDirRecurse
     this.follow = !!opt.follow
     this.noMtime = !!opt.noMtime
-    this.mtime = opt.mtime
+    if (opt.mtime) this.mtime = opt.mtime
 
     this.filter =
-      typeof opt.filter === 'function' ? opt.filter : () => true
+      typeof opt.filter === 'function' ? opt.filter : _ => true
 
+    this[QUEUE] = new Yallist<PackJob>()
     this[JOBS] = 0
     this.jobs = Number(opt.jobs) || 4
     this[PROCESSING] = false
     this[ENDED] = false
-  }
-
-  warn(code: string, message: string | Error, data: WarnData = {}) {
-    return warnMethod(this, code, message, data)
   }
 
   [WRITE](chunk: Buffer) {
@@ -169,20 +168,10 @@ export class Pack extends Minipass implements Warner {
     return this
   }
 
-  end(cb?: () => void): this
-  end(path: string, cb?: () => void): this
-  end(
-    path: string,
-    encoding?: Minipass.Encoding | undefined,
-    cb?: () => void,
-  ): this
-  end(
-    path?: string | (() => void),
-    _encoding?: Minipass.Encoding | (() => void),
-    _cb?: () => void,
-  ) {
-    if (typeof path === 'string') {
-      this.write(path)
+  //@ts-ignore
+  end(path?: string | ReadEntry) {
+    if (path) {
+      this.add(path)
     }
     this[ENDED] = true
     this[PROCESS]()
@@ -213,7 +202,7 @@ export class Pack extends Minipass implements Warner {
     } else {
       const job = new PackJob(p.path, absolute)
       job.entry = new WriteEntryTar(p, this[ENTRYOPT](job))
-      job.entry.on('end', _ => this[JOBDONE](job))
+      job.entry.on('end', () => this[JOBDONE](job))
       this[JOBS] += 1
       this[QUEUE].push(job)
     }
@@ -280,13 +269,15 @@ export class Pack extends Minipass implements Warner {
 
     this[PROCESSING] = true
     for (
-      let j: PackJob | undefined, w = 0;
-      (j = this[QUEUE][w]) && this[JOBS] < this.jobs;
-      w ++
+      let w = this[QUEUE].head;
+      !!w && this[JOBS] < this.jobs;
+      w = w.next
     ) {
-      this[PROCESSJOB](j)
-      if (j.ignore) {
-        this[QUEUE].splice(w, 1)
+      this[PROCESSJOB](w.value)
+      if (w.value.ignore) {
+        const p = w.next
+        this[QUEUE].removeNode(w)
+        w.next = p
       }
     }
 
@@ -303,7 +294,7 @@ export class Pack extends Minipass implements Warner {
   }
 
   get [CURRENT]() {
-    return this[QUEUE] && this[QUEUE][0]
+    return this[QUEUE] && this[QUEUE].head && this[QUEUE].head.value
   }
 
   [JOBDONE](_job: PackJob) {
@@ -346,9 +337,8 @@ export class Pack extends Minipass implements Warner {
       job.stat.isDirectory() &&
       !job.readdir
     ) {
-
       const rc = this.readdirCache.get(job.absolute)
-      if ( rc) {
+      if (rc) {
         this[ONREADDIR](job, rc)
       } else {
         this[READDIR](job)
@@ -391,8 +381,7 @@ export class Pack extends Minipass implements Warner {
   [ENTRY](job: PackJob) {
     this[JOBS] += 1
     try {
-      const Cls = this[WRITEENTRYCLASS]
-      return new Cls(job.path, this[ENTRYOPT](job))
+      return new this[WRITEENTRYCLASS](job.path, this[ENTRYOPT](job))
         .on('end', () => this[JOBDONE](job))
         .on('error', er => this.emit('error', er))
     } catch (er) {
@@ -420,11 +409,8 @@ export class Pack extends Minipass implements Warner {
 
     const source = job.entry
     const zip = this.zip
-
     /* c8 ignore start */
-    if (!source) {
-      throw new Error('must have source before piping')
-    }
+    if (!source) throw new Error('cannot pipe without source')
     /* c8 ignore stop */
 
     if (zip) {
@@ -447,6 +433,13 @@ export class Pack extends Minipass implements Warner {
       this.zip.pause()
     }
     return super.pause()
+  }
+  warn(
+    code: string,
+    message: string | Error,
+    data: WarnData = {},
+  ): void {
+    warnMethod(this, code, message, data)
   }
 }
 
@@ -472,11 +465,6 @@ export class PackSync extends Pack {
   // gotta get it all in this tick
   [PIPE](job: PackJob) {
     const source = job.entry
-    /* c8 ignore start */
-    if (!source) {
-      throw new Error('job without source')
-    }
-    /* c8 ignore stop */
     const zip = this.zip
 
     if (job.readdir) {
@@ -486,6 +474,10 @@ export class PackSync extends Pack {
         this[ADDFSENTRY](base + entry)
       })
     }
+
+    /* c8 ignore start */
+    if (!source) throw new Error('Cannot pipe without source')
+    /* c8 ignore stop */
 
     if (zip) {
       source.on('data', chunk => {

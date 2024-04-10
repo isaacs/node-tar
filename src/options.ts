@@ -435,18 +435,18 @@ export interface TarOptionsWithAliases extends TarOptions {
 export type TarOptionsWithAliasesSync = TarOptionsWithAliases & {
   sync: true
 }
-export type TarOptionsWithAliasesFile = TarOptionsWithAliases & {
-  file: string
-}
+export type TarOptionsWithAliasesFile =
+  | (TarOptionsWithAliases & {
+      file: string
+    })
+  | (TarOptionsWithAliases & { f: string })
 export type TarOptionsWithAliasesSyncFile =
   TarOptionsWithAliasesSync & TarOptionsWithAliasesFile
 
 export const isSyncFile = (o: TarOptions): o is TarOptionsSyncFile =>
   !!o.sync && !!o.file
-export const isSync = (o: TarOptions): o is TarOptionsSync =>
-  !!o.sync
-export const isFile = (o: TarOptions): o is TarOptionsFile =>
-  !!o.file
+export const isSync = (o: TarOptions): o is TarOptionsSync => !!o.sync
+export const isFile = (o: TarOptions): o is TarOptionsFile => !!o.file
 
 const dealiasKey = (
   k: keyof TarOptionsWithAliases,
