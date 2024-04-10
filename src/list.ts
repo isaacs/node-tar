@@ -130,7 +130,6 @@ const filesFilter = (opt: TarOptions, files: string[]) => {
 const listFileSync = (opt: TarOptionsSyncFile) => {
   const p = list_(opt)
   const file = opt.file
-  let threw = true
   let fd
   try {
     const stat = fs.statSync(file)
@@ -148,9 +147,8 @@ const listFileSync = (opt: TarOptionsSyncFile) => {
       }
       p.end()
     }
-    threw = false
   } finally {
-    if (threw && fd) {
+    if (typeof fd === 'number') {
       try {
         fs.closeSync(fd)
         /* c8 ignore next */
