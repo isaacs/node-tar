@@ -38,6 +38,9 @@ const argmap = new Map<keyof TarOptionsWithAliases, keyof TarOptions>(
  * Aliases are provided in the {@link TarOptionsWithAliases} type.
  */
 export interface TarOptions {
+  //////////////////////////
+  // shared options
+
   /**
    * Perform all I/O operations synchronously. If the stream is ended
    * immediately, then it will be processed entirely synchronously.
@@ -92,7 +95,52 @@ export interface TarOptions {
   preservePaths?: boolean
 
   /**
-   * When extracting, unlink files before creating them.  Without this option,
+   * When extracting, do not set the `mtime` value for extracted entries to
+   * match the `mtime` in the archive.
+   *
+   * When creating archives, do not store the `mtime` value in the entry. Note
+   * that this prevents properly using other mtime-based features (such as
+   * `tar.update` or the `newer` option) with the resulting archive.
+   */
+  noMtime?: boolean
+
+  /**
+   * Set to `true` or an object with settings for `zlib.BrotliCompress()` to
+   * create a brotli-compressed archive
+   *
+   * When extracting, this will cause the archive to be treated as a
+   * brotli-compressed file if set to `true` or a ZlibOptions object.
+   *
+   * If set `false`, then brotli options will not be used.
+   *
+   * If both this and the `gzip` option are left `undefined`, then tar will
+   * attempt to infer the brotli compression status, but can only do so based
+   * on the filename. If the filename ends in `.tbr` or `.tar.br`, and the
+   * first 512 bytes are not a valid tar header, then brotli decompression
+   * will be attempted.
+   */
+  brotli?: boolean | ZlibOptions
+
+  /**
+   * A function that is called with `(path, stat)` when creating an archive, or
+   * `(path, entry)` when extracting. Return true to process the file/entry, or
+   * false to exclude it.
+   */
+  filter?: (path: string, entry: Stats | ReadEntry) => boolean
+
+  /**
+   * A function that gets called for any warning encountered.
+   *
+   * Note: if `strict` is set, then the warning will throw, and this method
+   * will not be called.
+   */
+  onwarn?: (code: string, message: string, data: WarnData) => any
+
+  //////////////////////////
+  // extraction options
+
+  /**
+   * When extracting, unlink files before creating them. Without this option,
    * tar overwrites existing files, which preserves existing hardlinks. With
    * this option, existing hardlinks will be broken, as will any symlink that
    * would affect the location of an extracted file.
@@ -103,6 +151,8 @@ export interface TarOptions {
    * When extracting, strip the specified number of path portions from the
    * entry path. For example, with `{strip: 2}`, the entry `a/b/c/d` would be
    * extracted to `{cwd}/c/d`.
+   *
+   * Any entry whose entire path is stripped will be excluded.
    */
   strip?: number
 
@@ -118,54 +168,26 @@ export interface TarOptions {
   keep?: boolean
 
   /**
-   * When extracting, do not set the `mtime` value for extracted entries to
-   * match the `mtime` in the archive.
-   *
-   * When creating archives, do not store the `mtime` value in the entry. Note
-   * that this prevents properly using other mtime-based features (such as
-   * `tar.update` or the `newer` option) with the resulting archive.
-   */
-  noMtime?: boolean
-
-  /**
-   * Set the `uid` and `gid` of extracted entries to the `uid` and `gid` fields
-   * in the archive. Defaults to true when run as root, and false otherwise.
+   * When extracting, set the `uid` and `gid` of extracted entries to the `uid`
+   * and `gid` fields in the archive. Defaults to true when run as root, and
+   * false otherwise.
    *
    * If false, then files and directories will be set with the owner and group
-   * of the user running the process.  This is similar to `-p` in `tar(1)`, but
+   * of the user running the process. This is similar to `-p` in `tar(1)`, but
    * ACLs and other system-specific data is never unpacked in this
    * implementation, and modes are set by default already.
    */
   preserveOwner?: boolean
 
   /**
-   * Pack the targets of symbolic links rather than the link itself.
+   * The maximum depth of subfolders to extract into. This defaults to 1024.
+   * Anything deeper than the limit will raise a warning and skip the entry.
+   * Set to `Infinity` to remove the limitation.
    */
-  follow?: boolean
+  maxDepth?: number
 
   /**
-   * Set to `true` or an object with settings for `zlib.BrotliCompress()` to
-   * create a brotli-compressed archive
-   */
-  brotli?: boolean | ZlibOptions
-
-  /**
-   * A function that is called with `(path, stat)` when creating an archive, or
-   * `(path, entry)` when unpacking. Return true to process the file/entry, or
-   * false to exclude it.
-   */
-  filter?: (path: string, entry: Stats | ReadEntry) => boolean
-
-  /**
-   * A function that gets called for any warning encountered.
-   *
-   * Note: if `strict` is set, then the warning will throw, and this method
-   * will not be called.
-   */
-  onwarn?: (code: string, message: string, data: WarnData) => any
-
-  /**
-   * When unpacking, force all created files and directories, and all
+   * When extracting, force all created files and directories, and all
    * implicitly created directories, to be owned by the specified user id,
    * regardless of the `uid` field in the archive.
    *
@@ -175,7 +197,7 @@ export interface TarOptions {
   uid?: number
 
   /**
-   * When unpacking, force all created files and directories, and all
+   * When extracting, force all created files and directories, and all
    * implicitly created directories, to be owned by the specified group id,
    * regardless of the `gid` field in the archive.
    *
@@ -201,27 +223,55 @@ export interface TarOptions {
   transform?: (entry: ReadEntry) => any
 
   /**
-   * The maximum depth of subfolders to extract into. This defaults to 1024.
-   * Anything deeper than the limit will raise a warning and skip the entry.
-   * Set to `Infinity` to remove the limitation.
+   * Call `chmod()` to ensure that extracted files match the entry's mode
+   * field. Without this field set, all mode fields in archive entries are a
+   * best effort attempt only.
+   *
+   * Setting this necessitates a call to the deprecated `process.umask()`
+   * method to determine the default umask value, unless a `processUmask`
+   * config is provided as well.
+   *
+   * If not set, tar will attempt to create file system entries with whatever
+   * mode is provided, and let the implicit process `umask` apply normally, but
+   * if a file already exists to be written to, then its existing mode will not
+   * be modified.
+   *
+   * When setting `chmod: true`, it is highly recommend to set the
+   * {@link TarOptions#processUmask} option as well, to avoid the call to the
+   * deprecated (and thread-unsafe) `process.umask()` method.
    */
-  maxDepth?: number
+  chmod?: boolean
 
   /**
-   * Do not call `chmod()` to ensure that extracted files match the entry's
-   * mode field. This also suppresses the call to `process.umask()` to
-   * determine the default umask value, since tar will extract with whatever
-   * mode is provided, and let the process `umask` apply normally.
+   * When setting the {@link TarOptions#noChmod} option to `false`, you may
+   * provide a value here to avoid having to call the deprecated and
+   * thread-unsafe `process.umask()` method.
+   *
+   * This has no effect with `noChmod` is not set to false explicitly, as
+   * mode values are not set explicitly anyway. If `noChmod` is set to `false`,
+   * and a value is not provided here, then `process.umask()` must be called,
+   * which will result in deprecation warnings.
+   *
+   * The most common values for this are `0o22` (resulting in directories
+   * created with mode `0o755` and files with `0o644` by default) and `0o2`
+   * (resulting in directores created with mode `0o775` and files `0o664`, so
+   * they are group-writable).
    */
-  noChmod?: boolean
+  processUmask?: number
+
+  //////////////////////////
+  // archive creation options
 
   /**
    * When parsing/listing archives, `entry` streams are by default resumed
    * (set into "flowing" mode) immediately after the call to `onentry()`.
-   * Set to suppress this behavior.
+   * Set `noResume: true` to suppress this behavior.
    *
    * Note that when this is set, the stream will never complete until the
    * data is consumed somehow.
+   *
+   * Set automatically in extract operations, since the entry is piped to
+   * a file system entry right away. Only relevant when parsing.
    */
   noResume?: boolean
 
@@ -233,6 +283,11 @@ export interface TarOptions {
    * is otherwise no way to interact with the data!
    */
   onentry?: (entry: ReadEntry) => any
+
+  /**
+   * Pack the targets of symbolic links rather than the link itself.
+   */
+  follow?: boolean
 
   /**
    * When creating archives, omit any metadata that is system-specific:
@@ -256,15 +311,19 @@ export interface TarOptions {
   noDirRecurse?: boolean
 
   /**
-   * Suppress Pax extended headers. Note that this means long paths and
-   * linkpaths will be truncated, and large or negative numeric values may be
-   * interpreted incorrectly.
+   * Suppress Pax extended headers when creating archives. Note that this means
+   * long paths and linkpaths will be truncated, and large or negative numeric
+   * values may be interpreted incorrectly.
    */
   noPax?: boolean
 
   /**
    * Set to a `Date` object to force a specific `mtime` value for everything
    * written to an archive.
+   *
+   * This is useful when creating archives that are intended to be
+   * deterministic based on their contents, irrespective of the file's last
+   * modification time.
    *
    * Overridden by `noMtime`.
    */
@@ -278,6 +337,9 @@ export interface TarOptions {
   /**
    * The mode to set on any created file archive, defaults to 0o666
    * masked by the process umask, often resulting in 0o644.
+   *
+   * This does *not* affect the mode fields of individual entries, or the
+   * mode status of extracted entries on the filesystem.
    */
   mode?: number
 
@@ -286,6 +348,7 @@ export interface TarOptions {
 
   /**
    * A cache of mtime values, to avoid having to stat the same file repeatedly.
+   *
    * @internal
    */
   mtimeCache?: Map<string, Date>
@@ -305,7 +368,8 @@ export interface TarOptions {
   umask?: number
 
   /**
-   * default mode for directories
+   * Default mode for directories. Used for all implicitly created directories,
+   * and any directories in the archive that do not have a mode field.
    *
    * @internal
    */
@@ -366,7 +430,7 @@ export interface TarOptions {
   /**
    * Automatically set to true on Windows systems.
    *
-   * When unpacking, causes behavior where filenames containing `<|>?:`
+   * When extracting, causes behavior where filenames containing `<|>?:`
    * characters are converted to windows-compatible escape sequences in the
    * created filesystem entries.
    *
@@ -411,25 +475,140 @@ export type TarOptionsSyncFile = TarOptionsSync & TarOptionsFile
 export type LinkCacheKey = `${number}:${number}`
 
 export interface TarOptionsWithAliases extends TarOptions {
+  /**
+   * The effective current working directory for this tar command
+   */
   C?: TarOptions['cwd']
+  /**
+   * The tar file to be read and/or written. When this is set, a stream
+   * is not returned. Asynchronous commands will return a promise indicating
+   * when the operation is completed, and synchronous commands will return
+   * immediately.
+   */
   f?: TarOptions['file']
+  /**
+   * When creating a tar archive, this can be used to compress it as well.
+   * Set to `true` to use the default gzip options, or customize them as
+   * needed.
+   *
+   * When reading, if this is unset, then the compression status will be
+   * inferred from the archive data. This is generally best, unless you are
+   * sure of the compression settings in use to create the archive, and want to
+   * fail if the archive doesn't match expectations.
+   */
   z?: TarOptions['gzip']
+  /**
+   * When creating archives, preserve absolute and `..` paths in the archive,
+   * rather than sanitizing them under the cwd.
+   *
+   * When extracting, allow absolute paths, paths containing `..`, and
+   * extracting through symbolic links. By default, the root `/` is stripped
+   * from absolute paths (eg, turning `/x/y/z` into `x/y/z`), paths containing
+   * `..` are not extracted, and any file whose location would be modified by a
+   * symbolic link is not extracted.
+   *
+   * **WARNING** This is almost always unsafe, and must NEVER be used on
+   * archives from untrusted sources, such as user input, and every entry must
+   * be validated to ensure it is safe to write. Even if the input is not
+   * malicious, mistakes can cause a lot of damage!
+   */
   P?: TarOptions['preservePaths']
+  /**
+   * When extracting, unlink files before creating them. Without this option,
+   * tar overwrites existing files, which preserves existing hardlinks. With
+   * this option, existing hardlinks will be broken, as will any symlink that
+   * would affect the location of an extracted file.
+   */
   U?: TarOptions['unlink']
+  /**
+   * When extracting, strip the specified number of path portions from the
+   * entry path. For example, with `{strip: 2}`, the entry `a/b/c/d` would be
+   * extracted to `{cwd}/c/d`.
+   */
   'strip-components'?: TarOptions['strip']
+  /**
+   * When extracting, strip the specified number of path portions from the
+   * entry path. For example, with `{strip: 2}`, the entry `a/b/c/d` would be
+   * extracted to `{cwd}/c/d`.
+   */
   stripComponents?: TarOptions['strip']
+  /**
+   * When extracting, keep the existing file on disk if it's newer than the
+   * file in the archive.
+   */
   'keep-newer'?: TarOptions['newer']
+  /**
+   * When extracting, keep the existing file on disk if it's newer than the
+   * file in the archive.
+   */
   keepNewer?: TarOptions['newer']
+  /**
+   * When extracting, keep the existing file on disk if it's newer than the
+   * file in the archive.
+   */
   'keep-newer-files'?: TarOptions['newer']
+  /**
+   * When extracting, keep the existing file on disk if it's newer than the
+   * file in the archive.
+   */
   keepNewerFiles?: TarOptions['newer']
+  /**
+   * When extracting, do not overwrite existing files at all.
+   */
   k?: TarOptions['keep']
+  /**
+   * When extracting, do not overwrite existing files at all.
+   */
   'keep-existing'?: TarOptions['keep']
+  /**
+   * When extracting, do not overwrite existing files at all.
+   */
   keepExisting?: TarOptions['keep']
+  /**
+   * When extracting, do not set the `mtime` value for extracted entries to
+   * match the `mtime` in the archive.
+   *
+   * When creating archives, do not store the `mtime` value in the entry. Note
+   * that this prevents properly using other mtime-based features (such as
+   * `tar.update` or the `newer` option) with the resulting archive.
+   */
   m?: TarOptions['noMtime']
+  /**
+   * When extracting, do not set the `mtime` value for extracted entries to
+   * match the `mtime` in the archive.
+   *
+   * When creating archives, do not store the `mtime` value in the entry. Note
+   * that this prevents properly using other mtime-based features (such as
+   * `tar.update` or the `newer` option) with the resulting archive.
+   */
   'no-mtime'?: TarOptions['noMtime']
+  /**
+   * When extracting, set the `uid` and `gid` of extracted entries to the `uid`
+   * and `gid` fields in the archive. Defaults to true when run as root, and
+   * false otherwise.
+   *
+   * If false, then files and directories will be set with the owner and group
+   * of the user running the process. This is similar to `-p` in `tar(1)`, but
+   * ACLs and other system-specific data is never unpacked in this
+   * implementation, and modes are set by default already.
+   */
   p?: TarOptions['preserveOwner']
+  /**
+   * Pack the targets of symbolic links rather than the link itself.
+   */
   L?: TarOptions['follow']
+  /**
+   * Pack the targets of symbolic links rather than the link itself.
+   */
   h?: TarOptions['follow']
+
+  /**
+   * Deprecated option. Set explicitly false to set `chmod: true`. Ignored
+   * if {@link TarOptions#chmod} is set to any boolean value.
+   *
+   * @deprecated
+   */
+  noChmod?: boolean
 }
 
 export type TarOptionsWithAliasesSync = TarOptionsWithAliases & {
@@ -469,5 +648,10 @@ export const dealias = (
     const k = dealiasKey(key)
     result[k] = v
   }
+  // affordance for deprecated noChmod -> chmod
+  if (result.chmod === undefined && result.noChmod === false) {
+    result.chmod = true
+  }
+  delete result.noChmod
   return result as TarOptions
 }

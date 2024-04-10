@@ -156,12 +156,13 @@ to see how tar is handling the issue.
 The API mimics the `tar(1)` command line functionality, with aliases
 for more human-readable option and function names.  The goal is that
 if you know how to use `tar(1)` in Unix, then you know how to use
-`require('tar')` in JavaScript.
+`import('tar')` in JavaScript.
 
 To replicate `tar czf my-tarball.tgz files and folders`, you'd do:
 
 ```js
-tar.c(
+import { create } from 'tar'
+create(
   {
     gzip: <true|gzip options>,
     file: 'my-tarball.tgz'
@@ -173,9 +174,12 @@ tar.c(
 To replicate `tar cz files and folders > my-tarball.tgz`, you'd do:
 
 ```js
-tar.c( // or tar.create
+// if you're familiar with the tar(1) cli flags, this can be nice
+import * as tar from 'tar'
+tar.c(
   {
-    gzip: <true|gzip options>
+    // 'z' is alias for 'gzip' option
+    z: <true|gzip options>
   },
   ['some', 'files', 'and', 'folders']
 ).pipe(fs.createWriteStream('my-tarball.tgz'))
@@ -184,9 +188,10 @@ tar.c( // or tar.create
 To replicate `tar xf my-tarball.tgz` you'd do:
 
 ```js
-tar.x(  // or tar.extract(
+tar.x( // or `tar.extract`
   {
-    file: 'my-tarball.tgz'
+    // or `file:`
+    f: 'my-tarball.tgz'
   }
 ).then(_=> { .. tarball has been dumped in cwd .. })
 ```
@@ -424,11 +429,15 @@ The following options are supported:
   that passes the filter.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered.  (See "Warnings and Errors")
-- `noChmod` Set to true to omit calling `fs.chmod()` to ensure that the
-  extracted file matches the entry mode.  This also suppresses the call to
-  `process.umask()` to determine the default umask value, since tar will
-  extract with whatever mode is provided, and let the process `umask` apply
-  normally.
+- `chmod` Set to true to call `fs.chmod()` to ensure that the
+  extracted file matches the entry mode.  This may necessitate a
+  call to the deprecated and thread-unsafe `process.umask()`
+  method to determine the default umask value, unless a
+  `processUmask` options is also provided. Otherwise tar will
+  extract with whatever mode is provided, and let the process
+  `umask` apply normally.
+- `processUmask` Set to an explicit numeric value to avoid
+  calling `process.umask()` when `chmod: true` is set.
 - `maxDepth` The maximum depth of subfolders to extract into. This
   defaults to 1024. Anything deeper than the limit will raise a
   warning and skip the entry. Set to `Infinity` to remove the
@@ -751,11 +760,15 @@ Most unpack errors will cause a `warn` event to be emitted.  If the
   that passes the filter.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered.  (See "Warnings and Errors")
-- `noChmod` Set to true to omit calling `fs.chmod()` to ensure that the
-  extracted file matches the entry mode.  This also suppresses the call to
-  `process.umask()` to determine the default umask value, since tar will
-  extract with whatever mode is provided, and let the process `umask` apply
-  normally.
+- `chmod` Set to true to call `fs.chmod()` to ensure that the
+  extracted file matches the entry mode.  This may necessitate a
+  call to the deprecated and thread-unsafe `process.umask()`
+  method to determine the default umask value, unless a
+  `processUmask` options is also provided. Otherwise tar will
+  extract with whatever mode is provided, and let the process
+  `umask` apply normally.
+- `processUmask` Set to an explicit numeric value to avoid
+  calling `process.umask()` when `chmod: true` is set.
 - `maxDepth` The maximum depth of subfolders to extract into. This
   defaults to 1024. Anything deeper than the limit will raise a
   warning and skip the entry. Set to `Infinity` to remove the

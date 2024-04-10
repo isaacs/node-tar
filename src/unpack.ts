@@ -172,7 +172,7 @@ export class Unpack extends Parser {
   umask: number
   dmode: number
   fmode: number
-  noChmod: boolean
+  chmod: boolean
 
   constructor(opt: TarOptions = {}) {
     opt.ondone = () => {
@@ -185,7 +185,7 @@ export class Unpack extends Parser {
     this.transform = opt.transform
 
     this.dirCache = opt.dirCache || new Map()
-    this.noChmod = !!opt.noChmod
+    this.chmod = !!opt.chmod
 
     if (typeof opt.uid === 'number' || typeof opt.gid === 'number') {
       // need both or neither
@@ -269,7 +269,11 @@ export class Unpack extends Parser {
     )
     this.strip = Number(opt.strip) || 0
     // if we're not chmodding, then we don't need the process umask
-    this.processUmask = opt.noChmod ? 0 : process.umask()
+    this.processUmask = !this.chmod
+      ? 0
+      : typeof opt.processUmask === 'number'
+        ? opt.processUmask
+        : process.umask()
     this.umask =
       typeof opt.umask === 'number' ? opt.umask : this.processUmask
 
@@ -469,7 +473,6 @@ export class Unpack extends Parser {
         cache: this.dirCache,
         cwd: this.cwd,
         mode: mode,
-        noChmod: this.noChmod,
       },
       cb,
     )
@@ -777,7 +780,7 @@ export class Unpack extends Parser {
         if (st.isDirectory()) {
           if (entry.type === 'Directory') {
             const needChmod =
-              !this.noChmod &&
+              this.chmod &&
               entry.mode &&
               (st.mode & 0o7777) !== entry.mode
             const afterChmod = (er?: Error | null | undefined) =>
@@ -931,7 +934,7 @@ export class UnpackSync extends Unpack {
     if (st.isDirectory()) {
       if (entry.type === 'Directory') {
         const needChmod =
-          !this.noChmod &&
+          this.chmod &&
           entry.mode &&
           (st.mode & 0o7777) !== entry.mode
         const [er] = needChmod
@@ -1088,7 +1091,6 @@ export class UnpackSync extends Unpack {
         cache: this.dirCache,
         cwd: this.cwd,
         mode: mode,
-        noChmod: this.noChmod,
       })
     } catch (er) {
       return er

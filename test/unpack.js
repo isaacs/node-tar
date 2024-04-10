@@ -1,5 +1,3 @@
-process.umask(0o022)
-
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
 
 import fs from 'fs'
@@ -35,6 +33,8 @@ const isLongFile = f =>
   f.match(/r.e.a.l.l.y.-.d.e.e.p.-.f.o.l.d.e.r.-.p.a.t.h/)
 
 t.teardown(_ => rimraf(unpackdir))
+
+t.capture(process, 'umask', () => 0o22)
 
 t.before(async () => {
   await rimraf(unpackdir)
@@ -640,6 +640,7 @@ t.test(
         onwarn: (c, w, d) => {
           warnings.push([c, w, d])
         },
+        chmod: true,
       })
       u.on('close', _ => {
         t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -676,6 +677,8 @@ t.test(
         onwarn: (c, w, d) => {
           warnings.push([c, w, d])
         },
+        chmod: true,
+        processUmask: 0o22,
       })
       u.end(data)
       t.equal(fs.lstatSync(dir + '/d/i/r/dir').mode & 0o7777, 0o751)
@@ -1395,6 +1398,8 @@ t.test('fail chmod', t => {
     new Unpack({
       cwd: dir,
       onwarn: (_c, w, d) => warnings.push([w, d]),
+      chmod: true,
+      processUmask: 0o22,
     })
       .on('close', _ => check(t, expect))
       .end(data)
@@ -1405,6 +1410,8 @@ t.test('fail chmod', t => {
     new UnpackSync({
       cwd: dir,
       onwarn: (_c, w, d) => warnings.push([w, d]),
+      chmod: true,
+      processUmask: 0o22,
     }).end(data)
     check(t, expect)
   })
@@ -2112,8 +2119,6 @@ t.test('safely transmute chars on windows with absolutes', t => {
 })
 
 t.test('use explicit chmod when required by umask', t => {
-  process.umask(0o022)
-
   const basedir = path.resolve(unpackdir, 'umask-chmod')
 
   const data = makeTar([
@@ -2135,26 +2140,31 @@ t.test('use explicit chmod when required by umask', t => {
 
   t.test('async', t => {
     mkdirp.sync(basedir)
-    const unpack = new Unpack({ cwd: basedir })
+    const unpack = new Unpack({
+      cwd: basedir,
+      chmod: true,
+      processUmask: 0o22,
+    })
     unpack.on('close', _ => check(t))
     unpack.end(data)
   })
 
   return t.test('sync', t => {
     mkdirp.sync(basedir)
-    const unpack = new UnpackSync({ cwd: basedir })
+    const unpack = new UnpackSync({
+      cwd: basedir,
+      chmod: true,
+      processUmask: 0o22,
+    })
     unpack.end(data)
     check(t)
   })
 })
 
-t.test('dont use explicit chmod if noChmod flag set', t => {
-  process.umask(0o022)
-  const { umask } = process
-  t.teardown(() => (process.umask = umask))
-  process.umask = () => {
+t.test('dont use explicit chmod if chmod flag not set', t => {
+  t.capture(process, 'umask', () => {
     throw new Error('should not call process.umask()')
-  }
+  })
 
   const basedir = path.resolve(unpackdir, 'umask-no-chmod')
 
@@ -2177,14 +2187,14 @@ t.test('dont use explicit chmod if noChmod flag set', t => {
 
   t.test('async', t => {
     mkdirp.sync(basedir)
-    const unpack = new Unpack({ cwd: basedir, noChmod: true })
+    const unpack = new Unpack({ cwd: basedir })
     unpack.on('close', _ => check(t))
     unpack.end(data)
   })
 
   return t.test('sync', t => {
     mkdirp.sync(basedir)
-    const unpack = new UnpackSync({ cwd: basedir, noChmod: true })
+    const unpack = new UnpackSync({ cwd: basedir })
     unpack.end(data)
     check(t)
   })

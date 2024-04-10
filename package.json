@@ -66,11 +66,16 @@
     "exports": {
       "./package.json": "./package.json",
       ".": "./src/index.ts",
+      "./c": "./src/create.ts",
       "./create": "./src/create.ts",
       "./replace": "./src/create.ts",
+      "./r": "./src/create.ts",
       "./list": "./src/list.ts",
+      "./t": "./src/list.ts",
       "./update": "./src/update.ts",
+      "./u": "./src/update.ts",
       "./extract": "./src/extract.ts",
+      "./x": "./src/extract.ts",
       "./pack": "./src/pack.ts",
       "./unpack": "./src/unpack.ts",
       "./parse": "./src/parse.ts",
@@ -93,6 +98,16 @@
         "default": "./dist/commonjs/index.js"
       }
     },
+    "./c": {
+      "import": {
+        "types": "./dist/esm/create.d.ts",
+        "default": "./dist/esm/create.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/create.d.ts",
+        "default": "./dist/commonjs/create.js"
+      }
+    },
     "./create": {
       "import": {
         "types": "./dist/esm/create.d.ts",
@@ -113,7 +128,27 @@
         "default": "./dist/commonjs/create.js"
       }
     },
+    "./r": {
+      "import": {
+        "types": "./dist/esm/create.d.ts",
+        "default": "./dist/esm/create.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/create.d.ts",
+        "default": "./dist/commonjs/create.js"
+      }
+    },
     "./list": {
+      "import": {
+        "types": "./dist/esm/list.d.ts",
+        "default": "./dist/esm/list.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/list.d.ts",
+        "default": "./dist/commonjs/list.js"
+      }
+    },
+    "./t": {
       "import": {
         "types": "./dist/esm/list.d.ts",
         "default": "./dist/esm/list.js"
@@ -133,7 +168,27 @@
         "default": "./dist/commonjs/update.js"
       }
     },
+    "./u": {
+      "import": {
+        "types": "./dist/esm/update.d.ts",
+        "default": "./dist/esm/update.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/update.d.ts",
+        "default": "./dist/commonjs/update.js"
+      }
+    },
     "./extract": {
+      "import": {
+        "types": "./dist/esm/extract.d.ts",
+        "default": "./dist/esm/extract.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/extract.d.ts",
+        "default": "./dist/commonjs/extract.js"
+      }
+    },
+    "./x": {
       "import": {
         "types": "./dist/esm/extract.d.ts",
         "default": "./dist/esm/extract.js"

@@ -51,6 +51,9 @@ t.same(
   },
 )
 
+t.same(dealias({ noChmod: false }), { chmod: true })
+t.same(dealias({ noChmod: true }), {})
+
 t.equal(isSyncFile(dealias({ sync: true, f: 'x' })), true)
 t.equal(isSyncFile(dealias({ file: 'x' })), false)
 t.equal(isSyncFile(dealias({ sync: true })), false)

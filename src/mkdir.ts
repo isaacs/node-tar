@@ -17,7 +17,6 @@ export type MkdirOptions = {
   cache: Map<string, boolean>
   cwd: string
   mode: number
-  noChmod: boolean
 }
 
 export type MkdirError =
