@@ -1821,11 +1821,12 @@ t.test('set owner', t => {
           if (!warned) {
             warned = true
             t.equal(er, poop)
-            t.end()
           }
         },
       })
       u.end(data)
+      t.equal(warned, true)
+      t.end()
     })
 
     t.test('async', t => {
@@ -1838,9 +1839,12 @@ t.test('set owner', t => {
           if (!warned) {
             warned = true
             t.equal(er, poop)
-            t.end()
           }
         },
+      })
+      u.on('finish', () => {
+        t.equal(warned, true)
+        t.end()
       })
       u.end(data)
     })

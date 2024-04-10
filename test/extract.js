@@ -415,3 +415,17 @@ t.test('brotli', async t => {
     t.end()
   })
 })
+
+t.test('verify long linkname is not a problem', async t => {
+  // See: https://github.com/isaacs/node-tar/issues/312
+  const file = path.resolve(__dirname, 'fixtures/long-linkname.tar')
+  t.test('sync', t => {
+    x({ sync: true, strict: true, file, C: t.testdir({}) })
+    t.ok(fs.lstatSync(t.testdirName + '/test').isSymbolicLink())
+    t.end()
+  })
+  t.test('async', async t => {
+    await x({ file, C: t.testdir({}), strict: true })
+    t.ok(fs.lstatSync(t.testdirName + '/test').isSymbolicLink())
+  })
+})

@@ -199,6 +199,7 @@ export class Parser extends EE implements Warner {
           })
         } else if (
           !/^(Symbolic)?Link$/.test(type) &&
+          !/^(Global)?ExtendedHeader$/.test(type) &&
           header.linkpath
         ) {
           this.warn('TAR_ENTRY_INVALID', 'linkpath forbidden', {
