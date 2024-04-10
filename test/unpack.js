@@ -1,6 +1,6 @@
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
 
-import fs from 'fs'
+import fs, { readdirSync } from 'fs'
 import { Minipass } from 'minipass'
 import * as z from 'minizlib'
 import path from 'path'
@@ -3529,5 +3529,37 @@ t.test('excessively deep subfolder nesting', async t => {
       maxDepth: 64,
     }).end(data)
     check(t, 64)
+  })
+})
+
+t.test('ignore self-referential hardlinks', async t => {
+  const data = makeTar([
+    {
+      path: 'autolink',
+      linkpath: './autolink',
+      type: 'Link',
+    },
+  ])
+  const check = (t, warnings) => {
+    t.matchSnapshot(warnings)
+    t.strictSame(readdirSync(t.testdirName), [], 'nothing extracted')
+    t.end()
+  }
+  t.test('async', t => {
+    const cwd = t.testdir({})
+    const warnings = []
+    const u = new Unpack({ cwd, onwarn: (_, m) => warnings.push(m) })
+    u.on('end', () => check(t, warnings))
+    u.end(data)
+  })
+  t.test('sync', t => {
+    const cwd = t.testdir({})
+    const warnings = []
+    const u = new UnpackSync({
+      cwd,
+      onwarn: (_, m) => warnings.push(m),
+    })
+    u.end(data)
+    check(t, warnings)
   })
 })
