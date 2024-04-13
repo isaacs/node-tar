@@ -1,4 +1,11 @@
-# node-tar
+# import { create } from 'tar'
+create(
+  {
+    gzip: <true|gzip options>,
+    file: 'my-tarball.tgz'
+  },
+  ['some', 'files', 'and', 'folders']
+).then(_ => { .. tarball has been created .. })node-tar
 
 Fast and full-featured Tar for Node.js
 
