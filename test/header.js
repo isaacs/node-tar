@@ -614,6 +614,8 @@ t.test('null block, global extended header', t => {
     {
       path: '/global.path',
       foo: 'global foo',
+      global: true,
+      linkpath: 'asdf'
     },
   )
   t.match(h, {

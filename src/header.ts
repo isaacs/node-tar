@@ -96,8 +96,9 @@ export class Header implements HeaderData {
 
     // if we have extended or global extended headers, apply them now
     // See https://github.com/npm/node-tar/pull/187
-    if (ex) this.#slurp(ex)
+    // Apply global before local, so it overrides
     if (gex) this.#slurp(gex, true)
+    if (ex) this.#slurp(ex)
 
     // old tar versions marked dirs as a file with a trailing /
     const t = decString(buf, off + 156, 1)
@@ -168,7 +169,9 @@ export class Header implements HeaderData {
           return !(
             v === null ||
             v === undefined ||
-            (k === 'path' && gex)
+            (k === 'path' && gex) ||
+            (k === 'linkpath' && gex) ||
+            (k === 'global')
           )
         }),
       ),
