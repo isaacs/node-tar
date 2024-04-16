@@ -1,4 +1,0 @@
-- name: Support Long Paths
-  if: matrix.platform.os == 'windows-latest'
-  run: git config --system core.longpaths true
-{{> defaultStepGit }}
