@@ -92,7 +92,10 @@ t.test('pack a file', t => {
         throw new Error('no data!')
       }
 
-      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
+      t.equal(
+        sync.subarray(512).toString(),
+        data.subarray(512).toString(),
+      )
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -132,7 +135,10 @@ t.test('pack a file with a prefix', t => {
         .add('.dotfile')
         .end()
         .read()
-      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
+      t.equal(
+        sync.subarray(512).toString(),
+        data.subarray(512).toString(),
+      )
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -187,7 +193,10 @@ t.test('portable pack a dir', t => {
       t.equal(syncgz[9], 255, 'gzip OS flag set to "unknown"')
       const sync = new miniz.Gunzip().end(zipped).read()
 
-      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
+      t.equal(
+        sync.subarray(512).toString(),
+        data.subarray(512).toString(),
+      )
       const hs = new Header(sync)
       t.match(hs, expect)
 
@@ -257,7 +266,10 @@ t.test('use process cwd if cwd not specified', t => {
         .add('dir')
         .end()
         .read()
-      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
+      t.equal(
+        sync.subarray(512).toString(),
+        data.subarray(512).toString(),
+      )
       const hs = new Header(sync)
       t.match(hs, expect)
 
@@ -325,7 +337,10 @@ t.test('filter', t => {
         .add('dir')
         .end()
         .read()
-      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
+      t.equal(
+        sync.subarray(512).toString(),
+        data.subarray(512).toString(),
+      )
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -976,7 +991,10 @@ t.test('pipe into a slow reader', t => {
     }
     t.match(h, expect)
     t.equal(data.length, 21504)
-    t.match(data.subarray(data.length - 1024).toString(), /^\0{1024}$/)
+    t.match(
+      data.subarray(data.length - 1024).toString(),
+      /^\0{1024}$/,
+    )
     t.end()
   })
 })
@@ -1037,7 +1055,10 @@ t.test('pipe into a slow gzip reader', t => {
     }
     t.match(h, expect)
     t.equal(data.length, 21504)
-    t.match(data.subarray(data.length - 1024).toString(), /^\0{1024}$/)
+    t.match(
+      data.subarray(data.length - 1024).toString(),
+      /^\0{1024}$/,
+    )
     t.end()
   })
 })
@@ -1066,8 +1087,14 @@ t.test('ignores mid-queue', t => {
   p.on('data', c => out.push(c))
   p.on('end', _ => {
     const data = Buffer.concat(out)
-    t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), './')
-    const file = data.subarray(512, 612).toString().replace(/\0.*$/, '')
+    t.equal(
+      data.subarray(0, 100).toString().replace(/\0.*$/, ''),
+      './',
+    )
+    const file = data
+      .subarray(512, 612)
+      .toString()
+      .replace(/\0.*$/, '')
     t.not(files.indexOf(file), -1)
     t.end()
   })
@@ -1256,7 +1283,10 @@ t.test('pack ReadEntries', t => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
       t.match(data.subarray(1024).toString(), /^\0+$/)
-      t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), 'x')
+      t.equal(
+        data.subarray(0, 100).toString().replace(/\0.*$/, ''),
+        'x',
+      )
       t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
@@ -1325,7 +1355,10 @@ t.test('pack ReadEntries', t => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
       t.match(data.subarray(1024).toString(), /^\0+$/)
-      t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), 'x')
+      t.equal(
+        data.subarray(0, 100).toString().replace(/\0.*$/, ''),
+        'x',
+      )
       t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
@@ -1468,7 +1501,10 @@ t.test('prefix and subdirs', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) =>
-      t.equal(e, data.subarray(i * 512, i * 512 + e.length).toString()),
+      t.equal(
+        e,
+        data.subarray(i * 512, i * 512 + e.length).toString(),
+      ),
     )
     t.end()
   }
@@ -1546,7 +1582,10 @@ t.test('prefix and hard links', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(
+          data.subarray(i * 512, i * 512 + e.length).toString(),
+          e,
+        )
       } else {
         t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }

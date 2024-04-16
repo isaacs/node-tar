@@ -137,11 +137,9 @@ export class Parser extends EE implements Warner {
     // if it's a tbr file it MIGHT be brotli, but we don't know until
     // we look at it and verify it's not a valid tar file.
     this.brotli =
-      !opt.gzip && opt.brotli !== undefined
-        ? opt.brotli
-        : isTBR
-          ? undefined
-          : false
+      !opt.gzip && opt.brotli !== undefined ? opt.brotli
+      : isTBR ? undefined
+      : false
 
     // have to set this so that streams are ok piping into it
     this.on('end', () => this[CLOSESTREAM]())
@@ -328,9 +326,9 @@ export class Parser extends EE implements Warner {
     const br = entry.blockRemain ?? 0
     /* c8 ignore stop */
     const c =
-      br >= chunk.length && position === 0
-        ? chunk
-        : chunk.subarray(position, position + br)
+      br >= chunk.length && position === 0 ?
+        chunk
+      : chunk.subarray(position, position + br)
 
     entry.write(c)
 
@@ -466,9 +464,9 @@ export class Parser extends EE implements Warner {
         const ended = this[ENDED]
         this[ENDED] = false
         this[UNZIP] =
-          this[UNZIP] === undefined
-            ? new Unzip({})
-            : new BrotliDecompress({})
+          this[UNZIP] === undefined ?
+            new Unzip({})
+          : new BrotliDecompress({})
         this[UNZIP].on('data', chunk => this[CONSUMECHUNK](chunk))
         this[UNZIP].on('error', er => this.abort(er as Error))
         this[UNZIP].on('end', () => {
@@ -491,11 +489,10 @@ export class Parser extends EE implements Warner {
     this[WRITING] = false
 
     // return false if there's a queue, or if the current entry isn't flowing
-    const ret = this[QUEUE].length
-      ? false
-      : this[READENTRY]
-        ? this[READENTRY].flowing
-        : true
+    const ret =
+      this[QUEUE].length ? false
+      : this[READENTRY] ? this[READENTRY].flowing
+      : true
 
     // if we have no queue, then that means a clogged READENTRY
     if (!ret && !this[QUEUE].length) {
@@ -507,9 +504,8 @@ export class Parser extends EE implements Warner {
 
   [BUFFERCONCAT](c: Buffer) {
     if (c && !this[ABORTED]) {
-      this[BUFFER] = this[BUFFER]
-        ? Buffer.concat([this[BUFFER], c])
-        : c
+      this[BUFFER] =
+        this[BUFFER] ? Buffer.concat([this[BUFFER], c]) : c
     }
   }
 

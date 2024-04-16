@@ -3,9 +3,11 @@
 
 export const encode = (num: number, buf: Buffer) => {
   if (!Number.isSafeInteger(num)) {
-  // The number is so large that javascript cannot represent it with integer
-  // precision.
-    throw Error('cannot encode number outside of javascript safe integer range')
+    // The number is so large that javascript cannot represent it with integer
+    // precision.
+    throw Error(
+      'cannot encode number outside of javascript safe integer range',
+    )
   } else if (num < 0) {
     encodeNegative(num, buf)
   } else {
@@ -43,7 +45,8 @@ const encodeNegative = (num: number, buf: Buffer) => {
 
 export const parse = (buf: Buffer) => {
   const pre = buf[0]
-  const value = pre === 0x80 ? pos(buf.subarray(1, buf.length))
+  const value =
+    pre === 0x80 ? pos(buf.subarray(1, buf.length))
     : pre === 0xff ? twos(buf)
     : null
   if (value === null) {
@@ -51,9 +54,11 @@ export const parse = (buf: Buffer) => {
   }
 
   if (!Number.isSafeInteger(value)) {
-  // The number is so large that javascript cannot represent it with integer
-  // precision.
-    throw Error('parsed number outside of javascript safe integer range')
+    // The number is so large that javascript cannot represent it with integer
+    // precision.
+    throw Error(
+      'parsed number outside of javascript safe integer range',
+    )
   }
 
   return value

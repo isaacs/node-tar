@@ -171,7 +171,7 @@ export class Header implements HeaderData {
             v === undefined ||
             (k === 'path' && gex) ||
             (k === 'linkpath' && gex) ||
-            (k === 'global')
+            k === 'global'
           )
         }),
       ),
@@ -252,10 +252,9 @@ export class Header implements HeaderData {
 
   get type(): EntryTypeName {
     return (
-      this.#type === 'Unsupported'
-        ? this.#type
-        : types.name.get(this.#type)
-    ) as EntryTypeName
+      this.#type === 'Unsupported' ?
+        this.#type
+      : types.name.get(this.#type)) as EntryTypeName
   }
 
   get typeKey(): EntryTypeCode | 'Unsupported' {
@@ -332,9 +331,9 @@ const numToDate = (num?: number) =>
   num === undefined ? undefined : new Date(num * 1000)
 
 const decNumber = (buf: Buffer, off: number, size: number) =>
-  Number(buf[off]) & 0x80
-    ? large.parse(buf.subarray(off, off + size))
-    : decSmallNumber(buf, off, size)
+  Number(buf[off]) & 0x80 ?
+    large.parse(buf.subarray(off, off + size))
+  : decSmallNumber(buf, off, size)
 
 const nanUndef = (value: number) => (isNaN(value) ? undefined : value)
 
@@ -362,11 +361,10 @@ const encNumber = (
   size: 12 | 8,
   num?: number,
 ) =>
-  num === undefined
-    ? false
-    : num > MAXNUM[size] || num < 0
-      ? (large.encode(num, buf.subarray(off, off + size)), true)
-      : (encSmallNumber(buf, off, size, num), false)
+  num === undefined ? false
+  : num > MAXNUM[size] || num < 0 ?
+    (large.encode(num, buf.subarray(off, off + size)), true)
+  : (encSmallNumber(buf, off, size, num), false)
 
 const encSmallNumber = (
   buf: Buffer,
@@ -379,9 +377,9 @@ const octalString = (num: number, size: number) =>
   padOctal(Math.floor(num).toString(8), size)
 
 const padOctal = (str: string, size: number) =>
-  (str.length === size - 1
-    ? str
-    : new Array(size - str.length - 1).join('0') + str + ' ') + '\0'
+  (str.length === size - 1 ?
+    str
+  : new Array(size - str.length - 1).join('0') + str + ' ') + '\0'
 
 const encDate = (
   buf: Buffer,
@@ -389,9 +387,9 @@ const encDate = (
   size: 8 | 12,
   date?: Date,
 ) =>
-  date === undefined
-    ? false
-    : encNumber(buf, off, size, date.getTime() / 1000)
+  date === undefined ? false : (
+    encNumber(buf, off, size, date.getTime() / 1000)
+  )
 
 // enough to fill the longest string we've got
 const NULLS = new Array(156).join('\0')
@@ -402,7 +400,7 @@ const encString = (
   size: number,
   str?: string,
 ) =>
-  str === undefined
-    ? false
-    : (buf.write(str + NULLS, off, size, 'utf8'),
-      str.length !== Buffer.byteLength(str) || str.length > size)
+  str === undefined ? false : (
+    (buf.write(str + NULLS, off, size, 'utf8'),
+    str.length !== Buffer.byteLength(str) || str.length > size)
+  )

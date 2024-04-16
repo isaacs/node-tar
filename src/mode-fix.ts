@@ -1,4 +1,8 @@
-export const modeFix = (mode: number, isDir: boolean, portable: boolean) => {
+export const modeFix = (
+  mode: number,
+  isDir: boolean,
+  portable: boolean,
+) => {
   mode &= 0o7777
 
   // in portable mode, use the minimum reasonable umask

@@ -51,8 +51,9 @@ export class PathReservations {
   #running = new Set<Handler>()
 
   reserve(paths: string[], fn: Handler) {
-    paths = isWindows
-      ? ['win32 parallelization disabled']
+    paths =
+      isWindows ?
+        ['win32 parallelization disabled']
       : paths.map(p => {
           // don't need normPath, because we skip this entirely for windows
           return stripTrailingSlashes(

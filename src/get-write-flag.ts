@@ -22,6 +22,7 @@ const UV_FS_O_FILEMAP =
 const fMapEnabled = isWindows && !!UV_FS_O_FILEMAP
 const fMapLimit = 512 * 1024
 const fMapFlag = UV_FS_O_FILEMAP | O_TRUNC | O_CREAT | O_WRONLY
-export const getWriteFlag = !fMapEnabled
-  ? () => 'w'
+export const getWriteFlag =
+  !fMapEnabled ?
+    () => 'w'
   : (size: number) => (size < fMapLimit ? fMapFlag : 'w')

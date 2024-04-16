@@ -615,7 +615,7 @@ t.test('null block, global extended header', t => {
       path: '/global.path',
       foo: 'global foo',
       global: true,
-      linkpath: 'asdf'
+      linkpath: 'asdf',
     },
   )
   t.match(h, {
@@ -666,6 +666,6 @@ t.test('gnutar-generated 10gb file size', t => {
   const h = new Header(b)
   t.equal(h.size, 1024 * 1024 * 1024 * 10, 'should be 10gb file')
   // cannot set type to something invalid
-  t.throws(() => h.type = 'Z')
+  t.throws(() => (h.type = 'Z'))
   t.end()
 })

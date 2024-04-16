@@ -16,9 +16,9 @@ export const stripAbsolutePath = (path: string) => {
     // windows will think that //x/y/z has a "root" of //x/y/
     // but strip the //?/C:/ off of //?/C:/path
     const root =
-      path.charAt(0) === '/' && path.slice(0, 4) !== '//?/'
-        ? '/'
-        : parsed.root
+      path.charAt(0) === '/' && path.slice(0, 4) !== '//?/' ?
+        '/'
+      : parsed.root
     path = path.slice(root.length)
     r += root
     parsed = parse(path)

@@ -17,7 +17,7 @@
     "preversion": "npm test",
     "postversion": "npm publish",
     "prepublishOnly": "git push origin --follow-tags",
-    "format": "prettier --write . --loglevel warn",
+    "format": "prettier --write . --log-level warn",
     "typedoc": "typedoc --tsconfig .tshy/esm.json ./src/*.ts"
   },
   "dependencies": {
@@ -52,6 +52,7 @@
     "timeout": 0
   },
   "prettier": {
+    "experimentalTernaries": true,
     "semi": false,
     "printWidth": 70,
     "tabWidth": 2,

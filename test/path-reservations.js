@@ -7,19 +7,24 @@ if (process.platform === 'win32') {
   process.env.TESTING_TAR_FAKE_PLATFORM = 'posix'
 }
 
-
-const { PathReservations } = await t.mockImport('../dist/esm/path-reservations.js', {
-  path: posix,
-})
+const { PathReservations } = await t.mockImport(
+  '../dist/esm/path-reservations.js',
+  {
+    path: posix,
+  },
+)
 
 delete process.env.TESTING_TAR_FAKE_PLATFORM
 if (process.platform !== 'win32') {
   process.env.TESTING_TAR_FAKE_PLATFORM = 'win32'
 }
 
-const { PathReservations: WinPathReservations } = await t.mockImport('../dist/esm/path-reservations.js', {
-  path: win32,
-})
+const { PathReservations: WinPathReservations } = await t.mockImport(
+  '../dist/esm/path-reservations.js',
+  {
+    path: win32,
+  },
+)
 
 t.test('basic race', t => {
   // simulate the race conditions we care about

@@ -79,17 +79,18 @@ export function list(
     onentryFunction(opt)
   }
 
-  return isSyncFile(opt)
-    ? listFileSync(opt)
-    : isFile(opt)
-      ? listFile(opt, cb)
-      : list_(opt)
+  return (
+    isSyncFile(opt) ? listFileSync(opt)
+    : isFile(opt) ? listFile(opt, cb)
+    : list_(opt)
+  )
 }
 
 const onentryFunction = (opt: TarOptions) => {
   const onentry = opt.onentry
-  opt.onentry = onentry
-    ? e => {
+  opt.onentry =
+    onentry ?
+      e => {
         onentry(e)
         e.resume()
       }
@@ -121,8 +122,9 @@ const filesFilter = (opt: TarOptions, files: string[]) => {
     return ret
   }
 
-  opt.filter = filter
-    ? (file, entry) =>
+  opt.filter =
+    filter ?
+      (file, entry) =>
         filter(file, entry) && mapHas(stripTrailingSlashes(file))
     : file => mapHas(stripTrailingSlashes(file))
 }
@@ -157,7 +159,10 @@ const listFileSync = (opt: TarOptionsSyncFile) => {
   }
 }
 
-const listFile = (opt: TarOptionsFile, cb?: () => void): Promise<void> => {
+const listFile = (
+  opt: TarOptionsFile,
+  cb?: () => void,
+): Promise<void> => {
   const parse = new Parser(opt)
   const readSize = opt.maxReadSize || 16 * 1024 * 1024
 

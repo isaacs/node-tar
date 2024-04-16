@@ -58,6 +58,6 @@ if (fakePlatform !== 'win32') {
     env: {
       ...process.env,
       TESTING_TAR_FAKE_PLATFORM: 'win32',
-    }
+    },
   })
 }

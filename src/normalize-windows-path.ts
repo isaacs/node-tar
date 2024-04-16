@@ -7,6 +7,6 @@ const platform =
   process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
 
 export const normalizeWindowsPath =
-  platform !== 'win32'
-    ? (p: string) => p
-    : (p: string) => p && p.replace(/\\/g, '/')
+  platform !== 'win32' ?
+    (p: string) => p
+  : (p: string) => p && p.replace(/\\/g, '/')

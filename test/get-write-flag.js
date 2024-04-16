@@ -42,31 +42,31 @@ switch (process.argv[2]) {
     t.spawn(node, [__filename, 'win32-fmap'], {
       env: {
         ...process.env,
-        ...(platform === 'win32'
-          ? {}
-          : {
-              __FAKE_FS_O_FILENAME__: String(UV_FS_O_FILEMAP),
-              __FAKE_PLATFORM__: 'win32',
-            }),
+        ...(platform === 'win32' ?
+          {}
+        : {
+            __FAKE_FS_O_FILENAME__: String(UV_FS_O_FILEMAP),
+            __FAKE_PLATFORM__: 'win32',
+          }),
       },
     })
     t.spawn(node, [__filename, 'win32-nofmap'], {
       env: {
         ...process.env,
-        ...(platform === 'win32'
-          ? {}
-          : {
-              __FAKE_FS_O_FILENAME__: '0',
-              __FAKE_PLATFORM__: 'win32',
-            }),
+        ...(platform === 'win32' ?
+          {}
+        : {
+            __FAKE_FS_O_FILENAME__: '0',
+            __FAKE_PLATFORM__: 'win32',
+          }),
       },
     })
     t.spawn(node, [__filename, 'unix'], {
       env: {
         ...process.env,
-        ...(platform === 'win32'
-          ? { __FAKE_PLATFORM__: 'linux' }
-          : {}),
+        ...(platform === 'win32' ?
+          { __FAKE_PLATFORM__: 'linux' }
+        : {}),
       },
     })
   }

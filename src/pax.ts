@@ -120,9 +120,9 @@ export class Pax implements HeaderData {
     const v = r instanceof Date ? r.getTime() / 1000 : r
     const s =
       ' ' +
-      (field === 'dev' || field === 'ino' || field === 'nlink'
-        ? 'SCHILY.'
-        : '') +
+      (field === 'dev' || field === 'ino' || field === 'nlink' ?
+        'SCHILY.'
+      : '') +
       field +
       '=' +
       v +
@@ -173,10 +173,10 @@ const parseKVLine = (set: Record<string, any>, line: string) => {
   const k = r.replace(/^SCHILY\.(dev|ino|nlink)/, '$1')
 
   const v = kv.join('=')
-  set[k] = /^([A-Z]+\.)?([mac]|birth|creation)time$/.test(k)
-    ? new Date(Number(v) * 1000)
-    : /^[0-9]+$/.test(v)
-      ? +v
-      : v
+  set[k] =
+    /^([A-Z]+\.)?([mac]|birth|creation)time$/.test(k) ?
+      new Date(Number(v) * 1000)
+    : /^[0-9]+$/.test(v) ? +v
+    : v
   return set
 }

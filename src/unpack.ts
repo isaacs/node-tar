@@ -105,11 +105,9 @@ const uint32 = (
   b: number | undefined,
   c: number | undefined,
 ) =>
-  a !== undefined && a === a >>> 0
-    ? a
-    : b !== undefined && b === b >>> 0
-      ? b
-      : c
+  a !== undefined && a === a >>> 0 ? a
+  : b !== undefined && b === b >>> 0 ? b
+  : c
 
 // clear the cache if it's a case-insensitive unicode-squashing match.
 // we can't know if the current file system is case-sensitive or supports
@@ -224,20 +222,20 @@ export class Unpack extends Parser {
     }
 
     this.processUid =
-      (this.preserveOwner || this.setOwner) && process.getuid
-        ? process.getuid()
-        : undefined
+      (this.preserveOwner || this.setOwner) && process.getuid ?
+        process.getuid()
+      : undefined
     this.processGid =
-      (this.preserveOwner || this.setOwner) && process.getgid
-        ? process.getgid()
-        : undefined
+      (this.preserveOwner || this.setOwner) && process.getgid ?
+        process.getgid()
+      : undefined
 
     // prevent excessively deep nesting of subfolders
     // set to `Infinity` to remove this restriction
     this.maxDepth =
-      typeof opt.maxDepth === 'number'
-        ? opt.maxDepth
-        : DEFAULT_MAX_DEPTH
+      typeof opt.maxDepth === 'number' ?
+        opt.maxDepth
+      : DEFAULT_MAX_DEPTH
 
     // mostly just for testing, but useful in some cases.
     // Forcibly trigger a chown on every entry, no matter what
@@ -269,11 +267,10 @@ export class Unpack extends Parser {
     )
     this.strip = Number(opt.strip) || 0
     // if we're not chmodding, then we don't need the process umask
-    this.processUmask = !this.chmod
-      ? 0
-      : typeof opt.processUmask === 'number'
-        ? opt.processUmask
-        : process.umask()
+    this.processUmask =
+      !this.chmod ? 0
+      : typeof opt.processUmask === 'number' ? opt.processUmask
+      : process.umask()
     this.umask =
       typeof opt.umask === 'number' ? opt.umask : this.processUmask
 
@@ -504,9 +501,9 @@ export class Unpack extends Parser {
 
   [FILE](entry: ReadEntry, fullyDone: () => void) {
     const mode =
-      typeof entry.mode === 'number'
-        ? entry.mode & 0o7777
-        : this.fmode
+      typeof entry.mode === 'number' ?
+        entry.mode & 0o7777
+      : this.fmode
     const stream = new fsm.WriteStream(String(entry.absolute), {
       // slight lie, but it can be numeric flags
       flags: getWriteFlag(entry.size) as string,
@@ -566,9 +563,9 @@ export class Unpack extends Parser {
         const atime = entry.atime || new Date()
         const mtime = entry.mtime
         fs.futimes(fd, atime, mtime, er =>
-          er
-            ? fs.utimes(abs, atime, mtime, er2 => done(er2 && er))
-            : done(),
+          er ?
+            fs.utimes(abs, atime, mtime, er2 => done(er2 && er))
+          : done(),
         )
       }
 
@@ -578,9 +575,9 @@ export class Unpack extends Parser {
         const gid = this[GID](entry)
         if (typeof uid === 'number' && typeof gid === 'number') {
           fs.fchown(fd, uid, gid, er =>
-            er
-              ? fs.chown(abs, uid, gid, er2 => done(er2 && er))
-              : done(),
+            er ?
+              fs.chown(abs, uid, gid, er2 => done(er2 && er))
+            : done(),
           )
         }
       }
@@ -601,9 +598,9 @@ export class Unpack extends Parser {
 
   [DIRECTORY](entry: ReadEntry, fullyDone: () => void) {
     const mode =
-      typeof entry.mode === 'number'
-        ? entry.mode & 0o7777
-        : this.dmode
+      typeof entry.mode === 'number' ?
+        entry.mode & 0o7777
+      : this.dmode
     this[MKDIR](String(entry.absolute), mode, er => {
       if (er) {
         this[ONERROR](er, entry)
@@ -937,8 +934,9 @@ export class UnpackSync extends Unpack {
           this.chmod &&
           entry.mode &&
           (st.mode & 0o7777) !== entry.mode
-        const [er] = needChmod
-          ? callSync(() => {
+        const [er] =
+          needChmod ?
+            callSync(() => {
               fs.chmodSync(String(entry.absolute), Number(entry.mode))
             })
           : []
@@ -954,17 +952,17 @@ export class UnpackSync extends Unpack {
     // not a dir, and not reusable.
     // don't remove if it's the cwd, since we want that error.
     const [er] =
-      entry.absolute === this.cwd
-        ? []
-        : callSync(() => unlinkFileSync(String(entry.absolute)))
+      entry.absolute === this.cwd ?
+        []
+      : callSync(() => unlinkFileSync(String(entry.absolute)))
     this[MAKEFS](er, entry)
   }
 
   [FILE](entry: ReadEntry, done: () => void) {
     const mode =
-      typeof entry.mode === 'number'
-        ? entry.mode & 0o7777
-        : this.fmode
+      typeof entry.mode === 'number' ?
+        entry.mode & 0o7777
+      : this.fmode
 
     const oner = (er?: null | Error | undefined) => {
       let closeError
@@ -1046,9 +1044,9 @@ export class UnpackSync extends Unpack {
 
   [DIRECTORY](entry: ReadEntry, done: () => void) {
     const mode =
-      typeof entry.mode === 'number'
-        ? entry.mode & 0o7777
-        : this.dmode
+      typeof entry.mode === 'number' ?
+        entry.mode & 0o7777
+      : this.dmode
     const er = this[MKDIR](String(entry.absolute), mode)
     if (er) {
       this[ONERROR](er as Error, entry)

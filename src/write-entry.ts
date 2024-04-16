@@ -99,9 +99,8 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
     this.noPax = !!opt.noPax
     this.noMtime = !!opt.noMtime
     this.mtime = opt.mtime
-    this.prefix = opt.prefix
-      ? normalizeWindowsPath(opt.prefix)
-      : undefined
+    this.prefix =
+      opt.prefix ? normalizeWindowsPath(opt.prefix) : undefined
 
     if (typeof opt.onwarn === 'function') {
       this.on('warn', opt.onwarn)
@@ -219,9 +218,9 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
       path: this[PREFIX](this.path),
       // only apply the prefix to hard links.
       linkpath:
-        this.type === 'Link' && this.linkpath !== undefined
-          ? this[PREFIX](this.linkpath)
-          : this.linkpath,
+        this.type === 'Link' && this.linkpath !== undefined ?
+          this[PREFIX](this.linkpath)
+        : this.linkpath,
       // only the permissions and setuid/setgid/sticky bitflags
       // not the higher-order bits that specify file type
       mode: this[MODE](this.stat.mode),
@@ -231,11 +230,10 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
       mtime: this.noMtime ? undefined : this.mtime || this.stat.mtime,
       /* c8 ignore next */
       type: this.type === 'Unsupported' ? undefined : this.type,
-      uname: this.portable
-        ? undefined
-        : this.stat.uid === this.myuid
-          ? this.myuser
-          : '',
+      uname:
+        this.portable ? undefined
+        : this.stat.uid === this.myuid ? this.myuser
+        : '',
       atime: this.portable ? undefined : this.stat.atime,
       ctime: this.portable ? undefined : this.stat.ctime,
     })
@@ -246,14 +244,15 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
           atime: this.portable ? undefined : this.header.atime,
           ctime: this.portable ? undefined : this.header.ctime,
           gid: this.portable ? undefined : this.header.gid,
-          mtime: this.noMtime
-            ? undefined
-            : this.mtime || this.header.mtime,
+          mtime:
+            this.noMtime ? undefined : (
+              this.mtime || this.header.mtime
+            ),
           path: this[PREFIX](this.path),
           linkpath:
-            this.type === 'Link' && this.linkpath !== undefined
-              ? this[PREFIX](this.linkpath)
-              : this.linkpath,
+            this.type === 'Link' && this.linkpath !== undefined ?
+              this[PREFIX](this.linkpath)
+            : this.linkpath,
           size: this.header.size,
           uid: this.portable ? undefined : this.header.uid,
           uname: this.portable ? undefined : this.header.uname,
@@ -444,9 +443,9 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
     }
 
     const writeBuf =
-      this.offset === 0 && bytesRead === this.buf.length
-        ? this.buf
-        : this.buf.subarray(this.offset, this.offset + bytesRead)
+      this.offset === 0 && bytesRead === this.buf.length ?
+        this.buf
+      : this.buf.subarray(this.offset, this.offset + bytesRead)
 
     const flushed = this.write(writeBuf)
     if (!flushed) {
@@ -619,23 +618,22 @@ export class WriteEntryTar
 
     this.path = normalizeWindowsPath(readEntry.path)
     this.mode =
-      readEntry.mode !== undefined
-        ? this[MODE](readEntry.mode)
-        : undefined
+      readEntry.mode !== undefined ?
+        this[MODE](readEntry.mode)
+      : undefined
     this.uid = this.portable ? undefined : readEntry.uid
     this.gid = this.portable ? undefined : readEntry.gid
     this.uname = this.portable ? undefined : readEntry.uname
     this.gname = this.portable ? undefined : readEntry.gname
     this.size = readEntry.size
-    this.mtime = this.noMtime
-      ? undefined
-      : opt.mtime || readEntry.mtime
+    this.mtime =
+      this.noMtime ? undefined : opt.mtime || readEntry.mtime
     this.atime = this.portable ? undefined : readEntry.atime
     this.ctime = this.portable ? undefined : readEntry.ctime
     this.linkpath =
-      readEntry.linkpath !== undefined
-        ? normalizeWindowsPath(readEntry.linkpath)
-        : undefined
+      readEntry.linkpath !== undefined ?
+        normalizeWindowsPath(readEntry.linkpath)
+      : undefined
 
     if (typeof opt.onwarn === 'function') {
       this.on('warn', opt.onwarn)
@@ -656,9 +654,9 @@ export class WriteEntryTar
     this.header = new Header({
       path: this[PREFIX](this.path),
       linkpath:
-        this.type === 'Link' && this.linkpath !== undefined
-          ? this[PREFIX](this.linkpath)
-          : this.linkpath,
+        this.type === 'Link' && this.linkpath !== undefined ?
+          this[PREFIX](this.linkpath)
+        : this.linkpath,
       // only the permissions and setuid/setgid/sticky bitflags
       // not the higher-order bits that specify file type
       mode: this.mode,
@@ -692,9 +690,9 @@ export class WriteEntryTar
           mtime: this.noMtime ? undefined : this.mtime,
           path: this[PREFIX](this.path),
           linkpath:
-            this.type === 'Link' && this.linkpath !== undefined
-              ? this[PREFIX](this.linkpath)
-              : this.linkpath,
+            this.type === 'Link' && this.linkpath !== undefined ?
+              this[PREFIX](this.linkpath)
+            : this.linkpath,
           size: this.size,
           uid: this.portable ? undefined : this.uid,
           uname: this.portable ? undefined : this.uname,
@@ -739,10 +737,7 @@ export class WriteEntryTar
 }
 
 const getType = (stat: Stats): EntryTypeName | 'Unsupported' =>
-  stat.isFile()
-    ? 'File'
-    : stat.isDirectory()
-      ? 'Directory'
-      : stat.isSymbolicLink()
-        ? 'SymbolicLink'
-        : 'Unsupported'
+  stat.isFile() ? 'File'
+  : stat.isDirectory() ? 'Directory'
+  : stat.isSymbolicLink() ? 'SymbolicLink'
+  : 'Unsupported'

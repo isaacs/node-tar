@@ -1,5 +1,5 @@
 import t from 'tap'
-import { encode, parse }  from '../dist/esm/large-numbers.js'
+import { encode, parse } from '../dist/esm/large-numbers.js'
 
 t.test('parse', t => {
   const cases = new Map([
@@ -16,7 +16,8 @@ t.test('parse', t => {
   ])
   t.plan(cases.size)
   cases.forEach((value, hex) =>
-    t.equal(parse(Buffer.from(hex, 'hex')), value))
+    t.equal(parse(Buffer.from(hex, 'hex')), value),
+  )
 })
 
 t.test('parse out of range', t => {
@@ -27,9 +28,12 @@ t.test('parse out of range', t => {
     'fffffffffdd0000000000000',
   ]
   t.plan(cases.length)
-  cases.forEach((hex) =>
-    t.throws(_ => parse(Buffer.from(hex, 'hex')),
-      Error('parsed number outside of javascript safe integer range')))
+  cases.forEach(hex =>
+    t.throws(
+      _ => parse(Buffer.from(hex, 'hex')),
+      Error('parsed number outside of javascript safe integer range'),
+    ),
+  )
 })
 
 t.test('parse invalid base256 encoding', t => {
@@ -38,9 +42,12 @@ t.test('parse invalid base256 encoding', t => {
     '700000030000000000000000', // does not start with 0x80 or 0xff
   ]
   t.plan(cases.length)
-  cases.forEach((hex) =>
-    t.throws(_ => parse(Buffer.from(hex, 'hex')),
-      Error('invalid base256 encoding')))
+  cases.forEach(hex =>
+    t.throws(
+      _ => parse(Buffer.from(hex, 'hex')),
+      Error('invalid base256 encoding'),
+    ),
+  )
 })
 
 t.test('encode', t => {
@@ -58,12 +65,17 @@ t.test('encode', t => {
   t.test('alloc', t => {
     t.plan(cases.size)
     cases.forEach((value, hex) =>
-      t.equal(encode(value, Buffer.alloc(12)).toString('hex'), hex))
+      t.equal(encode(value, Buffer.alloc(12)).toString('hex'), hex),
+    )
   })
   t.test('allocUnsafe', t => {
     t.plan(cases.size)
     cases.forEach((value, hex) =>
-      t.equal(encode(value, Buffer.allocUnsafe(12)).toString('hex'), hex))
+      t.equal(
+        encode(value, Buffer.allocUnsafe(12)).toString('hex'),
+        hex,
+      ),
+    )
   })
 })
 
@@ -76,7 +88,12 @@ t.test('encode unsafe numbers', t => {
   ]
 
   t.plan(cases.length)
-  cases.forEach((value) =>
-    t.throws(_ => encode(value),
-      Error('cannot encode number outside of javascript safe integer range')))
+  cases.forEach(value =>
+    t.throws(
+      _ => encode(value),
+      Error(
+        'cannot encode number outside of javascript safe integer range',
+      ),
+    ),
+  )
 })

@@ -96,8 +96,9 @@ export class ReadEntry extends Minipass<Buffer, Buffer> {
     this.atime = header.atime
     this.ctime = header.ctime
     /* c8 ignore start */
-    this.linkpath = header.linkpath
-      ? normalizeWindowsPath(header.linkpath)
+    this.linkpath =
+      header.linkpath ?
+        normalizeWindowsPath(header.linkpath)
       : undefined
     /* c8 ignore stop */
     this.uname = header.uname

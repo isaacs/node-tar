@@ -71,13 +71,12 @@ export function create(
     throw new TypeError('callback only supported with file option')
   }
 
-  return isSyncFile(opt)
-    ? createFileSync(opt, files)
-    : isFile(opt)
-      ? createFile(opt, files, cb)
-      : isSync(opt)
-        ? createSync(opt, files)
-        : create_(opt, files)
+  return (
+    isSyncFile(opt) ? createFileSync(opt, files)
+    : isFile(opt) ? createFile(opt, files, cb)
+    : isSync(opt) ? createSync(opt, files)
+    : create_(opt, files)
+  )
 }
 
 const createFileSync = (opt: TarOptionsSyncFile, files: string[]) => {

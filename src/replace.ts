@@ -62,8 +62,8 @@ export function replace(
 
   files = Array.from(files)
 
-  return isSyncFile(opt)
-    ? replaceSync(opt, files)
+  return isSyncFile(opt) ?
+      replaceSync(opt, files)
     : replace_(opt, files, cb)
 }
 

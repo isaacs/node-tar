@@ -77,13 +77,12 @@ export function extract(
     filesFilter(opt, files)
   }
 
-  return isSyncFile(opt)
-    ? extractFileSync(opt)
-    : isFile(opt)
-      ? extractFile(opt, cb)
-      : isSync(opt)
-        ? extractSync(opt)
-        : extract_(opt)
+  return (
+    isSyncFile(opt) ? extractFileSync(opt)
+    : isFile(opt) ? extractFile(opt, cb)
+    : isSync(opt) ? extractSync(opt)
+    : extract_(opt)
+  )
 }
 
 // construct a filter that limits the file entries listed
@@ -109,8 +108,9 @@ const filesFilter = (opt: TarOptions, files: string[]) => {
     return ret
   }
 
-  opt.filter = filter
-    ? (file, entry) =>
+  opt.filter =
+    filter ?
+      (file, entry) =>
         filter(file, entry) && mapHas(stripTrailingSlashes(file))
     : file => mapHas(stripTrailingSlashes(file))
 }
@@ -130,10 +130,7 @@ const extractFileSync = (opt: TarOptionsSyncFile) => {
   stream.pipe(u)
 }
 
-const extractFile = (
-  opt: TarOptionsFile,
-  cb?: () => void,
-) => {
+const extractFile = (opt: TarOptionsFile, cb?: () => void) => {
   const u = new Unpack(opt)
   const readSize = opt.maxReadSize || 16 * 1024 * 1024
 

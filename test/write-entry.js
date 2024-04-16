@@ -417,7 +417,7 @@ t.test('absolute path', t => {
   const { root } = path.parse(absolute)
   const f = root + root + root + absolute
   const warn = normPath(isWindows ? root : root + root + root + root)
-  t.test('preservePaths=false strict=false warn='+warn, t => {
+  t.test('preservePaths=false strict=false warn=' + warn, t => {
     const warnings = []
     // on windows, c:\c:\c:\... is a valid path, so just use the
     // single-root absolute version of it.
@@ -542,7 +542,7 @@ t.test(
   },
   t => {
     const ws = new WriteEntry('/dev/random', { preservePaths: true })
-    ws.on('data', (_chunk) => {
+    ws.on('data', _chunk => {
       throw new Error('should not get data from random')
     })
     ws.on('stat', stat => {
@@ -1350,7 +1350,10 @@ t.test('prefix and hard links', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(
+          data.subarray(i * 512, i * 512 + e.length).toString(),
+          e,
+        )
       } else if (e instanceof RegExp) {
         t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
@@ -1527,7 +1530,10 @@ t.test('prefix and hard links from tar entries', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(
+          data.subarray(i * 512, i * 512 + e.length).toString(),
+          e,
+        )
       } else if (e instanceof RegExp) {
         t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
@@ -1622,7 +1628,10 @@ t.test('hard links and no prefix', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(
+          data.subarray(i * 512, i * 512 + e.length).toString(),
+          e,
+        )
       } else {
         t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }
@@ -1768,7 +1777,10 @@ t.test('hard links from tar entries and no prefix', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
+        t.equal(
+          data.subarray(i * 512, i * 512 + e.length).toString(),
+          e,
+        )
       } else if (e instanceof RegExp) {
         t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
