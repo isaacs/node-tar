@@ -381,7 +381,7 @@ const octalString = (num: number, size: number) =>
 const padOctal = (str: string, size: number) =>
   (str.length === size - 1
     ? str
-    : new Array(size - str.length - 1).join('0') + str + ' ') + '\0'
+    : new Array(size - str.length).join('0') + str) + '\0'
 
 const encDate = (
   buf: Buffer,
