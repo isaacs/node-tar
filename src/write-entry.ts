@@ -15,7 +15,12 @@ import { ReadEntry } from './read-entry.js'
 import { stripAbsolutePath } from './strip-absolute-path.js'
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
 import { EntryTypeName } from './types.js'
-import { WarnData, Warner, warnMethod } from './warn-method.js'
+import {
+  WarnData,
+  Warner,
+  WarnEvent,
+  warnMethod,
+} from './warn-method.js'
 import * as winchars from './winchars.js'
 
 const prefixPath = (path: string, prefix?: string) => {
@@ -47,7 +52,14 @@ const AWAITDRAIN = Symbol('awaitDrain')
 const ONDRAIN = Symbol('ondrain')
 const PREFIX = Symbol('prefix')
 
-export class WriteEntry extends Minipass<Buffer> implements Warner {
+export class WriteEntry
+  extends Minipass<
+    Minipass.ContiguousData,
+    Buffer,
+    WarnEvent
+  >
+  implements Warner
+{
   path: string
   portable: boolean
   myuid: number = (process.getuid && process.getuid()) || 0
@@ -154,7 +166,7 @@ export class WriteEntry extends Minipass<Buffer> implements Warner {
     return warnMethod(this, code, message, data)
   }
 
-  emit(ev: string, ...data: any[]) {
+  emit(ev: keyof WarnEvent, ...data: any[]) {
     if (ev === 'error') {
       this.#hadError = true
     }
@@ -556,7 +568,7 @@ export class WriteEntrySync extends WriteEntry implements Warner {
 }
 
 export class WriteEntryTar
-  extends Minipass<Buffer>
+  extends Minipass<Buffer, Buffer, WarnEvent>
   implements Warner
 {
   blockLen: number = 0

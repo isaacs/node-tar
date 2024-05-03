@@ -35,6 +35,7 @@ import * as zlib from 'minizlib'
 import { Yallist } from 'yallist'
 import { ReadEntry } from './read-entry.js'
 import {
+  WarnEvent,
   warnMethod,
   type WarnData,
   type Warner,
@@ -66,7 +67,10 @@ import path from 'path'
 import { normalizeWindowsPath } from './normalize-windows-path.js'
 import { TarOptions } from './options.js'
 
-export class Pack extends Minipass implements Warner {
+export class Pack
+  extends Minipass<Minipass.ContiguousData, Buffer, WarnEvent>
+  implements Warner
+{
   opt: TarOptions
   cwd: string
   maxReadSize?: number

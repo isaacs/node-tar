@@ -1,3 +1,5 @@
+import { type Minipass } from 'minipass'
+
 /** has a warn method */
 export type Warner = {
   warn(code: string, message: string | Error, data: any): void
@@ -12,6 +14,10 @@ export type Warner = {
     data?: WarnData,
   ): void
   emit(event: 'error', error: TarError): void
+}
+
+export type WarnEvent = Minipass.Events & {
+  warn: [code: string, message: string, data: WarnData]
 }
 
 export type WarnData = {

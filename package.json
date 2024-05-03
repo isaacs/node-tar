@@ -23,7 +23,7 @@
   "dependencies": {
     "@isaacs/fs-minipass": "^4.0.0",
     "chownr": "^3.0.0",
-    "minipass": "^5.0.0",
+    "minipass": "^7.0.4",
     "minizlib": "^3.0.1",
     "mkdirp": "^3.0.1",
     "yallist": "^5.0.0"
