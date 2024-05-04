@@ -402,9 +402,35 @@ export class Parser extends EE implements Warner {
     this.warn('TAR_ABORT', error, { recoverable: false })
   }
 
-  write(chunk: Buffer) {
+  write(
+    buffer: Uint8Array | string,
+    cb?: (err?: Error | null) => void,
+  ): boolean
+  write(
+    str: string,
+    encoding?: BufferEncoding,
+    cb?: (err?: Error | null) => void,
+  ): boolean
+  write(
+    chunk: Buffer | string,
+    encoding?: BufferEncoding | (() => any),
+    cb?: () => any,
+  ): boolean {
+    if (typeof encoding === 'function') {
+      cb = encoding
+      encoding = undefined
+    }
+    if (typeof chunk === 'string') {
+      chunk = Buffer.from(
+        chunk,
+        /* c8 ignore next */
+        typeof encoding === 'string' ? encoding : 'utf8',
+      )
+    }
     if (this[ABORTED]) {
-      return
+      /* c8 ignore next */
+      cb?.()
+      return false
     }
 
     // first write, might be gzipped
@@ -418,6 +444,8 @@ export class Parser extends EE implements Warner {
       }
       if (chunk.length < gzipHeader.length) {
         this[BUFFER] = chunk
+        /* c8 ignore next */
+        cb?.()
         return true
       }
 
@@ -443,6 +471,8 @@ export class Parser extends EE implements Warner {
             this.brotli = true
           } else {
             this[BUFFER] = chunk
+            /* c8 ignore next */
+            cb?.()
             return true
           }
         } else {
@@ -474,8 +504,9 @@ export class Parser extends EE implements Warner {
           this[CONSUMECHUNK]()
         })
         this[WRITING] = true
-        const ret = this[UNZIP][ended ? 'end' : 'write'](chunk)
+        const ret = !!this[UNZIP][ended ? 'end' : 'write'](chunk)
         this[WRITING] = false
+        cb?.()
         return ret
       }
     }
@@ -499,6 +530,8 @@ export class Parser extends EE implements Warner {
       this[READENTRY]?.once('drain', () => this.emit('drain'))
     }
 
+    /* c8 ignore next */
+    cb?.()
     return ret
   }
 
@@ -614,7 +647,27 @@ export class Parser extends EE implements Warner {
     }
   }
 
-  end(chunk?: Buffer) {
+  end(cb?: () => void): this
+  end(data: string | Buffer, cb?: () => void): this
+  end(str: string, encoding?: BufferEncoding, cb?: () => void): this
+  end(
+    chunk?: string | Buffer | (() => void),
+    encoding?: BufferEncoding | (() => void),
+    cb?: () => void,
+  ) {
+    if (typeof chunk === 'function') {
+      cb = chunk
+      encoding = undefined
+      chunk = undefined
+    }
+    if (typeof encoding === 'function') {
+      cb = encoding
+      encoding = undefined
+    }
+    if (typeof chunk === 'string') {
+      chunk = Buffer.from(chunk, encoding)
+    }
+    if (cb) this.once('finish', cb)
     if (!this[ABORTED]) {
       if (this[UNZIP]) {
         /* c8 ignore start */
@@ -629,5 +682,6 @@ export class Parser extends EE implements Warner {
         this[MAYBEEND]()
       }
     }
+    return this
   }
 }

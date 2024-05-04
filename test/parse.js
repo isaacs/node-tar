@@ -126,6 +126,7 @@ t.test('fixture tests', t => {
         })
 
         t.test('uncompressed all at once', t => {
+          // this one writes it as a string
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
@@ -135,7 +136,7 @@ t.test('fixture tests', t => {
             strict: strict,
           })
           trackEvents(t, expect, p)
-          p.end(tardata)
+          p.end(tardata.toString('hex'), 'hex', () => {})
         })
 
         t.test(
@@ -185,7 +186,7 @@ t.test('fixture tests', t => {
             strict: strict,
           })
           trackEvents(t, expect, p)
-          p.end(zlib.gzipSync(tardata))
+          p.end(zlib.gzipSync(tardata), () => {})
         })
 
         t.test('gzipped all at once, filename .tbr', t => {
@@ -199,7 +200,8 @@ t.test('fixture tests', t => {
             file: 'example.tbr',
           })
           trackEvents(t, expect, p)
-          p.end(zlib.gzipSync(tardata))
+          p.write(zlib.gzipSync(tardata), () => {})
+          p.end(() => {})
         })
 
         t.test('gzipped byte at a time', t => {
@@ -304,7 +306,8 @@ t.test('fixture tests', t => {
             strict: strict,
           })
           trackEvents(t, expect, p, true)
-          p.write(tardata.subarray(0, Math.floor(tardata.length / 2)))
+          const first = tardata.subarray(0, Math.floor(tardata.length / 2))
+          p.write(first.toString('hex'), 'hex')
           process.nextTick(() =>
             p.end(tardata.subarray(Math.floor(tardata.length / 2))),
           )

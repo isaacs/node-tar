@@ -54,8 +54,8 @@ const PREFIX = Symbol('prefix')
 
 export class WriteEntry
   extends Minipass<
-    Minipass.ContiguousData,
     Buffer,
+    Minipass.ContiguousData,
     WarnEvent
   >
   implements Warner
@@ -454,12 +454,12 @@ export class WriteEntry
       }
     }
 
-    const writeBuf =
+    const chunk =
       this.offset === 0 && bytesRead === this.buf.length ?
         this.buf
       : this.buf.subarray(this.offset, this.offset + bytesRead)
 
-    const flushed = this.write(writeBuf)
+    const flushed = this.write(chunk)
     if (!flushed) {
       this[AWAITDRAIN](() => this[ONDRAIN]())
     } else {
@@ -471,8 +471,34 @@ export class WriteEntry
     this.once('drain', cb)
   }
 
-  write(writeBuf: Buffer) {
-    if (this.blockRemain < writeBuf.length) {
+  write(
+    buffer: Buffer | string,
+    cb?: () => void,
+  ): boolean
+  write(
+    str: Buffer | string,
+    encoding?: BufferEncoding | null,
+    cb?: () => void,
+  ): boolean
+  write(
+    chunk: Buffer | string,
+    encoding?: BufferEncoding | (() => any) | null,
+    cb?: () => any,
+  ): boolean {
+    /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
+    if (typeof encoding === 'function') {
+      cb = encoding
+      encoding = undefined
+    }
+    if (typeof chunk === 'string') {
+      chunk = Buffer.from(
+        chunk,
+        typeof encoding === 'string' ? encoding : 'utf8',
+      )
+    }
+    /* c8 ignore stop */
+
+    if (this.blockRemain < chunk.length) {
       const er = Object.assign(
         new Error('writing more data than expected'),
         {
@@ -481,11 +507,11 @@ export class WriteEntry
       )
       return this.emit('error', er)
     }
-    this.remain -= writeBuf.length
-    this.blockRemain -= writeBuf.length
-    this.pos += writeBuf.length
-    this.offset += writeBuf.length
-    return super.write(writeBuf)
+    this.remain -= chunk.length
+    this.blockRemain -= chunk.length
+    this.pos += chunk.length
+    this.offset += chunk.length
+    return super.write(chunk, null, cb)
   }
 
   [ONDRAIN]() {
@@ -568,7 +594,7 @@ export class WriteEntrySync extends WriteEntry implements Warner {
 }
 
 export class WriteEntryTar
-  extends Minipass<Buffer, Buffer, WarnEvent>
+  extends Minipass<Buffer, Buffer | string, WarnEvent>
   implements Warner
 {
   blockLen: number = 0
@@ -731,20 +757,68 @@ export class WriteEntryTar
     return modeFix(mode, this.type === 'Directory', this.portable)
   }
 
-  write(data: Buffer) {
-    const writeLen = data.length
+  write(
+    buffer: Buffer | string,
+    cb?: () => void,
+  ): boolean
+  write(
+    str: Buffer | string,
+    encoding?: BufferEncoding | null,
+    cb?: () => void,
+  ): boolean
+  write(
+    chunk: Buffer | string,
+    encoding?: BufferEncoding | (() => any) | null,
+    cb?: () => any,
+  ): boolean {
+    /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
+    if (typeof encoding === 'function') {
+      cb = encoding
+      encoding = undefined
+    }
+    if (typeof chunk === 'string') {
+      chunk = Buffer.from(
+        chunk,
+        typeof encoding === 'string' ? encoding : 'utf8',
+      )
+    }
+    /* c8 ignore stop */
+    const writeLen = chunk.length
     if (writeLen > this.blockRemain) {
       throw new Error('writing more to entry than is appropriate')
     }
     this.blockRemain -= writeLen
-    return super.write(data)
+    return super.write(chunk, cb)
   }
 
-  end() {
+  end(cb?: () => void): this
+  end(chunk: Buffer | string, cb?: () => void): this
+  end(chunk: Buffer | string, encoding?: BufferEncoding, cb?: () => void): this
+  end(
+    chunk?: Buffer | string | (() => void),
+    encoding?: BufferEncoding | (() => void),
+    cb?: () => void
+  ): this {
     if (this.blockRemain) {
       super.write(Buffer.alloc(this.blockRemain))
     }
-    return super.end()
+    /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
+    if (typeof chunk === 'function') {
+      cb = chunk
+      encoding = undefined
+      chunk = undefined
+    }
+    if (typeof encoding === 'function') {
+      cb = encoding
+      encoding = undefined
+    }
+    if (typeof chunk === 'string') {
+      chunk = Buffer.from(chunk, encoding ?? 'utf8')
+    }
+    if (cb) this.once('finish', cb)
+    chunk ? super.end(chunk, cb) : super.end(cb)
+    /* c8 ignore stop */
+    return this
   }
 }
 

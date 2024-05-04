@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.1
+
+- Update minipass to v7.1.0
+- Update the type definitions of `write()` and `end()` methods on
+  `Unpack` and `Parser` classes to be compatible with the
+  NodeJS.WritableStream type in the latest versions of
+  `@types/node`.
+
 ## 7.0
 
 - Rewrite in TypeScript, provide ESM and CommonJS hybrid
