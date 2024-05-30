@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.2
+
+- DRY the command definitions into a single `makeCommand` method,
+  and update the type signatures to more appropriately infer the
+  return type from the options and arguments provided.
+
 ## 7.1
 
 - Update minipass to v7.1.0
