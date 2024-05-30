@@ -448,6 +448,7 @@ export class Pack
 }
 
 export class PackSync extends Pack {
+  sync: true = true
   constructor(opt: TarOptions) {
     super(opt)
     this[WRITEENTRYCLASS] = WriteEntrySync

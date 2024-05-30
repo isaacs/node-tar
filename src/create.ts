@@ -1,83 +1,15 @@
-import {
-  dealias,
-  isFile,
-  isSync,
-  isSyncFile,
-  TarOptions,
-  TarOptionsFile,
-  TarOptionsSync,
-  TarOptionsSyncFile,
-  TarOptionsWithAliases,
-  TarOptionsWithAliasesFile,
-  TarOptionsWithAliasesSync,
-  TarOptionsWithAliasesSyncFile,
-} from './options.js'
-
 import { WriteStream, WriteStreamSync } from '@isaacs/fs-minipass'
 import { Minipass } from 'minipass'
 import path from 'node:path'
 import { list } from './list.js'
+import { makeCommand } from './make-command.js'
+import {
+  TarOptions,
+  TarOptionsFile,
+  TarOptionsSync,
+  TarOptionsSyncFile,
+} from './options.js'
 import { Pack, PackSync } from './pack.js'
-
-export function create(
-  opt: TarOptionsWithAliasesSyncFile,
-  files?: string[],
-): void
-export function create(
-  opt: TarOptionsWithAliasesSync,
-  files?: string[],
-): void
-export function create(
-  opt: TarOptionsWithAliasesFile,
-  files?: string[],
-  cb?: () => any,
-): Promise<void>
-export function create(
-  opt: TarOptionsWithAliasesFile,
-  cb: () => any,
-): Promise<void>
-export function create(
-  opt: TarOptionsWithAliases,
-  files?: string[],
-): Pack
-export function create(
-  opt_: TarOptionsWithAliases,
-  files?: string[] | (() => any),
-  cb?: () => any,
-): void | Promise<void> | Pack {
-  if (typeof files === 'function') {
-    cb = files
-  }
-
-  if (Array.isArray(opt_)) {
-    ;(files = opt_), (opt_ = {})
-  }
-
-  if (!files || !Array.isArray(files) || !files.length) {
-    throw new TypeError('no files or directories specified')
-  }
-
-  files = Array.from(files)
-
-  const opt = dealias(opt_)
-
-  if (opt.sync && typeof cb === 'function') {
-    throw new TypeError(
-      'callback not supported for sync tar functions',
-    )
-  }
-
-  if (!opt.file && typeof cb === 'function') {
-    throw new TypeError('callback only supported with file option')
-  }
-
-  return (
-    isSyncFile(opt) ? createFileSync(opt, files)
-    : isFile(opt) ? createFile(opt, files, cb)
-    : isSync(opt) ? createSync(opt, files)
-    : create_(opt, files)
-  )
-}
 
 const createFileSync = (opt: TarOptionsSyncFile, files: string[]) => {
   const p = new PackSync(opt)
@@ -88,11 +20,7 @@ const createFileSync = (opt: TarOptionsSyncFile, files: string[]) => {
   addFilesSync(p, files)
 }
 
-const createFile = (
-  opt: TarOptionsFile,
-  files: string[],
-  cb?: () => any,
-) => {
+const createFile = (opt: TarOptionsFile, files: string[]) => {
   const p = new Pack(opt)
   const stream = new WriteStream(opt.file, {
     mode: opt.mode || 0o666,
@@ -107,7 +35,7 @@ const createFile = (
 
   addFilesAsync(p, files)
 
-  return cb ? promise.then(cb, cb) : promise
+  return promise
 }
 
 const addFilesSync = (p: PackSync, files: string[]) => {
@@ -153,8 +81,20 @@ const createSync = (opt: TarOptionsSync, files: string[]) => {
   return p
 }
 
-const create_ = (opt: TarOptions, files: string[]) => {
+const createAsync = (opt: TarOptions, files: string[]) => {
   const p = new Pack(opt)
   addFilesAsync(p, files)
   return p
 }
+
+export const create = makeCommand(
+  createFileSync,
+  createFile,
+  createSync,
+  createAsync,
+  (_opt, files) => {
+    if (!files?.length) {
+      throw new TypeError('no paths specified to add to archive')
+    }
+  },
+)

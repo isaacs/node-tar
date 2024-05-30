@@ -1,9 +1,10 @@
-import t from 'tap'
+import t, { Test } from 'tap'
 import { c, list, Pack, PackSync } from '../dist/esm/index.js'
 import fs from 'fs'
 import path from 'path'
 import { rimraf } from 'rimraf'
 import { mkdirp } from 'mkdirp'
+//@ts-ignore
 import mutateFS from 'mutate-fs'
 import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
@@ -14,9 +15,16 @@ const __dirname = path.dirname(__filename)
 const dir = path.resolve(__dirname, 'fixtures/create')
 const tars = path.resolve(__dirname, 'fixtures/tars')
 
-const readtar = (file, cb) => {
+const readtar = (
+  file: string,
+  cb: (
+    code: number | null,
+    signal: null | NodeJS.Signals,
+    output: string,
+  ) => any,
+) => {
   const child = spawn('tar', ['tf', file])
-  const out = []
+  const out: Buffer[] = []
   child.stdout.on('data', c => out.push(c))
   child.on('close', (code, signal) =>
     cb(code, signal, Buffer.concat(out).toString()),
@@ -31,7 +39,9 @@ t.before(async () => {
 })
 
 t.test('no cb if sync or without file', t => {
+  //@ts-expect-error
   t.throws(() => c({ sync: true }, ['asdf'], () => {}))
+  //@ts-expect-error
   t.throws(() => c(() => {}))
   t.throws(() => c({}, () => {}))
   t.throws(() => c({}, ['asdf'], () => {}))
@@ -54,7 +64,7 @@ t.test('create file', t => {
     readtar(file, (code, signal, list) => {
       t.equal(code, 0)
       t.equal(signal, null)
-      t.equal(list.trim(), 'create.js')
+      t.equal(list.trim(), 'create.ts')
       t.end()
     })
   })
@@ -74,7 +84,7 @@ t.test('create file', t => {
         readtar(file, (code, signal, list) => {
           t.equal(code, 0)
           t.equal(signal, null)
-          t.equal(list.trim(), 'create.js')
+          t.equal(list.trim(), 'create.ts')
           t.end()
         })
       },
@@ -93,7 +103,7 @@ t.test('create file', t => {
       readtar(file, (code, signal, list) => {
         t.equal(code, 0)
         t.equal(signal, null)
-        t.equal(list.trim(), 'create.js')
+        t.equal(list.trim(), 'create.ts')
         t.end()
       })
     })
@@ -115,7 +125,7 @@ t.test('create file', t => {
       readtar(file, (code, signal, list) => {
         t.equal(code, 0)
         t.equal(signal, null)
-        t.equal(list.trim(), 'create.js')
+        t.equal(list.trim(), 'create.ts')
         t.equal(fs.lstatSync(file).mode & 0o7777, mode)
         t.end()
       })
@@ -137,7 +147,7 @@ t.test('create file', t => {
           readtar(file, (code, signal, list) => {
             t.equal(code, 0)
             t.equal(signal, null)
-            t.equal(list.trim(), 'create.js')
+            t.equal(list.trim(), 'create.ts')
             t.equal(fs.lstatSync(file).mode & 0o7777, mode)
             t.end()
           })
@@ -151,8 +161,16 @@ t.test('create file', t => {
 })
 
 t.test('create', t => {
-  t.type(c({ sync: true }, ['README.md']), PackSync)
+  const ps = c({ sync: true }, ['README.md'])
+  t.equal(ps.sync, true)
+  t.type(ps, PackSync)
+  const p = c(['README.md'])
+  //@ts-expect-error
+  p.then
+  //@ts-expect-error
+  p.sync
   t.type(c(['README.md']), Pack)
+
   t.end()
 })
 
@@ -210,7 +228,7 @@ t.test('gzipped tarball that makes some drain/resume stuff', t => {
 t.test('create tarball out of another tarball', t => {
   const out = path.resolve(dir, 'out.tar')
 
-  const check = t => {
+  const check = (t: Test) => {
     const expect = [
       'dir/',
       'Ω.txt',
@@ -263,5 +281,10 @@ t.test('create tarball out of another tarball', t => {
     check(t)
   })
 
+  t.end()
+})
+
+t.test('must specify some files', t => {
+  t.throws(() => c({}), 'no paths specified to add to archive')
   t.end()
 })

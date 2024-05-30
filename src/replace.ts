@@ -5,15 +5,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Header } from './header.js'
 import { list } from './list.js'
+import { makeCommand } from './make-command.js'
 import {
-  dealias,
   isFile,
-  isSyncFile,
   TarOptionsFile,
   TarOptionsSyncFile,
-  TarOptionsWithAliases,
-  TarOptionsWithAliasesFile,
-  TarOptionsWithAliasesSyncFile,
 } from './options.js'
 import { Pack, PackSync } from './pack.js'
 
@@ -22,50 +18,6 @@ import { Pack, PackSync } from './pack.js'
 // If it is, jump forward by the specified size (round up to 512)
 // and try again.
 // Write the new Pack stream starting there.
-
-export function replace(
-  opt: TarOptionsWithAliasesSyncFile,
-  files?: string[],
-): void
-export function replace(
-  opt: TarOptionsWithAliasesFile,
-  files?: string[],
-  cb?: () => any,
-): Promise<void>
-export function replace(
-  opt: TarOptionsWithAliasesFile,
-  cb: () => any,
-): Promise<void>
-export function replace(
-  opt_: TarOptionsWithAliases,
-  files?: string[] | (() => any),
-  cb?: () => any,
-): void | Promise<void> {
-  const opt = dealias(opt_)
-
-  if (!isFile(opt)) {
-    throw new TypeError('file is required')
-  }
-
-  if (
-    opt.gzip ||
-    opt.brotli ||
-    opt.file.endsWith('.br') ||
-    opt.file.endsWith('.tbr')
-  ) {
-    throw new TypeError('cannot append to compressed archives')
-  }
-
-  if (!files || !Array.isArray(files) || !files.length) {
-    throw new TypeError('no files or directories specified')
-  }
-
-  files = Array.from(files)
-
-  return isSyncFile(opt) ?
-      replaceSync(opt, files)
-    : replace_(opt, files, cb)
-}
 
 const replaceSync = (opt: TarOptionsSyncFile, files: string[]) => {
   const p = new PackSync(opt)
@@ -157,10 +109,9 @@ const streamSync = (
   addFilesSync(p, files)
 }
 
-const replace_ = (
+const replaceAsync = (
   opt: TarOptionsFile,
   files: string[],
-  cb?: () => void,
 ): Promise<void> => {
   files = Array.from(files)
   const p = new Pack(opt)
@@ -278,7 +229,7 @@ const replace_ = (
     fs.open(opt.file, flag, onopen)
   })
 
-  return cb ? promise.then(cb, cb) : promise
+  return promise
 }
 
 const addFilesSync = (p: Pack, files: string[]) => {
@@ -315,3 +266,34 @@ const addFilesAsync = async (
   }
   p.end()
 }
+
+export const replace = makeCommand(
+  replaceSync,
+  replaceAsync,
+  /* c8 ignore start */
+  (): never => {
+    throw new TypeError('file is required')
+  },
+  (): never => {
+    throw new TypeError('file is required')
+  },
+  /* c8 ignore stop */
+  (opt, entries) => {
+    if (!isFile(opt)) {
+      throw new TypeError('file is required')
+    }
+
+    if (
+      opt.gzip ||
+      opt.brotli ||
+      opt.file.endsWith('.br') ||
+      opt.file.endsWith('.tbr')
+    ) {
+      throw new TypeError('cannot append to compressed archives')
+    }
+
+    if (!entries?.length) {
+      throw new TypeError('no paths specified to add/replace')
+    }
+  },
+)

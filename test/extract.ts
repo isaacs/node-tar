@@ -1,24 +1,25 @@
-import t from 'tap'
-import nock from 'nock'
-import { extract as x } from '../dist/esm/extract.js'
-import path from 'path'
 import fs from 'fs'
-import { fileURLToPath } from 'url'
-import { promisify } from 'util'
+import http from 'http'
 import { mkdirp } from 'mkdirp'
+import nock from 'nock'
+import path from 'path'
 import { rimraf } from 'rimraf'
 import { pipeline as PL } from 'stream'
+import t, { Test } from 'tap'
+import { fileURLToPath } from 'url'
+import { promisify } from 'util'
+import { extract as x } from '../dist/esm/extract.js'
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
 const pipeline = promisify(PL)
-import http from 'http'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const extractdir = path.resolve(__dirname, 'fixtures/extract')
 const tars = path.resolve(__dirname, 'fixtures/tars')
+//@ts-ignore
 import mutateFS from 'mutate-fs'
 
-const tnock = (t, host, opts) => {
+const tnock = (t: Test, host: string, opts?: nock.Options) => {
   nock.disableNetConnect()
   const server = nock(host, opts)
   t.teardown(function () {
@@ -39,7 +40,7 @@ t.test('basic extracting', t => {
     await mkdirp(dir)
   })
 
-  const check = async t => {
+  const check = async (t: Test) => {
     fs.lstatSync(dir + '/Ω.txt')
     fs.lstatSync(dir + '/🌟.txt')
     t.throws(() =>
@@ -55,22 +56,53 @@ t.test('basic extracting', t => {
 
   const files = ['🌟.txt', 'Ω.txt']
   t.test('sync', t => {
-    x({ file: file, sync: true, C: dir }, files)
+    x({ file, sync: true, C: dir }, files)
     return check(t)
   })
 
   t.test('async promisey', async t => {
-    await x({ file: file, cwd: dir }, files)
+    const p = x({ file, cwd: dir }, files)
+    //@ts-expect-error
+    p.sync
+    //@ts-expect-error
+    p.write
+    await p
     return check(t)
   })
 
   t.test('async cb', async t => {
-    await x({ file: file, cwd: dir }, files, er => {
+    const p = x({ file, cwd: dir }, files, er => {
       if (er) {
         throw er
       }
       return check(t)
     })
+    //@ts-expect-error
+    p.sync
+    //@ts-expect-error
+    p.write
+    await p
+  })
+
+  t.test('stream sync', t => {
+    const ups = x({ cwd: dir, sync: true }, files)
+    ups.end(fs.readFileSync(file))
+    //@ts-expect-error
+    ups.then
+    t.equal(ups.sync, true)
+    return check(t)
+  })
+
+  t.test('stream async', async t => {
+    const up = x({ cwd: dir }, files)
+    //@ts-expect-error
+    up.then
+    //@ts-expect-error
+    up.sync
+    await new Promise<void>(r =>
+      up.end(fs.readFileSync(file)).on('end', r),
+    )
+    return check(t)
   })
 
   t.end()
@@ -87,7 +119,7 @@ t.test('ensure an open stream is not prematurely closed', t => {
     await mkdirp(dir)
   })
 
-  const check = async t => {
+  const check = async (t: Test) => {
     t.ok(fs.lstatSync(dir + '/long-path'))
     await rimraf(dir)
     t.end()
@@ -115,7 +147,7 @@ t.test('ensure an open stream is not prematuraly closed http', t => {
     await mkdirp(dir)
   })
 
-  const check = async t => {
+  const check = async (t: Test) => {
     t.ok(fs.lstatSync(dir + '/long-path'))
     await rimraf(dir)
     t.end()
@@ -148,7 +180,7 @@ t.test('file list and filter', t => {
     await mkdirp(dir)
   })
 
-  const check = async t => {
+  const check = async (t: Test) => {
     fs.lstatSync(dir + '/Ω.txt')
     t.throws(() => fs.lstatSync(dir + '/🌟.txt'))
     t.throws(() =>
@@ -162,35 +194,25 @@ t.test('file list and filter', t => {
     await rimraf(dir)
   }
 
-  const filter = path => path === 'Ω.txt'
+  const filter = (path: string) => path === 'Ω.txt'
 
-  t.test('sync', t => {
-    x({ filter: filter, file: file, sync: true, C: dir }, [
-      '🌟.txt',
-      'Ω.txt',
-    ])
+  t.test('sync file', t => {
+    x({ filter, file, sync: true, C: dir }, ['🌟.txt', 'Ω.txt'])
     return check(t)
   })
 
-  t.test('async promisey', async t => {
-    await x({ filter: filter, file: file, cwd: dir }, [
-      '🌟.txt',
-      'Ω.txt',
-    ])
+  t.test('async file', async t => {
+    await x({ filter, file, cwd: dir }, ['🌟.txt', 'Ω.txt'])
     check(t)
   })
 
   t.test('async cb', t => {
-    return x(
-      { filter: filter, file: file, cwd: dir },
-      ['🌟.txt', 'Ω.txt'],
-      er => {
-        if (er) {
-          throw er
-        }
-        return check(t)
-      },
-    )
+    return x({ filter, file, cwd: dir }, ['🌟.txt', 'Ω.txt'], er => {
+      if (er) {
+        throw er
+      }
+      return check(t)
+    })
   })
 
   t.end()
@@ -205,7 +227,7 @@ t.test('no file list', t => {
     await mkdirp(dir)
   })
 
-  const check = async t => {
+  const check = async (t: Test) => {
     t.equal(
       fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size,
       1024,
@@ -219,13 +241,13 @@ t.test('no file list', t => {
     await rimraf(dir)
   }
 
-  t.test('sync', t => {
-    x({ file: file, sync: true, C: dir })
+  t.test('sync file', t => {
+    x({ file, sync: true, C: dir })
     return check(t)
   })
 
-  t.test('async promisey', async t => {
-    await x({ file: file, cwd: dir })
+  t.test('async promisey file', async t => {
+    await x({ file, cwd: dir })
     return check(t)
   })
 
@@ -236,6 +258,27 @@ t.test('no file list', t => {
       }
       return check(t)
     })
+  })
+
+  t.test('sync stream', t => {
+    const up = x({ sync: true, C: dir })
+    t.equal(up.sync, true)
+    t.type(up, UnpackSync)
+    //@ts-expect-error
+    up.then
+    up.end(fs.readFileSync(file))
+    return check(t)
+  })
+
+  t.test('async stream', t => {
+    const up = x({ C: dir })
+    t.type(up, Unpack)
+    //@ts-expect-error
+    up.sync
+    //@ts-expect-error
+    up.then
+    up.end(fs.readFileSync(file))
+    return new Promise(r => up.on('close', () => r(check(t))))
   })
 
   t.end()
@@ -251,7 +294,7 @@ t.test('read in itty bits', t => {
     await mkdirp(dir)
   })
 
-  const check = async t => {
+  const check = async (t: Test) => {
     t.equal(
       fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size,
       1024,
@@ -291,22 +334,39 @@ t.test('read in itty bits', t => {
 })
 
 t.test('bad calls', t => {
-  t.throws(() => x(() => {}))
+  t.throws(() => x({}, () => {}))
+  t.throws(() => x({}, [], () => {}))
+  //@ts-expect-error
   t.throws(() => x({ sync: true }, () => {}))
+  //@ts-expect-error
   t.throws(() => x({ sync: true }, [], () => {}))
   t.end()
 })
 
 t.test('no file', t => {
-  t.type(x(), Unpack)
-  t.type(x(['asdf']), Unpack)
-  t.type(x({ sync: true }), UnpackSync)
+  const up = x()
+  t.type(up, Unpack)
+  //@ts-expect-error
+  up.then
+  //@ts-expect-error
+  up.sync
+  const upf = x(['asdf'])
+  //@ts-expect-error
+  upf.then
+  //@ts-expect-error
+  upf.sync
+  t.type(upf, Unpack)
+  const ups = x({ sync: true })
+  //@ts-expect-error
+  ups.then
+  t.equal(ups.sync, true)
+  t.type(ups, UnpackSync)
   t.end()
 })
 
-t.test('nonexistent', t => {
+t.test('nonexistent', async t => {
   t.throws(() => x({ sync: true, file: 'does not exist' }))
-  x({ file: 'does not exist' }).catch(() => t.end())
+  await t.rejects(x({ file: 'does not exist' }))
 })
 
 t.test('read fail', t => {
@@ -334,7 +394,7 @@ t.test('sync gzip error edge case test', async t => {
   x({
     sync: true,
     file: file,
-    onwarn: (c, m, er) => {
+    onwarn: (_c: any, _m: any, er) => {
       throw er
     },
   })
@@ -420,8 +480,10 @@ t.test('verify long linkname is not a problem', async t => {
   // See: https://github.com/isaacs/node-tar/issues/312
   const file = path.resolve(__dirname, 'fixtures/long-linkname.tar')
   t.test('sync', t => {
-    x({ sync: true, strict: true, file, C: t.testdir({}) })
-    t.ok(fs.lstatSync(t.testdirName + '/test').isSymbolicLink())
+    const cwd = t.testdir({})
+    const result = x({ sync: true, strict: true, file, cwd })
+    t.equal(result, undefined)
+    t.ok(fs.lstatSync(cwd + '/test').isSymbolicLink())
     t.end()
   })
   t.test('async', async t => {

@@ -53,11 +53,7 @@ const ONDRAIN = Symbol('ondrain')
 const PREFIX = Symbol('prefix')
 
 export class WriteEntry
-  extends Minipass<
-    Buffer,
-    Minipass.ContiguousData,
-    WarnEvent
-  >
+  extends Minipass<Buffer, Minipass.ContiguousData, WarnEvent>
   implements Warner
 {
   path: string
@@ -471,10 +467,7 @@ export class WriteEntry
     this.once('drain', cb)
   }
 
-  write(
-    buffer: Buffer | string,
-    cb?: () => void,
-  ): boolean
+  write(buffer: Buffer | string, cb?: () => void): boolean
   write(
     str: Buffer | string,
     encoding?: BufferEncoding | null,
@@ -544,6 +537,8 @@ export class WriteEntry
 }
 
 export class WriteEntrySync extends WriteEntry implements Warner {
+  sync: true = true;
+
   [LSTAT]() {
     this[ONLSTAT](fs.lstatSync(this.absolute))
   }
@@ -757,10 +752,7 @@ export class WriteEntryTar
     return modeFix(mode, this.type === 'Directory', this.portable)
   }
 
-  write(
-    buffer: Buffer | string,
-    cb?: () => void,
-  ): boolean
+  write(buffer: Buffer | string, cb?: () => void): boolean
   write(
     str: Buffer | string,
     encoding?: BufferEncoding | null,
@@ -793,11 +785,15 @@ export class WriteEntryTar
 
   end(cb?: () => void): this
   end(chunk: Buffer | string, cb?: () => void): this
-  end(chunk: Buffer | string, encoding?: BufferEncoding, cb?: () => void): this
+  end(
+    chunk: Buffer | string,
+    encoding?: BufferEncoding,
+    cb?: () => void,
+  ): this
   end(
     chunk?: Buffer | string | (() => void),
     encoding?: BufferEncoding | (() => void),
-    cb?: () => void
+    cb?: () => void,
   ): this {
     if (this.blockRemain) {
       super.write(Buffer.alloc(this.blockRemain))

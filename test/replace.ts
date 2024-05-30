@@ -1,7 +1,8 @@
-import t from 'tap'
+import t, { Test } from 'tap'
 import { replace as r } from '../dist/esm/replace.js'
 import path, { dirname, resolve } from 'path'
 import fs from 'fs'
+//@ts-ignore
 import mutateFS from 'mutate-fs'
 import { list } from '../dist/esm/list.js'
 import { fileURLToPath } from 'url'
@@ -33,10 +34,10 @@ const fixtureDef = {
 }
 
 t.test('basic file add to archive (good or truncated)', t => {
-  const check = (file, t) => {
+  const check = (file: string, t: Test) => {
     const c = spawn('tar', ['tf', file], { stdio: [0, 'pipe', 2] })
-    const out = []
-    c.stdout.on('data', chunk => out.push(chunk))
+    const out: Buffer[] = []
+    c.stdout?.on('data', (chunk: Buffer) => out.push(chunk))
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
@@ -55,18 +56,13 @@ t.test('basic file add to archive (good or truncated)', t => {
     })
   }
 
-  const files = [
+  const files: (keyof typeof fixtureDef)[] = [
     'body-byte-counts.tar',
     'no-null-eof.tar',
     'truncated-head.tar',
     'truncated-body.tar',
   ]
-  const td = files
-    .map(f => [f, fixtureDef[f]])
-    .reduce((s, [k, v]) => {
-      s[k] = v
-      return s
-    }, {})
+  const td = Object.fromEntries(files.map(f => [f, fixtureDef[f]]))
   const fileList = [path.basename(__filename)]
   t.test('sync', t => {
     t.plan(files.length)
@@ -130,10 +126,10 @@ t.test('basic file add to archive (good or truncated)', t => {
 })
 
 t.test('add to empty archive', t => {
-  const check = (file, t) => {
+  const check = (file: string, t: Test) => {
     const c = spawn('tar', ['tf', file])
-    const out = []
-    c.stdout.on('data', chunk => out.push(chunk))
+    const out: Buffer[] = []
+    c.stdout.on('data', (chunk: Buffer) => out.push(chunk))
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
@@ -143,13 +139,9 @@ t.test('add to empty archive', t => {
     })
   }
 
-  const files = ['empty.tar', 'zero.tar']
-  const td = files
-    .map(f => [f, fixtureDef[f]])
-    .reduce((s, [k, v]) => {
-      s[k] = v
-      return s
-    }, {})
+  const files: (keyof typeof fixtureDef)[] = ['empty.tar', 'zero.tar']
+  const td = Object.fromEntries(files.map(f => [f, fixtureDef[f]]))
+  //@ts-ignore
   files.push('not-existing.tar')
 
   t.test('sync', t => {
@@ -225,7 +217,7 @@ t.test('cannot append to gzipped archives', async t => {
   )
 
   t.throws(
-    _ =>
+    () =>
       r(
         {
           file,
@@ -238,7 +230,7 @@ t.test('cannot append to gzipped archives', async t => {
   )
 
   t.throws(
-    _ =>
+    () =>
       r(
         {
           file,
@@ -272,7 +264,7 @@ t.test('cannot append to brotli compressed archives', async t => {
   )
 
   t.throws(
-    _ =>
+    () =>
       r(
         {
           file,
@@ -285,7 +277,7 @@ t.test('cannot append to brotli compressed archives', async t => {
   )
 
   t.throws(
-    _ =>
+    () =>
       r(
         {
           file,
@@ -301,10 +293,10 @@ t.test('cannot append to brotli compressed archives', async t => {
 })
 
 t.test('other throws', t => {
-  t.throws(_ => r({}, ['asdf']), new TypeError('file is required'))
+  t.throws(() => r({}, ['asdf']), new TypeError('file is required'))
   t.throws(
-    _ => r({ file: 'asdf' }, []),
-    new TypeError('no files or directories specified'),
+    () => r({ file: 'asdf' }, []),
+    new TypeError('no paths specified to add/replace'),
   )
   t.end()
 })
@@ -316,7 +308,7 @@ t.test('broken open', t => {
   const file = resolve(dir, 'body-byte-counts.tar')
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('open', poop))
-  t.throws(_ => r({ sync: true, file }, ['README.md']), poop)
+  t.throws(() => r({ sync: true, file }, ['README.md']), poop)
   r({ file }, ['README.md'], er => {
     t.match(er, poop)
     t.end()
@@ -332,7 +324,7 @@ t.test('broken fstat', t => {
     const dir = t.testdir(td)
     const file = resolve(dir, 'body-byte-counts.tar')
     t.teardown(mutateFS.fail('fstat', poop))
-    t.throws(_ => r({ sync: true, file }, ['README.md']), poop)
+    t.throws(() => r({ sync: true, file }, ['README.md']), poop)
     t.end()
   })
   t.test('async', t => {
@@ -354,7 +346,7 @@ t.test('broken read', t => {
   const file = resolve(dir, 'body-byte-counts.tar')
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('read', poop))
-  t.throws(_ => r({ sync: true, file }, ['README.md']), poop)
+  t.throws(() => r({ sync: true, file }, ['README.md']), poop)
   r({ file }, ['README.md'], er => {
     t.match(er, poop)
     t.end()
@@ -366,11 +358,11 @@ t.test('mtime cache', async t => {
     'body-byte-counts.tar': fixtureDef['body-byte-counts.tar'],
   }
 
-  let mtimeCache
+  let mtimeCache: Map<string, Date>
 
-  const check = (file, t) => {
+  const check = (file: string, t: Test) => {
     const c = spawn('tar', ['tf', file])
-    const out = []
+    const out: Buffer[] = []
     c.stdout.on('data', chunk => out.push(chunk))
     c.on('close', (code, signal) => {
       t.equal(code, 0)
@@ -386,9 +378,9 @@ t.test('mtime cache', async t => {
         'zero-byte.txt',
         path.basename(__filename),
       ])
-      const mtc = {}
+      const mtc: Record<string, string> = {}
       mtimeCache.forEach(
-        (_v, k) => (mtc[k] = mtimeCache.get(k).toISOString()),
+        (_v, k) => (mtc[k] = mtimeCache.get(k)!.toISOString()),
       )
       t.same(mtc, {
         '1024-bytes.txt': '2017-04-10T16:57:47.000Z',
@@ -455,7 +447,7 @@ t.test('create tarball out of another tarball', t => {
     'out.tar': fs.readFileSync(path.resolve(tars, 'dir.tar')),
   }
 
-  const check = (out, t) => {
+  const check = (out: string, t: Test) => {
     const expect = [
       'dir/',
       'Ω.txt',

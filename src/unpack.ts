@@ -883,6 +883,8 @@ const callSync = (fn: () => any) => {
 }
 
 export class UnpackSync extends Unpack {
+  sync: true = true;
+
   [MAKEFS](er: null | Error | undefined, entry: ReadEntry) {
     return super[MAKEFS](er, entry, () => {})
   }

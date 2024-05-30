@@ -1,5 +1,5 @@
-import { Unpack } from "../src/unpack.js";
-import { WriteEntry } from "../src/write-entry.js";
+import { Unpack } from '../src/unpack.js'
+import { WriteEntry } from '../src/write-entry.js'
 import { Parser } from '../src/parse.js'
 import { fileURLToPath } from 'url'
 

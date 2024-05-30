@@ -1,21 +1,30 @@
+export {
+  type TarOptionsWithAliasesAsync,
+  type TarOptionsWithAliasesAsyncFile,
+  type TarOptionsWithAliasesAsyncNoFile,
+  type TarOptionsWithAliasesSyncNoFile,
+  type TarOptionsWithAliases,
+  type TarOptionsWithAliasesFile,
+  type TarOptionsWithAliasesSync,
+  type TarOptionsWithAliasesSyncFile,
+} from './options.js'
+
 export * from './create.js'
-export * from './replace.js'
-export * from './list.js'
-export * from './update.js'
-export * from './extract.js'
-
 export { create as c } from './create.js'
-export { replace as r } from './replace.js'
-export { list as t } from './list.js'
-export { update as u } from './update.js'
+export * from './extract.js'
 export { extract as x } from './extract.js'
-
+export * from './header.js'
+export * from './list.js'
+export { list as t } from './list.js'
 // classes
 export * from './pack.js'
-export * from './unpack.js'
 export * from './parse.js'
-export * from './read-entry.js'
-export * from './write-entry.js'
-export * from './header.js'
 export * from './pax.js'
+export * from './read-entry.js'
+export * from './replace.js'
+export { replace as r } from './replace.js'
 export * as types from './types.js'
+export * from './unpack.js'
+export * from './update.js'
+export { update as u } from './update.js'
+export * from './write-entry.js'

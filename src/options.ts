@@ -243,14 +243,14 @@ export interface TarOptions {
   chmod?: boolean
 
   /**
-   * When setting the {@link TarOptions#noChmod} option to `false`, you may
+   * When setting the {@link TarOptions#chmod} option to `true`, you may
    * provide a value here to avoid having to call the deprecated and
    * thread-unsafe `process.umask()` method.
    *
-   * This has no effect with `noChmod` is not set to false explicitly, as
-   * mode values are not set explicitly anyway. If `noChmod` is set to `false`,
-   * and a value is not provided here, then `process.umask()` must be called,
-   * which will result in deprecation warnings.
+   * This has no effect with `chmod` is not set to true, as mode values are not
+   * set explicitly anyway. If `chmod` is set to `true`, and a value is not
+   * provided here, then `process.umask()` must be called, which will result in
+   * deprecation warnings.
    *
    * The most common values for this are `0o22` (resulting in directories
    * created with mode `0o755` and files with `0o644` by default) and `0o2`
@@ -469,8 +469,13 @@ export interface TarOptions {
 }
 
 export type TarOptionsSync = TarOptions & { sync: true }
+export type TarOptionsAsync = TarOptions & { sync?: false }
 export type TarOptionsFile = TarOptions & { file: string }
+export type TarOptionsNoFile = TarOptions & { file?: undefined }
 export type TarOptionsSyncFile = TarOptionsSync & TarOptionsFile
+export type TarOptionsAsyncFile = TarOptionsAsync & TarOptionsFile
+export type TarOptionsSyncNoFile = TarOptionsSync & TarOptionsNoFile
+export type TarOptionsAsyncNoFile = TarOptionsAsync & TarOptionsNoFile
 
 export type LinkCacheKey = `${number}:${number}`
 
@@ -614,6 +619,9 @@ export interface TarOptionsWithAliases extends TarOptions {
 export type TarOptionsWithAliasesSync = TarOptionsWithAliases & {
   sync: true
 }
+export type TarOptionsWithAliasesAsync = TarOptionsWithAliases & {
+  sync?: false
+}
 export type TarOptionsWithAliasesFile =
   | (TarOptionsWithAliases & {
       file: string
@@ -621,11 +629,43 @@ export type TarOptionsWithAliasesFile =
   | (TarOptionsWithAliases & { f: string })
 export type TarOptionsWithAliasesSyncFile =
   TarOptionsWithAliasesSync & TarOptionsWithAliasesFile
+export type TarOptionsWithAliasesAsyncFile =
+  TarOptionsWithAliasesAsync & TarOptionsWithAliasesFile
 
-export const isSyncFile = (o: TarOptions): o is TarOptionsSyncFile =>
-  !!o.sync && !!o.file
-export const isSync = (o: TarOptions): o is TarOptionsSync => !!o.sync
-export const isFile = (o: TarOptions): o is TarOptionsFile => !!o.file
+export type TarOptionsWithAliasesNoFile = TarOptionsWithAliases & {
+  f?: undefined
+  file?: undefined
+}
+
+export type TarOptionsWithAliasesSyncNoFile =
+  TarOptionsWithAliasesSync & TarOptionsWithAliasesNoFile
+export type TarOptionsWithAliasesAsyncNoFile =
+  TarOptionsWithAliasesAsync & TarOptionsWithAliasesNoFile
+
+export const isSyncFile = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsSyncFile => !!o.sync && !!o.file
+export const isAsyncFile = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsAsyncFile => !o.sync && !!o.file
+export const isSyncNoFile = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsSyncNoFile => !!o.sync && !o.file
+export const isAsyncNoFile = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsAsyncNoFile => !o.sync && !o.file
+export const isSync = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsSync => !!o.sync
+export const isAsync = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsAsync => !o.sync
+export const isFile = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsFile => !!o.file
+export const isNoFile = <O extends TarOptions>(
+  o: O,
+): o is O & TarOptionsNoFile => !o.file
 
 const dealiasKey = (
   k: keyof TarOptionsWithAliases,

@@ -311,7 +311,7 @@ t.test('other throws', t => {
   t.throws(_ => u({}, ['asdf']), new TypeError('file is required'))
   t.throws(
     _ => u({ file: 'asdf' }, []),
-    new TypeError('no files or directories specified'),
+    new TypeError('no paths specified to add/replace'),
   )
   t.end()
 })

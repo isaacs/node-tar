@@ -2,89 +2,14 @@
 import * as fsm from '@isaacs/fs-minipass'
 import fs from 'node:fs'
 import { dirname, parse } from 'path'
+import { makeCommand } from './make-command.js'
 import {
-  dealias,
-  isFile,
-  isSyncFile,
   TarOptions,
   TarOptionsFile,
   TarOptionsSyncFile,
-  TarOptionsWithAliases,
-  TarOptionsWithAliasesFile,
-  TarOptionsWithAliasesSync,
-  TarOptionsWithAliasesSyncFile,
 } from './options.js'
 import { Parser } from './parse.js'
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
-
-export function list(
-  opt: TarOptionsWithAliasesSyncFile,
-  files?: string[],
-): void
-export function list(
-  opt: TarOptionsWithAliasesSync,
-  files?: string[],
-): void
-export function list(
-  opt: TarOptionsWithAliasesFile,
-  files?: string[],
-  cb?: () => any,
-): Promise<void>
-export function list(
-  opt: TarOptionsWithAliasesFile,
-  cb: () => any,
-): Promise<void>
-export function list(
-  opt: TarOptionsWithAliases,
-  files?: string[],
-): Parser
-export function list(
-  opt_: TarOptionsWithAliases,
-  files?: string[] | (() => any),
-  cb?: () => any,
-): void | Promise<void> | Parser {
-  if (typeof opt_ === 'function') {
-    ;(cb = opt_), (files = undefined), (opt_ = {})
-  } else if (Array.isArray(opt_)) {
-    ;(files = opt_), (opt_ = {})
-  }
-
-  if (typeof files === 'function') {
-    ;(cb = files), (files = undefined)
-  }
-
-  if (!files) {
-    files = []
-  } else {
-    files = Array.from(files)
-  }
-
-  const opt = dealias(opt_)
-
-  if (opt.sync && typeof cb === 'function') {
-    throw new TypeError(
-      'callback not supported for sync tar functions',
-    )
-  }
-
-  if (!opt.file && typeof cb === 'function') {
-    throw new TypeError('callback only supported with file option')
-  }
-
-  if (files.length) {
-    filesFilter(opt, files)
-  }
-
-  if (!opt.noResume) {
-    onentryFunction(opt)
-  }
-
-  return (
-    isSyncFile(opt) ? listFileSync(opt)
-    : isFile(opt) ? listFile(opt, cb)
-    : list_(opt)
-  )
-}
 
 const onentryFunction = (opt: TarOptions) => {
   const onentry = opt.onentry
@@ -99,7 +24,7 @@ const onentryFunction = (opt: TarOptions) => {
 
 // construct a filter that limits the file entries listed
 // include child entries if a dir is included
-const filesFilter = (opt: TarOptions, files: string[]) => {
+export const filesFilter = (opt: TarOptions, files: string[]) => {
   const map = new Map<string, boolean>(
     files.map(f => [stripTrailingSlashes(f), true]),
   )
@@ -130,7 +55,7 @@ const filesFilter = (opt: TarOptions, files: string[]) => {
 }
 
 const listFileSync = (opt: TarOptionsSyncFile) => {
-  const p = list_(opt)
+  const p = new Parser(opt)
   const file = opt.file
   let fd
   try {
@@ -161,7 +86,7 @@ const listFileSync = (opt: TarOptionsSyncFile) => {
 
 const listFile = (
   opt: TarOptionsFile,
-  cb?: () => void,
+  _files: string[],
 ): Promise<void> => {
   const parse = new Parser(opt)
   const readSize = opt.maxReadSize || 16 * 1024 * 1024
@@ -184,7 +109,16 @@ const listFile = (
       }
     })
   })
-  return cb ? p.then(cb, cb) : p
+  return p
 }
 
-const list_ = (opt: TarOptions) => new Parser(opt)
+export const list = makeCommand(
+  listFileSync,
+  listFile,
+  opt => new Parser(opt) as Parser & { sync: true },
+  opt => new Parser(opt),
+  (opt, files) => {
+    if (files?.length) filesFilter(opt, files)
+    if (!opt.noResume) onentryFunction(opt)
+  },
+)

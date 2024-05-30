@@ -306,7 +306,10 @@ t.test('fixture tests', t => {
             strict: strict,
           })
           trackEvents(t, expect, p, true)
-          const first = tardata.subarray(0, Math.floor(tardata.length / 2))
+          const first = tardata.subarray(
+            0,
+            Math.floor(tardata.length / 2),
+          )
           p.write(first.toString('hex'), 'hex')
           process.nextTick(() =>
             p.end(tardata.subarray(Math.floor(tardata.length / 2))),
