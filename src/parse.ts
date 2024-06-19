@@ -147,8 +147,8 @@ export class Parser extends EE implements Warner {
     if (typeof opt.onwarn === 'function') {
       this.on('warn', opt.onwarn)
     }
-    if (typeof opt.onentry === 'function') {
-      this.on('entry', opt.onentry)
+    if (typeof opt.onReadEntry === 'function') {
+      this.on('entry', opt.onReadEntry)
     }
   }
 

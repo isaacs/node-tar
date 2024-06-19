@@ -27,6 +27,7 @@ const argmap = new Map<keyof TarOptionsWithAliases, keyof TarOptions>(
     ['p', 'preserveOwner'],
     ['L', 'follow'],
     ['h', 'follow'],
+    ['onentry', 'onReadEntry'],
   ],
 )
 
@@ -265,7 +266,7 @@ export interface TarOptions {
 
   /**
    * When parsing/listing archives, `entry` streams are by default resumed
-   * (set into "flowing" mode) immediately after the call to `onentry()`.
+   * (set into "flowing" mode) immediately after the call to `onReadEntry()`.
    * Set `noResume: true` to suppress this behavior.
    *
    * Note that when this is set, the stream will never complete until the
@@ -279,10 +280,6 @@ export interface TarOptions {
   /**
    * When creating, updating, or replacing within archives, this method will
    * be called with each WriteEntry that is created.
-   *
-   * It's not called 'onentry' because that's already taken for the ReadEntry
-   * when reading archives, and it's just easier to only have one type of
-   * options object that this whole library can pass around without issue.
    */
   onWriteEntry?: (entry: WriteEntry) => any
 
@@ -293,7 +290,7 @@ export interface TarOptions {
    * Important when listing archives synchronously from a file, because there
    * is otherwise no way to interact with the data!
    */
-  onentry?: (entry: ReadEntry) => any
+  onReadEntry?: (entry: ReadEntry) => any
 
   /**
    * Pack the targets of symbolic links rather than the link itself.
@@ -477,6 +474,13 @@ export interface TarOptions {
    * Forcibly trigger a chown on every entry, no matter what.
    */
   forceChown?: boolean
+
+  /**
+   * ambiguous deprecated name for {@link onReadEntry}
+   *
+   * @deprecated
+   */
+  onentry?: (entry: ReadEntry) => any
 }
 
 export type TarOptionsSync = TarOptions & { sync: true }

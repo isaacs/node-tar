@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.4
+
+- Deprecate `onentry` in favor of `onReadEntry` for clarity.
+
+## 7.3
+
+- Add `onWriteEntry` option
+
 ## 7.2
 
 - DRY the command definitions into a single `makeCommand` method,

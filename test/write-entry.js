@@ -1554,7 +1554,7 @@ t.test('prefix and hard links from tar entries', t => {
     const out = []
     const parser = new Parser({
       strict: true,
-      onentry: readEntry => {
+      onReadEntry: readEntry => {
         const p = new WriteEntryTar(readEntry, opt)
         p.on('data', d => out.push(d))
       },
@@ -1799,7 +1799,7 @@ t.test('hard links from tar entries and no prefix', t => {
     }
     const out = []
     const parser = new Parser({
-      onentry: readEntry => {
+      onReadEntry: readEntry => {
         const p = new WriteEntryTar(readEntry, opt)
         p.on('data', d => out.push(d))
       },

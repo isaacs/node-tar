@@ -11,12 +11,12 @@ import {
 import { Parser } from './parse.js'
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
 
-const onentryFunction = (opt: TarOptions) => {
-  const onentry = opt.onentry
-  opt.onentry =
-    onentry ?
+const onReadEntryFunction = (opt: TarOptions) => {
+  const onReadEntry = opt.onReadEntry
+  opt.onReadEntry =
+    onReadEntry ?
       e => {
-        onentry(e)
+        onReadEntry(e)
         e.resume()
       }
     : e => e.resume()
@@ -119,6 +119,6 @@ export const list = makeCommand(
   opt => new Parser(opt),
   (opt, files) => {
     if (files?.length) filesFilter(opt, files)
-    if (!opt.noResume) onentryFunction(opt)
+    if (!opt.noResume) onReadEntryFunction(opt)
   },
 )

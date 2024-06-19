@@ -241,7 +241,7 @@ t.test('create tarball out of another tarball', t => {
     list({
       f: out,
       sync: true,
-      onentry: entry => {
+      onReadEntry: entry => {
         if (entry.path === 'hardlink-2') {
           t.equal(entry.type, 'Link')
         } else if (entry.path === 'symlink') {

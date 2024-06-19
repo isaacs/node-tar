@@ -457,7 +457,7 @@ t.test('create tarball out of another tarball', t => {
     list({
       f: out,
       sync: true,
-      onentry: entry => {
+      onReadEntry: entry => {
         t.equal(entry.path, expect.shift())
       },
     })

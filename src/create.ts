@@ -45,7 +45,7 @@ const addFilesSync = (p: PackSync, files: string[]) => {
         file: path.resolve(p.cwd, file.slice(1)),
         sync: true,
         noResume: true,
-        onentry: entry => p.add(entry),
+        onReadEntry: entry => p.add(entry),
       })
     } else {
       p.add(file)
@@ -64,7 +64,7 @@ const addFilesAsync = async (
       await list({
         file: path.resolve(String(p.cwd), file.slice(1)),
         noResume: true,
-        onentry: entry => {
+        onReadEntry: entry => {
           p.add(entry)
         },
       })

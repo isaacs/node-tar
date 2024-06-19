@@ -355,10 +355,10 @@ t.test('onwarn gets added to the warn event', t => {
   p.warn('TAR_TEST', 'this is fine')
 })
 
-t.test('onentry gets added to entry event', t => {
+t.test('onReadEntry gets added to entry event', t => {
   t.plan(1)
   const p = new Parser({
-    onentry: entry => t.equal(entry, 'yes hello this is dog'),
+    onReadEntry: entry => t.equal(entry, 'yes hello this is dog'),
   })
   p.emit('entry', 'yes hello this is dog')
 })
@@ -536,7 +536,7 @@ t.test('drain event timings', t => {
   const autoPipe = true
   const p = new Parser({
     ondone,
-    onentry: entry => {
+    onReadEntry: entry => {
       t.equal(entry.path, expect.shift())
       currentEntry = entry
       if (autoPipe) {
@@ -824,7 +824,7 @@ t.test('end while consuming', t => {
 
   const mp = new Minipass()
   const p = new Parser({
-    onentry: entry => {
+    onReadEntry: entry => {
       actual.push(entry.path)
       entry.resume()
     },

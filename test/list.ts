@@ -34,11 +34,11 @@ t.test('basic', t => {
     t.test('file maxReadSize=' + maxReadSize, t => {
       t.test('sync', t => {
         const actual: string[] = []
-        const onentry = (entry: ReadEntry) => actual.push(entry.path)
+        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
         list({
           file: file,
           sync: true,
-          onentry,
+          onReadEntry,
           maxReadSize,
         })
         return check(actual, t)
@@ -46,21 +46,21 @@ t.test('basic', t => {
 
       t.test('async promise', async t => {
         const actual: string[] = []
-        const onentry = (entry: ReadEntry) => actual.push(entry.path)
+        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
         return await list({
           file,
-          onentry,
+          onReadEntry,
           maxReadSize,
         }).then(() => check(actual, t))
       })
 
       t.test('async cb', t => {
         const actual: string[] = []
-        const onentry = (entry: ReadEntry) => actual.push(entry.path)
+        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
         list(
           {
             file: file,
-            onentry: onentry,
+            onReadEntry: onReadEntry,
             maxReadSize: maxReadSize,
           },
           (er?: Error) => {
@@ -79,24 +79,24 @@ t.test('basic', t => {
   t.test('stream', t => {
     t.test('sync', t => {
       const actual: string[] = []
-      const onentry = (entry: ReadEntry) => actual.push(entry.path)
-      const l = list({ sync: true, onentry })
+      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
+      const l = list({ sync: true, onReadEntry })
       l.end(fs.readFileSync(file))
       return check(actual, t)
     })
 
     t.test('async', t => {
       const actual: string[] = []
-      const onentry = (entry: ReadEntry) => actual.push(entry.path)
+      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
       const l = list()
-      l.on('entry', onentry)
+      l.on('entry', onReadEntry)
       l.on('end', _ => check(actual, t).then(_ => t.end()))
       fs.createReadStream(file).pipe(l)
     })
     t.end()
   })
 
-  t.test('no onentry function', () => list({ file: file }))
+  t.test('no onReadEntry function', () => list({ file: file }))
 
   t.test('limit to specific files', t => {
     const fileList = [
@@ -121,7 +121,7 @@ t.test('basic', t => {
       return list(
         {
           file: file,
-          onentry: entry => actual.push(entry.path),
+          onReadEntry: entry => actual.push(entry.path),
         },
         fileList,
       ).then(check)
@@ -130,10 +130,10 @@ t.test('basic', t => {
     t.test('no filter function, stream', t => {
       const check = () => t.same(actual, expect)
       const actual: string[] = []
-      const onentry = (entry: ReadEntry) => actual.push(entry.path)
+      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
       fs.createReadStream(file).pipe(
         list(fileList)
-          .on('entry', onentry)
+          .on('entry', onReadEntry)
           .on('end', _ => {
             check()
             t.end()
@@ -148,7 +148,7 @@ t.test('basic', t => {
         {
           file: file,
           filter: path => path === expect[0],
-          onentry: entry => actual.push(entry.path),
+          onReadEntry: entry => actual.push(entry.path),
         },
         fileList,
       ).then(check)
@@ -232,7 +232,7 @@ t.test('noResume option', t => {
     let e!: ReadEntry
     list({
       file: file,
-      onentry: entry => {
+      onReadEntry: entry => {
         e = entry
         process.nextTick(() => {
           t.notOk(entry.flowing)
@@ -250,7 +250,7 @@ t.test('noResume option', t => {
   t.test('async', t =>
     list({
       file: file,
-      onentry: entry => {
+      onReadEntry: entry => {
         process.nextTick(() => {
           t.notOk(entry.flowing)
           entry.resume()

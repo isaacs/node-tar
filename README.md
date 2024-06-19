@@ -214,7 +214,7 @@ To replicate `tar tf my-tarball.tgz`, do this:
 ```js
 tar.t({
   file: 'my-tarball.tgz',
-  onentry: entry => { .. do whatever with it .. }
+  onReadEntry: entry => { .. do whatever with it .. }
 })
 ```
 
@@ -225,7 +225,7 @@ const getEntryFilenames = async tarballFilename => {
   const filenames = []
   await tar.t({
     file: tarballFilename,
-    onentry: entry => filenames.push(entry.path),
+    onReadEntry: entry => filenames.push(entry.path),
   })
   return filenames
 }
@@ -250,7 +250,7 @@ const getEntryFilenamesSync = tarballFilename => {
   const filenames = []
   tar.t({
     file: tarballFilename,
-    onentry: entry => filenames.push(entry.path),
+    onReadEntry: entry => filenames.push(entry.path),
     sync: true,
   })
   return filenames
@@ -335,6 +335,9 @@ The following options are supported:
   [Alias: `m`, `no-mtime`]
 - `mtime` Set to a `Date` object to force a specific `mtime` for
   everything added to the archive. Overridden by `noMtime`.
+- `onWriteEntry` Called with each `WriteEntry` or
+  `WriteEntrySync` that is created in the course of writing the
+  archive.
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -427,7 +430,7 @@ The following options are supported:
   the archive entry. If a falsey value is provided, then the entry is
   written to disk as normal. (To exclude items from extraction, use
   the `filter` option described above.)
-- `onentry` A function that gets called with `(entry)` for each entry
+- `onReadEntry` A function that gets called with `(entry)` for each entry
   that passes the filter.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered. (See "Warnings and Errors")
@@ -478,7 +481,7 @@ entries, use the `tar.Parse` class instead.)
 
 If a `file` option _is_ provided, then the return value will be a promise
 that resolves when the file has been fully traversed in async mode, or
-`undefined` if `sync: true` is set. Thus, you _must_ specify an `onentry`
+`undefined` if `sync: true` is set. Thus, you _must_ specify an `onReadEntry`
 method in order to do anything useful with the data it parses.
 
 The following options are supported:
@@ -493,13 +496,13 @@ The following options are supported:
 - `filter` A function that gets called with `(path, entry)` for each
   entry being listed. Return `true` to emit the entry from the
   archive, or `false` to skip it.
-- `onentry` A function that gets called with `(entry)` for each entry
+- `onReadEntry` A function that gets called with `(entry)` for each entry
   that passes the filter. This is important for when `file` is set,
   because there is no other way to do anything useful with this method.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
 - `noResume` By default, `entry` streams are resumed immediately after
-  the call to `onentry`. Set `noResume: true` to suppress this
+  the call to `onReadEntry`. Set `noResume: true` to suppress this
   behavior. Note that by opting into this, the stream will never
   complete until the entry data is consumed.
 - `onwarn` A function that will get called with `(code, message, data)` for
@@ -556,6 +559,9 @@ The following options are supported:
   [Alias: `m`, `no-mtime`]
 - `mtime` Set to a `Date` object to force a specific `mtime` for
   everything added to the archive. Overridden by `noMtime`.
+- `onWriteEntry` Called with each `WriteEntry` or
+  `WriteEntrySync` that is created in the course of writing the
+  archive.
 
 ### tar.r(options, fileList, callback) [alias: tar.replace]
 
@@ -608,10 +614,13 @@ The following options are supported:
   [Alias: `m`, `no-mtime`]
 - `mtime` Set to a `Date` object to force a specific `mtime` for
   everything added to the archive. Overridden by `noMtime`.
+- `onWriteEntry` Called with each `WriteEntry` or
+  `WriteEntrySync` that is created in the course of writing the
+  archive.
 
 ## Low-Level API
 
-### class tar.Pack
+### class Pack
 
 A readable tar stream.
 
@@ -640,7 +649,6 @@ The following options are supported:
   default" for most unix systems, based on a `umask` value of `0o22`.
 - `preservePaths` Allow absolute paths. By default, `/` is stripped
   from absolute paths.
-
 - `linkCache` A Map object containing the device and inode value for
   any file whose nlink is > 1, to identify hard links.
 - `statCache` A Map object that caches calls `lstat`.
@@ -661,6 +669,9 @@ The following options are supported:
   `tar.update` or the `keepNewer` option with the resulting tar archive.
 - `mtime` Set to a `Date` object to force a specific `mtime` for
   everything added to the archive. Overridden by `noMtime`.
+- `onWriteEntry` Called with each `WriteEntry` or
+  `WriteEntrySync` that is created in the course of writing the
+  archive.
 
 #### add(path)
 
@@ -674,11 +685,11 @@ Adds an entry to the archive. Returns true if flushed.
 
 Finishes the archive.
 
-### class tar.Pack.Sync
+### class PackSync
 
-Synchronous version of `tar.Pack`.
+Synchronous version of `Pack`.
 
-### class tar.Unpack
+### class Unpack
 
 A writable stream that unpacks a tar archive onto the file system.
 
@@ -757,7 +768,7 @@ Most unpack errors will cause a `warn` event to be emitted. If the
   written to disk as normal. (To exclude items from extraction, use
   the `filter` option described above.)
 - `strict` Treat warnings as crash-worthy errors. Default false.
-- `onentry` A function that gets called with `(entry)` for each entry
+- `onReadEntry` A function that gets called with `(entry)` for each entry
   that passes the filter.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered. (See "Warnings and Errors")
@@ -775,9 +786,9 @@ Most unpack errors will cause a `warn` event to be emitted. If the
   warning and skip the entry. Set to `Infinity` to remove the
   limitation.
 
-### class tar.Unpack.Sync
+### class UnpackSync
 
-Synchronous version of `tar.Unpack`.
+Synchronous version of `Unpack`.
 
 Note that using an asynchronous stream type with the `transform`
 option will cause undefined behavior in sync unpack streams.
@@ -810,7 +821,7 @@ The following options are supported:
 - `filter` A function that gets called with `(path, entry)` for each
   entry being listed. Return `true` to emit the entry from the
   archive, or `false` to skip it.
-- `onentry` A function that gets called with `(entry)` for each entry
+- `onReadEntry` A function that gets called with `(entry)` for each entry
   that passes the filter.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered. (See "Warnings and Errors")

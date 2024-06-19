@@ -2676,9 +2676,9 @@ t.test('futimes/fchown failures', t => {
   t.end()
 })
 
-t.test('onentry option is preserved', t => {
+t.test('onReadEntry option is preserved', t => {
   let oecalls = 0
-  const onentry = _entry => oecalls++
+  const onReadEntry = _entry => oecalls++
   const data = makeTar([
     {
       path: 'd/i',
@@ -2710,7 +2710,7 @@ t.test('onentry option is preserved', t => {
 
   t.test('sync', t => {
     const dir = t.testdir({})
-    const unpack = new UnpackSync({ cwd: dir, onentry })
+    const unpack = new UnpackSync({ cwd: dir, onReadEntry })
     unpack.end(data)
     check(t)
   })
@@ -2718,7 +2718,7 @@ t.test('onentry option is preserved', t => {
   t.test('async', t => {
     const dir = t.testdir({})
     mkdirp.sync(dir)
-    const unpack = new Unpack({ cwd: dir, onentry })
+    const unpack = new Unpack({ cwd: dir, onReadEntry })
     unpack.on('finish', () => check(t))
     unpack.end(data)
   })
