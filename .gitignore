@@ -6,7 +6,9 @@
 # keep these
 !**/.gitignore
 !/src
+!/.tshy
 !/.commitlintrc.js
+!/tsconfig.json
 !/.eslintrc.js
 !/.eslintrc.local.*
 !/.github/
@@ -21,6 +23,7 @@
 !/LICENSE*
 !/map.js
 !/package.json
+!/package-lock.json
 !/README*
 !/release-please-config.json
 !/scripts/
