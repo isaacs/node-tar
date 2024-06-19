@@ -4,6 +4,7 @@ import { type GzipOptions, type ZlibOptions } from 'minizlib'
 import { type Stats } from 'node:fs'
 import { type ReadEntry } from './read-entry.js'
 import { type WarnData } from './warn-method.js'
+import { WriteEntry } from './write-entry.js'
 
 const argmap = new Map<keyof TarOptionsWithAliases, keyof TarOptions>(
   [
@@ -274,6 +275,16 @@ export interface TarOptions {
    * a file system entry right away. Only relevant when parsing.
    */
   noResume?: boolean
+
+  /**
+   * When creating, updating, or replacing within archives, this method will
+   * be called with each WriteEntry that is created.
+   *
+   * It's not called 'onentry' because that's already taken for the ReadEntry
+   * when reading archives, and it's just easier to only have one type of
+   * options object that this whole library can pass around without issue.
+   */
+  onWriteEntry?: (entry: WriteEntry) => any
 
   /**
    * When extracting or listing archives, this method will be called with

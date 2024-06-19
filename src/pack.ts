@@ -92,6 +92,7 @@ export class Pack
   jobs: number;
 
   [WRITEENTRYCLASS]: typeof WriteEntry | typeof WriteEntrySync;
+  onWriteEntry?: (entry: WriteEntry) => void
   [QUEUE]: Yallist<PackJob>;
   [JOBS]: number = 0;
   [PROCESSING]: boolean = false;
@@ -110,6 +111,7 @@ export class Pack
     this.linkCache = opt.linkCache || new Map()
     this.statCache = opt.statCache || new Map()
     this.readdirCache = opt.readdirCache || new Map()
+    this.onWriteEntry = opt.onWriteEntry
 
     this[WRITEENTRYCLASS] = WriteEntry
     if (typeof opt.onwarn === 'function') {
@@ -154,7 +156,7 @@ export class Pack
     if (opt.mtime) this.mtime = opt.mtime
 
     this.filter =
-      typeof opt.filter === 'function' ? opt.filter : _ => true
+      typeof opt.filter === 'function' ? opt.filter : () => true
 
     this[QUEUE] = new Yallist<PackJob>()
     this[JOBS] = 0
@@ -385,8 +387,9 @@ export class Pack
   [ENTRY](job: PackJob) {
     this[JOBS] += 1
     try {
-      return new this[WRITEENTRYCLASS](job.path, this[ENTRYOPT](job))
-        .on('end', () => this[JOBDONE](job))
+      const e = new this[WRITEENTRYCLASS](job.path, this[ENTRYOPT](job))
+      this.onWriteEntry?.(e)
+      return e.on('end', () => this[JOBDONE](job))
         .on('error', er => this.emit('error', er))
     } catch (er) {
       this.emit('error', er)

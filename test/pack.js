@@ -56,7 +56,8 @@ t.test('set up', t => {
 
 t.test('pack a file', t => {
   const out = []
-  new Pack({ cwd: files })
+  const seen = []
+  new Pack({ cwd: files, onWriteEntry: e => seen.push(e) })
     .end('one-byte.txt')
     .on('data', c => out.push(c))
     .on('end', _ => {
@@ -98,6 +99,7 @@ t.test('pack a file', t => {
       )
       const hs = new Header(sync)
       t.match(hs, expect)
+      t.strictSame(seen.map(e => e.path), ['one-byte.txt'])
       t.end()
     })
 })
