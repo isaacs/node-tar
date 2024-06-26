@@ -1,6 +1,6 @@
 import { chownr, chownrSync } from 'chownr'
-import fs from 'fs'
-import { mkdirp, mkdirpSync } from 'mkdirp'
+import fs from 'node:fs'
+import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { CwdError } from './cwd-error.js'
 import { normalizeWindowsPath } from './normalize-windows-path.js'
@@ -48,7 +48,7 @@ const checkCwd = (
 }
 
 /**
- * Wrapper around mkdirp for tar's needs.
+ * Wrapper around mkdir for tar's needs.
  *
  * The main purpose is to avoid creating directories if we know that
  * they already exist (and track which ones exist for this purpose),
@@ -107,7 +107,7 @@ export const mkdir = (
   }
 
   if (preserve) {
-    return mkdirp(dir, { mode }).then(
+    return fsp.mkdir(dir, { recursive: true, mode }).then(
       made => done(null, made ?? undefined), // oh, ts
       done,
     )
@@ -252,7 +252,7 @@ export const mkdirSync = (dir: string, opt: MkdirOptions) => {
   }
 
   if (preserve) {
-    return done(mkdirpSync(dir, mode) ?? undefined)
+    return done(fs.mkdirSync(dir, { recursive: true, mode }) ?? undefined)
   }
 
   const sub = normalizeWindowsPath(path.relative(cwd, dir))
