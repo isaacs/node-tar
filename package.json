@@ -25,13 +25,13 @@
     "chownr": "^3.0.0",
     "minipass": "^7.1.2",
     "minizlib": "^3.0.1",
-    "mkdirp": "^3.0.1",
     "yallist": "^5.0.0"
   },
   "devDependencies": {
     "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.3",
     "events-to-array": "^2.0.3",
+    "mkdirp": "^3.0.1",
     "mutate-fs": "^2.1.1",
     "nock": "^13.5.4",
     "prettier": "^3.2.5",
