@@ -91,8 +91,8 @@ export class Pack
   filter: Exclude<TarOptions['filter'], undefined>
   jobs: number;
 
-  [WRITEENTRYCLASS]: typeof WriteEntry | typeof WriteEntrySync;
-  onWriteEntry?: (entry: WriteEntry) => void
+  [WRITEENTRYCLASS]: typeof WriteEntry | typeof WriteEntrySync
+  onWriteEntry?: (entry: WriteEntry) => void;
   [QUEUE]: Yallist<PackJob>;
   [JOBS]: number = 0;
   [PROCESSING]: boolean = false;
@@ -387,9 +387,13 @@ export class Pack
   [ENTRY](job: PackJob) {
     this[JOBS] += 1
     try {
-      const e = new this[WRITEENTRYCLASS](job.path, this[ENTRYOPT](job))
+      const e = new this[WRITEENTRYCLASS](
+        job.path,
+        this[ENTRYOPT](job),
+      )
       this.onWriteEntry?.(e)
-      return e.on('end', () => this[JOBDONE](job))
+      return e
+        .on('end', () => this[JOBDONE](job))
         .on('error', er => this.emit('error', er))
     } catch (er) {
       this.emit('error', er)

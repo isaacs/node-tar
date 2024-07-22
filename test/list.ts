@@ -34,7 +34,8 @@ t.test('basic', t => {
     t.test('file maxReadSize=' + maxReadSize, t => {
       t.test('sync', t => {
         const actual: string[] = []
-        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
+        const onReadEntry = (entry: ReadEntry) =>
+          actual.push(entry.path)
         list({
           file: file,
           sync: true,
@@ -46,7 +47,8 @@ t.test('basic', t => {
 
       t.test('async promise', async t => {
         const actual: string[] = []
-        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
+        const onReadEntry = (entry: ReadEntry) =>
+          actual.push(entry.path)
         return await list({
           file,
           onReadEntry,
@@ -56,7 +58,8 @@ t.test('basic', t => {
 
       t.test('async cb', t => {
         const actual: string[] = []
-        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
+        const onReadEntry = (entry: ReadEntry) =>
+          actual.push(entry.path)
         list(
           {
             file: file,
@@ -79,7 +82,8 @@ t.test('basic', t => {
   t.test('stream', t => {
     t.test('sync', t => {
       const actual: string[] = []
-      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
+      const onReadEntry = (entry: ReadEntry) =>
+        actual.push(entry.path)
       const l = list({ sync: true, onReadEntry })
       l.end(fs.readFileSync(file))
       return check(actual, t)
@@ -87,7 +91,8 @@ t.test('basic', t => {
 
     t.test('async', t => {
       const actual: string[] = []
-      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
+      const onReadEntry = (entry: ReadEntry) =>
+        actual.push(entry.path)
       const l = list()
       l.on('entry', onReadEntry)
       l.on('end', _ => check(actual, t).then(_ => t.end()))
@@ -130,7 +135,8 @@ t.test('basic', t => {
     t.test('no filter function, stream', t => {
       const check = () => t.same(actual, expect)
       const actual: string[] = []
-      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
+      const onReadEntry = (entry: ReadEntry) =>
+        actual.push(entry.path)
       fs.createReadStream(file).pipe(
         list(fileList)
           .on('entry', onReadEntry)
