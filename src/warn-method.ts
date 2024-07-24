@@ -16,7 +16,7 @@ export type Warner = {
   emit(event: 'error', error: TarError): void
 }
 
-export type WarnEvent = Minipass.Events & {
+export type WarnEvent<T = Buffer> = Minipass.Events<T> & {
   warn: [code: string, message: string, data: WarnData]
 }
 

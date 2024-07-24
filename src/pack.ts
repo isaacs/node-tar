@@ -31,7 +31,6 @@ export class PackJob {
 
 import { Minipass } from 'minipass'
 import * as zlib from 'minizlib'
-//@ts-ignore
 import { Yallist } from 'yallist'
 import { ReadEntry } from './read-entry.js'
 import {
@@ -68,7 +67,7 @@ import { normalizeWindowsPath } from './normalize-windows-path.js'
 import { TarOptions } from './options.js'
 
 export class Pack
-  extends Minipass<Minipass.ContiguousData, Buffer, WarnEvent>
+  extends Minipass<Buffer, ReadEntry | string, WarnEvent<Buffer>>
   implements Warner
 {
   opt: TarOptions
@@ -99,6 +98,7 @@ export class Pack
   [ENDED]: boolean = false
 
   constructor(opt: TarOptions = {}) {
+    //@ts-ignore
     super()
     this.opt = opt
     this.file = opt.file || ''
@@ -142,7 +142,7 @@ export class Pack
       /* c8 ignore next */
       if (!this.zip) throw new Error('impossible')
       const zip = this.zip
-      zip.on('data', chunk => super.write(chunk))
+      zip.on('data', chunk => super.write(chunk as unknown as string))
       zip.on('end', () => super.end())
       zip.on('drain', () => this[ONDRAIN]())
       this.on('resume', () => zip.resume())
@@ -166,7 +166,7 @@ export class Pack
   }
 
   [WRITE](chunk: Buffer) {
-    return super.write(chunk)
+    return super.write(chunk as unknown as string)
   }
 
   add(path: string | ReadEntry) {
@@ -174,17 +174,38 @@ export class Pack
     return this
   }
 
-  //@ts-ignore
-  end(path?: string | ReadEntry) {
+  end(cb?: () => void): this
+  end(path: string | ReadEntry, cb?: () => void): this
+  end(
+    path: string | ReadEntry,
+    encoding?: Minipass.Encoding,
+    cb?: () => void,
+  ): this
+  end(
+    path?: string | ReadEntry | (() => void),
+    encoding?: Minipass.Encoding | (() => void),
+    cb?: () => void,
+  ) {
+    /* c8 ignore start */
+    if (typeof path === 'function') {
+      cb = path
+      path = undefined
+    }
+    if (typeof encoding === 'function') {
+      cb = encoding
+      encoding = undefined
+    }
+    /* c8 ignore stop */
     if (path) {
       this.add(path)
     }
     this[ENDED] = true
     this[PROCESS]()
+    /* c8 ignore next */
+    if (cb) cb()
     return this
   }
 
-  //@ts-ignore
   write(path: string | ReadEntry) {
     if (this[ENDED]) {
       throw new Error('write after end')
@@ -293,7 +314,7 @@ export class Pack
       if (this.zip) {
         this.zip.end(EOF)
       } else {
-        super.write(EOF)
+        super.write(EOF as unknown as string)
         super.end()
       }
     }
@@ -432,7 +453,7 @@ export class Pack
       })
     } else {
       source.on('data', chunk => {
-        if (!super.write(chunk)) {
+        if (!super.write(chunk as unknown as string)) {
           source.pause()
         }
       })
