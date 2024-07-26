@@ -402,6 +402,7 @@ export class Pack
       noMtime: this.noMtime,
       mtime: this.mtime,
       prefix: this.prefix,
+      onWriteEntry: this.onWriteEntry,
     }
   }
 
@@ -412,7 +413,6 @@ export class Pack
         job.path,
         this[ENTRYOPT](job),
       )
-      this.onWriteEntry?.(e)
       return e
         .on('end', () => this[JOBDONE](job))
         .on('error', er => this.emit('error', er))

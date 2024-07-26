@@ -88,7 +88,7 @@ export class WriteEntry
   type?: EntryTypeName | 'Unsupported'
   linkpath?: string
   stat?: Stats
-  /* c8 ignore start */
+  onWriteEntry?: (entry: WriteEntry) => any
 
   #hadError: boolean = false
 
@@ -109,6 +109,7 @@ export class WriteEntry
     this.mtime = opt.mtime
     this.prefix =
       opt.prefix ? normalizeWindowsPath(opt.prefix) : undefined
+    this.onWriteEntry = opt.onWriteEntry
 
     if (typeof opt.onwarn === 'function') {
       this.on('warn', opt.onwarn)
@@ -222,6 +223,7 @@ export class WriteEntry
       this.noMtime = true
     }
 
+    this.onWriteEntry?.(this)
     this.header = new Header({
       path: this[PREFIX](this.path),
       // only apply the prefix to hard links.
@@ -618,6 +620,7 @@ export class WriteEntryTar
   ctime?: Date
   linkpath?: string
   size: number
+  onWriteEntry?: (entry: WriteEntry) => any
 
   warn(code: string, message: string | Error, data: WarnData = {}) {
     return warnMethod(this, code, message, data)
@@ -634,6 +637,7 @@ export class WriteEntryTar
     this.strict = !!opt.strict
     this.noPax = !!opt.noPax
     this.noMtime = !!opt.noMtime
+    this.onWriteEntry = opt.onWriteEntry
 
     this.readEntry = readEntry
     const { type } = readEntry
@@ -684,6 +688,7 @@ export class WriteEntryTar
     this.remain = readEntry.size
     this.blockRemain = readEntry.startBlockSize
 
+    this.onWriteEntry?.(this as unknown as WriteEntry)
     this.header = new Header({
       path: this[PREFIX](this.path),
       linkpath:

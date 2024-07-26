@@ -59,16 +59,23 @@ t.test('100 byte filename', t => {
   const runTest = t => {
     const f =
       '100-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+    let entryInOWE = undefined
     const ws = new WriteEntry(f, {
       cwd: files,
       linkCache: linkCache,
       statCache: statCache,
+      onWriteEntry: self => {
+        entryInOWE = self
+        t.equal(self.path, f)
+        t.equal(self.header, undefined)
+      },
     })
 
     let out = []
     ws.on('data', c => out.push(c))
     ws.on('end', _ => {
       out = Buffer.concat(out)
+      t.equal(entryInOWE, ws)
       t.match(ws, {
         header: {
           cksumValid: true,
@@ -1103,11 +1110,22 @@ t.test('write entry from read entry', t => {
       '',
     ])
     const fileEntry = new ReadEntry(new Header(data))
-    const wetFile = new WriteEntryTar(fileEntry, { portable: true })
+    let entryInOWE = undefined
+    const wetFile = new WriteEntryTar(fileEntry, {
+      portable: true,
+      onWriteEntry: self => {
+        entryInOWE = self
+        t.equal(self.path, '$')
+        t.equal(self.header, undefined)
+      },
+    })
     const out = []
     let wetFileEnded = false
     wetFile.on('data', c => out.push(c))
-    wetFile.on('end', _ => (wetFileEnded = true))
+    wetFile.on('end', () => {
+      wetFileEnded = true
+      t.equal(entryInOWE, wetFile)
+    })
     fileEntry.end()
     t.equal(wetFileEnded, true)
     const result = Buffer.concat(out)

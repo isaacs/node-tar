@@ -1,12 +1,12 @@
-import t, { Test } from 'tap'
-import { c, list, Pack, PackSync } from '../dist/esm/index.js'
 import fs from 'fs'
+import { mkdirp } from 'mkdirp'
 import path from 'path'
 import { rimraf } from 'rimraf'
-import { mkdirp } from 'mkdirp'
+import t, { Test } from 'tap'
+import { c, list, Pack, PackSync } from '../dist/esm/index.js'
+import { spawn } from 'child_process'
 //@ts-ignore
 import mutateFS from 'mutate-fs'
-import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 
 const isWindows = process.platform === 'win32'
@@ -287,4 +287,24 @@ t.test('create tarball out of another tarball', t => {
 t.test('must specify some files', t => {
   t.throws(() => c({}), 'no paths specified to add to archive')
   t.end()
+})
+
+t.test('transform a filename', async t => {
+  const cwd = t.testdir({
+    'README.md': 'hello, world',
+  })
+  const data = await c(
+    {
+      cwd,
+      onWriteEntry: entry => {
+        entry.path = 'bloorg.md'
+      },
+      sync: true,
+    },
+    ['README.md'],
+  ).concat()
+  t.equal(
+    data.subarray(0, 'bloorg.md'.length).toString(),
+    'bloorg.md',
+  )
 })
