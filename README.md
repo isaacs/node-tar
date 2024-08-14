@@ -363,8 +363,6 @@ The return value of the method is ignored. All that matters is
 the final state of the entry object. This can also be used to
 track the files added to an archive, for example.
 
-For example:
-
 ```js
 import * as tar from 'tar'
 const filesAdded = []
