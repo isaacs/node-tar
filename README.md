@@ -351,6 +351,54 @@ advanced use cases, such as re-using caches between runs.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
 
+#### Using `onWriteMethod` to alter entries
+
+The `onWriteMethod` function, if provided, will get a reference
+to each `entry` object on its way into the archive.
+
+If any fields on this entry are changed, then these changes will
+be reflected in the entry that is written to the archive.
+
+The return value of the method is ignored. All that matters is
+the final state of the entry object. This can also be used to
+track the files added to an archive, for example.
+
+For example:
+
+```js
+import * as tar from 'tar'
+const filesAdded = []
+tar.c({
+  sync: true,
+  file: 'lowercase-executable.tar',
+  onWriteEntry(entry) {
+    // initially, it's uppercase and 0o644
+    console.log('adding', entry.path, entry.stat.mode.toString(8))
+    // make all the paths lowercase
+    entry.path = entry.path.toLowerCase()
+    // make the entry executable
+    entry.stat.mode = 0o755
+    // in the archive, it's lowercase and 0o755
+    filesAdded.push([entry.path, entry.stat.mode.toString(8)])
+  },
+}, ['./bin'])
+console.log('added', filesAdded)
+```
+
+Then, if the `./bin` directory contained `SOME-BIN`, it would
+show up in the archive as:
+
+```
+$ node create-lowercase-executable.js
+adding ./bin/SOME-BIN 644
+added [[ './bin/some-bin', '755' ]]
+
+$ tar cvf lowercase-executable.tar
+-rwxr-xr-x  0 isaacs 20      47731 Aug 14 08:56 ./bin/some-bin
+```
+
+with a lowercase name and a mode of `0o755`.
+
 ### tar.x(options, fileList, callback) [alias: tar.extract]
 
 Extract a tarball archive.
