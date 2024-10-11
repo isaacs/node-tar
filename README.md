@@ -478,8 +478,6 @@ The following options are supported:
   the `filter` option described above.)
 - `onReadEntry` A function that gets called with `(entry)` for each entry
   that passes the filter.
-- `onwarn` A function that will get called with `(code, message, data)` for
-  any warnings encountered. (See "Warnings and Errors")
 - `chmod` Set to true to call `fs.chmod()` to ensure that the
   extracted file matches the entry mode. This may necessitate a
   call to the deprecated and thread-unsafe `process.umask()`
