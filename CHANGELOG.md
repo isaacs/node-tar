@@ -24,6 +24,7 @@
 
 ## 7.0
 
+- Drop support for node <18
 - Rewrite in TypeScript, provide ESM and CommonJS hybrid
   interface
 - Add tree-shake friendly exports, like `import('tar/create')`
