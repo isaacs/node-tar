@@ -24,7 +24,7 @@
     "@isaacs/fs-minipass": "^4.0.0",
     "chownr": "^3.0.0",
     "minipass": "^7.1.2",
-    "minizlib": "^3.0.1",
+    "minizlib": "^3.0.2",
     "mkdirp": "^3.0.1",
     "yallist": "^5.0.0"
   },
