@@ -296,6 +296,83 @@ t.test('fixture tests', t => {
           bs.end(zlib.brotliCompressSync(tardata))
         })
 
+        t.test(
+          'compress with zstd based on filename .tar.zst',
+          t => {
+            const p = new Parser({
+              maxMetaEntrySize: maxMeta,
+              filter:
+                filter ?
+                  (_path, entry) => entry.size % 2 !== 0
+                  : undefined,
+              strict: strict,
+              file: 'example.tar.zst',
+            })
+            trackEvents(t, expect, p)
+            p.end(zlib.zstdCompressSync(tardata))
+          },
+        )
+
+        t.test('compress with zstd based on filename .tzst', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter:
+              filter ?
+                (_path, entry) => entry.size % 2 !== 0
+                : undefined,
+            strict: strict,
+            file: 'example.tzst',
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.zstdCompressSync(tardata))
+        })
+
+        t.test('compress with zstd all at once', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter:
+              filter ?
+                (_path, entry) => entry.size % 2 !== 0
+                : undefined,
+            strict: strict,
+            zstd: {},
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.zstdCompressSync(tardata))
+        })
+
+        t.test('compress with zstd byte at a time', t => {
+          const bs = new ByteStream()
+          const bp = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter:
+              filter ?
+                (_path, entry) => entry.size % 2 !== 0
+                : undefined,
+            strict: strict,
+            zstd: {},
+          })
+          trackEvents(t, expect, bp)
+          bs.pipe(bp)
+          bs.end(zlib.zstdCompressSync(tardata))
+        })
+
+        t.test('compress with zstd .tzst byte at a time', t => {
+          const bs = new ByteStream()
+          const bp = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter:
+              filter ?
+                (_path, entry) => entry.size % 2 !== 0
+                : undefined,
+            strict: strict,
+            file: 'example.tzst',
+          })
+          trackEvents(t, expect, bp)
+          bs.pipe(bp)
+          bs.end(zlib.zstdCompressSync(tardata))
+        })
+
         t.test('async chunks', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,

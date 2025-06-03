@@ -47,7 +47,7 @@ t.test('set up', t => {
   if (one.dev !== two.dev || one.ino !== two.ino) {
     try {
       fs.unlinkSync(files + '/hardlink-2')
-    } catch (e) {}
+    } catch (e) { }
     fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   }
   chmodr.sync(files, 0o644)
@@ -428,11 +428,45 @@ t.test('if brotli is truthy, make it an object', t => {
   t.end()
 })
 
+t.test('if zstd is truthy, make it an object', t => {
+  const opt = { zstd: true }
+  new Pack(opt)
+  t.type(opt.zstd, 'object')
+  t.end()
+})
+
 t.test('throws if both gzip and brotli are truthy', t => {
   const opt = { gzip: true, brotli: true }
   t.throws(
     _ => new Pack(opt),
-    new TypeError('gzip and brotli are mutually exclusive'),
+    new TypeError('gzip, brotli, zstd are mutually exclusive'),
+  )
+  t.end()
+})
+
+t.test('throws if both gzip and zstd are truthy', t => {
+  const opt = { gzip: true, zstd: true }
+  t.throws(
+    _ => new Pack(opt),
+    new TypeError('gzip, brotli, zstd are mutually exclusive'),
+  )
+  t.end()
+})
+
+t.test('throws if both brotli and zstd are truthy', t => {
+  const opt = { brotli: true, zstd: true }
+  t.throws(
+    _ => new Pack(opt),
+    new TypeError('gzip, brotli, zstd are mutually exclusive'),
+  )
+  t.end()
+})
+
+t.test('throws if gzip, brotli, and zstd are all truthy', t => {
+  const opt = { gzip: true, brotli: true, zstd: true }
+  t.throws(
+    _ => new Pack(opt),
+    new TypeError('gzip, brotli, zstd are mutually exclusive'),
   )
   t.end()
 })
@@ -577,6 +611,131 @@ t.test('brotli, also a very deep path', t => {
     .on('end', _ => {
       const zipped = Buffer.concat(out)
       const data = zlib.brotliDecompressSync(zipped)
+      const entries = []
+      for (var i = 0; i < data.length; i += 512) {
+        const slice = data.subarray(i, i + 512)
+        const h = new Header(slice)
+        if (h.nullBlock) {
+          entries.push('null block')
+        } else if (h.cksumValid) {
+          entries.push([h.type, h.path])
+        } else if (entries[entries.length - 1][0] === 'File') {
+          entries[entries.length - 1].push(
+            slice.toString().replace(/\0.*$/, ''),
+          )
+        }
+      }
+
+      const expect = [
+        ['Directory', 'dir/'],
+        ['Directory', 'long-path/'],
+        ['File', 'dir/x'],
+        ['Directory', 'long-path/r/'],
+        ['Directory', 'long-path/r/e/'],
+        ['Directory', 'long-path/r/e/a/'],
+        ['Directory', 'long-path/r/e/a/l/'],
+        ['Directory', 'long-path/r/e/a/l/l/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
+        ],
+        [
+          'Directory',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt',
+          'short\n',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111',
+        ],
+        [
+          'ExtendedHeader',
+          'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222',
+        ],
+        [
+          'ExtendedHeader',
+          'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc',
+        ],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc',
+          'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        ],
+        ['ExtendedHeader', 'PaxHeader/Ω.txt'],
+        [
+          'File',
+          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+          'Ω',
+        ],
+        'null block',
+        'null block',
+      ]
+
+      let ok = true
+      entries.forEach((entry, i) => {
+        ok =
+          ok &&
+          t.equal(entry[0], expect[i][0]) &&
+          t.equal(entry[1], expect[i][1]) &&
+          (!entry[2] || t.equal(entry[2], expect[i][2]))
+      })
+
+      t.end()
+    })
+})
+
+t.test('zstd, also a very deep path', t => {
+  const out = []
+
+  new Pack({
+    cwd: files,
+    zstd: { flush: 1 },
+  })
+    .add('dir')
+    .add('long-path')
+    .on('data', c => out.push(c))
+    .end()
+    .on('end', _ => {
+      const zipped = Buffer.concat(out)
+      const data = zlib.zstdDecompressSync(zipped)
       const entries = []
       for (var i = 0; i < data.length; i += 512) {
         const slice = data.subarray(i, i + 512)
@@ -929,6 +1088,126 @@ t.test('very deep brotli path, sync', t => {
   t.end()
 })
 
+t.test('very deep zstd path, sync', t => {
+  const pack = new PackSync({
+    cwd: files,
+    zstd: true,
+  })
+    .add('dir')
+    .add('long-path')
+    .end()
+
+  // these do nothing!
+  pack.pause()
+  pack.resume()
+
+  const zipped = pack.read()
+  t.type(zipped, Buffer)
+  const data = zlib.zstdDecompressSync(zipped)
+  const entries = []
+  for (var i = 0; i < data.length; i += 512) {
+    const slice = data.subarray(i, i + 512)
+    const h = new Header(slice)
+    if (h.nullBlock) {
+      entries.push('null block')
+    } else if (h.cksumValid) {
+      entries.push([h.type, h.path])
+    } else if (entries[entries.length - 1][0] === 'File') {
+      entries[entries.length - 1].push(
+        slice.toString().replace(/\0.*$/, ''),
+      )
+    }
+  }
+
+  const expect = [
+    ['Directory', 'dir/'],
+    ['File', 'dir/x'],
+    ['Directory', 'long-path/'],
+    ['Directory', 'long-path/r/'],
+    ['Directory', 'long-path/r/e/'],
+    ['Directory', 'long-path/r/e/a/'],
+    ['Directory', 'long-path/r/e/a/l/'],
+    ['Directory', 'long-path/r/e/a/l/l/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
+    ],
+    [
+      'Directory',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt',
+      'short\n',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111',
+    ],
+    [
+      'ExtendedHeader',
+      'PaxHeader/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      '2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222',
+    ],
+    [
+      'ExtendedHeader',
+      'PaxHeader/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccc',
+    ],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxccccccccccccccccccccccccccccccccccccccccccccccccc',
+      'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    ],
+    ['ExtendedHeader', 'PaxHeader/Ω.txt'],
+    [
+      'File',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
+      'Ω',
+    ],
+    'null block',
+    'null block',
+  ]
+
+  let ok = true
+  entries.forEach((entry, i) => {
+    ok =
+      ok &&
+      t.equal(entry[0], expect[i][0]) &&
+      t.equal(entry[1], expect[i][1]) &&
+      (!entry[2] || t.equal(entry[2], expect[i][2]))
+  })
+
+  t.end()
+})
+
 t.test('write after end', t => {
   const p = new Pack()
   p.end()
@@ -1140,30 +1419,30 @@ t.test('warnings', t => {
 
   t.test('preservePaths=true', t => {
     t.plan(2)
-    // with preservePaths, strictness doens't matter
-    ;[true, false].forEach(strict => {
-      t.test('strict=' + strict, t => {
-        const warnings = []
-        const out = []
-        const p = new Pack({
-          cwd: files,
-          strict: strict,
-          preservePaths: true,
-          onwarn: (c, m, p) => warnings.push([c, m, p]),
-        })
-          .end(f)
-          .on('data', c => out.push(c))
-        p.on('end', _ => {
-          const data = Buffer.concat(out)
-          t.equal(warnings.length, 0)
-
-          t.match(new Header(data), {
-            path: normPath(f),
+      // with preservePaths, strictness doens't matter
+      ;[true, false].forEach(strict => {
+        t.test('strict=' + strict, t => {
+          const warnings = []
+          const out = []
+          const p = new Pack({
+            cwd: files,
+            strict: strict,
+            preservePaths: true,
+            onwarn: (c, m, p) => warnings.push([c, m, p]),
           })
-          t.end()
+            .end(f)
+            .on('data', c => out.push(c))
+          p.on('end', _ => {
+            const data = Buffer.concat(out)
+            t.equal(warnings.length, 0)
+
+            t.match(new Header(data), {
+              path: normPath(f),
+            })
+            t.end()
+          })
         })
       })
-    })
   })
 
   t.test('preservePaths=false strict=true', t => {

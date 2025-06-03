@@ -31,6 +31,7 @@ const fixtureDef = {
   'empty.tar': Buffer.alloc(512),
   'compressed.tgz': zlib.gzipSync(data),
   'compressed.tbr': zlib.brotliCompressSync(data),
+  'compressed.tzst': zlib.zstdCompressSync(data),
 }
 
 t.test('basic file add to archive (good or truncated)', t => {
@@ -287,6 +288,33 @@ t.test('cannot append to brotli compressed archives', async t => {
         [path.basename(__filename)],
       ),
     expect,
+  )
+
+  t.end()
+})
+
+t.test('cannot append to zstd compressed archives', async t => {
+  const dir = t.testdir({
+    'compressed.tbr': fixtureDef['compressed.tzst'],
+  })
+  const file = resolve(dir, 'compressed.tzst')
+
+  const expect = new Error('cannot append to compressed archives')
+  const expectT = new TypeError(
+    'cannot append to compressed archives',
+  )
+
+  t.throws(
+    () =>
+      r(
+        {
+          file,
+          cwd: __dirname,
+          zstd: true,
+        },
+        [path.basename(__filename)],
+      ),
+    expectT,
   )
 
   t.end()

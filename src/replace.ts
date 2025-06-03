@@ -286,6 +286,7 @@ export const replace = makeCommand(
     if (
       opt.gzip ||
       opt.brotli ||
+      opt.zstd ||
       opt.file.endsWith('.br') ||
       opt.file.endsWith('.tbr')
     ) {

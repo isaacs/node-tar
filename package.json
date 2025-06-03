@@ -28,6 +28,7 @@
     "yallist": "^5.0.0"
   },
   "devDependencies": {
+    "@types/node": "^22.15.29",
     "chmodr": "^1.2.0",
     "end-of-stream": "^1.4.3",
     "events-to-array": "^2.0.3",

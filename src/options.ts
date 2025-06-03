@@ -115,13 +115,30 @@ export interface TarOptions {
    *
    * If set `false`, then brotli options will not be used.
    *
-   * If both this and the `gzip` option are left `undefined`, then tar will
-   * attempt to infer the brotli compression status, but can only do so based
-   * on the filename. If the filename ends in `.tbr` or `.tar.br`, and the
-   * first 512 bytes are not a valid tar header, then brotli decompression
+   * If this, the `gzip`, and `zstd` options are left `undefined`, then tar
+   * will attempt to infer the brotli compression status, but can only do so
+   * based on the filename. If the filename ends in `.tbr` or `.tar.br`, and
+   * the first 512 bytes are not a valid tar header, then brotli decompression
    * will be attempted.
    */
   brotli?: boolean | ZlibOptions
+
+  /**
+   * Set to `true` or an object with settings for `zstd.compress()` to
+   * create a zstd-compressed archive
+   * 
+   * When extracting, this will cause the archive to be treated as a
+   * zstd-compressed file if set to `true` or a ZlibOptions object.
+   * 
+   * If set `false`, then zstd options will not be used.
+   * 
+   * If this, the `gzip`, and `brotli` options are left `undefined`, then tar
+   * will attempt to infer the zstd compression status, but can only do so
+   * based on the filename. If the filename ends in `.tzst` or `.tar.zst`, and
+   * the first 512 bytes are not a valid tar header, then zstd decompression
+   * will be attempted.
+   */
+  zstd?: boolean | ZlibOptions
 
   /**
    * A function that is called with `(path, stat)` when creating an archive, or

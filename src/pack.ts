@@ -81,7 +81,7 @@ export class Pack
   statCache: Exclude<TarOptions['statCache'], undefined>
   file: string
   portable: boolean
-  zip?: zlib.BrotliCompress | zlib.Gzip
+  zip?: zlib.BrotliCompress | zlib.Gzip | zlib.ZstdCompress
   readdirCache: Exclude<TarOptions['readdirCache'], undefined>
   noDirRecurse: boolean
   follow: boolean
@@ -128,9 +128,9 @@ export class Pack
 
     this.portable = !!opt.portable
 
-    if (opt.gzip || opt.brotli) {
-      if (opt.gzip && opt.brotli) {
-        throw new TypeError('gzip and brotli are mutually exclusive')
+    if (opt.gzip || opt.brotli || opt.zstd) {
+      if ((opt.gzip ? 1 : 0) + (opt.brotli ? 1 : 0) + (opt.zstd ? 1 : 0) > 1) {
+        throw new TypeError('gzip, brotli, zstd are mutually exclusive')
       }
       if (opt.gzip) {
         if (typeof opt.gzip !== 'object') {
@@ -146,6 +146,12 @@ export class Pack
           opt.brotli = {}
         }
         this.zip = new zlib.BrotliCompress(opt.brotli)
+      }
+      if (opt.zstd) {
+        if (typeof opt.zstd !== 'object') {
+          opt.zstd = {}
+        }
+        this.zip = new zlib.ZstdCompress(opt.zstd)
       }
       /* c8 ignore next */
       if (!this.zip) throw new Error('impossible')

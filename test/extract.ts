@@ -476,6 +476,77 @@ t.test('brotli', async t => {
   })
 })
 
+t.test('zstd', async t => {
+  const file = path.resolve(__dirname, 'fixtures/example.tzst')
+  const dir = path.resolve(__dirname, 'zstd')
+
+  t.beforeEach(async () => {
+    await mkdirp(dir)
+  })
+
+  t.afterEach(async () => {
+    await rimraf(dir)
+  })
+
+  t.test('succeeds based on magic bytes', async t => {
+    // copy the file to a new location with a different extension
+    const unknownExtension = path.resolve(__dirname, 'zstd/example.unknown')
+    fs.copyFileSync(file, unknownExtension)
+
+    x({ sync: true, file: unknownExtension, C: dir })
+
+    t.same(fs.readdirSync(dir + '/x').sort(), [
+      '1',
+      '10',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ])
+    t.end()
+  })
+
+  t.test('succeeds based on file extension', t => {
+    x({ sync: true, file: file, C: dir })
+
+    t.same(fs.readdirSync(dir + '/x').sort(), [
+      '1',
+      '10',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ])
+    t.end()
+  })
+
+  t.test('succeeds when passed explicit option', t => {
+    x({ sync: true, file: file, C: dir, brotli: true })
+
+    t.same(fs.readdirSync(dir + '/x').sort(), [
+      '1',
+      '10',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ])
+    t.end()
+  })
+})
+
 t.test('verify long linkname is not a problem', async t => {
   // See: https://github.com/isaacs/node-tar/issues/312
   const file = path.resolve(__dirname, 'fixtures/long-linkname.tar')
