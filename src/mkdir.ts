@@ -14,7 +14,6 @@ export type MkdirOptions = {
   umask?: number
   preserve: boolean
   unlink: boolean
-  cache: Map<string, boolean>
   cwd: string
   mode: number
 }
@@ -23,14 +22,6 @@ export type MkdirError =
   | NodeJS.ErrnoException
   | CwdError
   | SymlinkError
-
-const cGet = (cache: Map<string, boolean>, key: string) =>
-  cache.get(normalizeWindowsPath(key))
-const cSet = (
-  cache: Map<string, boolean>,
-  key: string,
-  val: boolean,
-) => cache.set(normalizeWindowsPath(key), val)
 
 const checkCwd = (
   dir: string,
@@ -78,14 +69,12 @@ export const mkdir = (
 
   const preserve = opt.preserve
   const unlink = opt.unlink
-  const cache = opt.cache
   const cwd = normalizeWindowsPath(opt.cwd)
 
   const done = (er?: null | MkdirError, created?: string) => {
     if (er) {
       cb(er)
     } else {
-      cSet(cache, dir, true)
       if (created && doChown) {
         chownr(created, uid, gid, er =>
           done(er as NodeJS.ErrnoException),
@@ -96,10 +85,6 @@ export const mkdir = (
         cb()
       }
     }
-  }
-
-  if (cache && cGet(cache, dir) === true) {
-    return done()
   }
 
   if (dir === cwd) {
@@ -115,14 +100,13 @@ export const mkdir = (
 
   const sub = normalizeWindowsPath(path.relative(cwd, dir))
   const parts = sub.split('/')
-  mkdir_(cwd, parts, mode, cache, unlink, cwd, undefined, done)
+  mkdir_(cwd, parts, mode, unlink, cwd, undefined, done)
 }
 
 const mkdir_ = (
   base: string,
   parts: string[],
   mode: number,
-  cache: Map<string, boolean>,
   unlink: boolean,
   cwd: string,
   created: string | undefined,
@@ -133,13 +117,10 @@ const mkdir_ = (
   }
   const p = parts.shift()
   const part = normalizeWindowsPath(path.resolve(base + '/' + p))
-  if (cGet(cache, part)) {
-    return mkdir_(part, parts, mode, cache, unlink, cwd, created, cb)
-  }
   fs.mkdir(
     part,
     mode,
-    onmkdir(part, parts, mode, cache, unlink, cwd, created, cb),
+    onmkdir(part, parts, mode, unlink, cwd, created, cb),
   )
 }
 
@@ -148,7 +129,6 @@ const onmkdir =
     part: string,
     parts: string[],
     mode: number,
-    cache: Map<string, boolean>,
     unlink: boolean,
     cwd: string,
     created: string | undefined,
@@ -162,7 +142,7 @@ const onmkdir =
             statEr.path && normalizeWindowsPath(statEr.path)
           cb(statEr)
         } else if (st.isDirectory()) {
-          mkdir_(part, parts, mode, cache, unlink, cwd, created, cb)
+          mkdir_(part, parts, mode, unlink, cwd, created, cb)
         } else if (unlink) {
           fs.unlink(part, er => {
             if (er) {
@@ -175,7 +155,6 @@ const onmkdir =
                 part,
                 parts,
                 mode,
-                cache,
                 unlink,
                 cwd,
                 created,
@@ -193,7 +172,7 @@ const onmkdir =
       })
     } else {
       created = created || part
-      mkdir_(part, parts, mode, cache, unlink, cwd, created, cb)
+      mkdir_(part, parts, mode, unlink, cwd, created, cb)
     }
   }
 
@@ -229,21 +208,15 @@ export const mkdirSync = (dir: string, opt: MkdirOptions) => {
 
   const preserve = opt.preserve
   const unlink = opt.unlink
-  const cache = opt.cache
   const cwd = normalizeWindowsPath(opt.cwd)
 
   const done = (created?: string | undefined) => {
-    cSet(cache, dir, true)
     if (created && doChown) {
       chownrSync(created, uid, gid)
     }
     if (needChmod) {
       fs.chmodSync(dir, mode)
     }
-  }
-
-  if (cache && cGet(cache, dir) === true) {
-    return done()
   }
 
   if (dir === cwd) {
@@ -264,24 +237,18 @@ export const mkdirSync = (dir: string, opt: MkdirOptions) => {
     p = parts.shift()
   ) {
     part = normalizeWindowsPath(path.resolve(part))
-    if (cGet(cache, part)) {
-      continue
-    }
 
     try {
       fs.mkdirSync(part, mode)
       created = created || part
-      cSet(cache, part, true)
     } catch (er) {
       const st = fs.lstatSync(part)
       if (st.isDirectory()) {
-        cSet(cache, part, true)
         continue
       } else if (unlink) {
         fs.unlinkSync(part)
         fs.mkdirSync(part, mode)
         created = created || part
-        cSet(cache, part, true)
         continue
       } else if (st.isSymbolicLink()) {
         return new SymlinkError(part, part + '/' + parts.join('/'))

@@ -11,11 +11,9 @@ import fs, { type Stats } from 'node:fs'
 import path from 'node:path'
 import { getWriteFlag } from './get-write-flag.js'
 import { mkdir, MkdirError, mkdirSync } from './mkdir.js'
-import { normalizeUnicode } from './normalize-unicode.js'
 import { normalizeWindowsPath } from './normalize-windows-path.js'
 import { Parser } from './parse.js'
 import { stripAbsolutePath } from './strip-absolute-path.js'
-import { stripTrailingSlashes } from './strip-trailing-slashes.js'
 import * as wc from './winchars.js'
 
 import { TarOptions } from './options.js'
@@ -26,7 +24,6 @@ import { WarnData } from './warn-method.js'
 const ONENTRY = Symbol('onEntry')
 const CHECKFS = Symbol('checkFs')
 const CHECKFS2 = Symbol('checkFs2')
-const PRUNECACHE = Symbol('pruneCache')
 const ISREUSABLE = Symbol('isReusable')
 const MAKEFS = Symbol('makeFs')
 const FILE = Symbol('file')
@@ -109,37 +106,6 @@ const uint32 = (
   : b !== undefined && b === b >>> 0 ? b
   : c
 
-// clear the cache if it's a case-insensitive unicode-squashing match.
-// we can't know if the current file system is case-sensitive or supports
-// unicode fully, so we check for similarity on the maximally compatible
-// representation.  Err on the side of pruning, since all it's doing is
-// preventing lstats, and it's not the end of the world if we get a false
-// positive.
-// Note that on windows, we always drop the entire cache whenever a
-// symbolic link is encountered, because 8.3 filenames are impossible
-// to reason about, and collisions are hazards rather than just failures.
-const cacheKeyNormalize = (path: string) =>
-  stripTrailingSlashes(
-    normalizeWindowsPath(normalizeUnicode(path)),
-  ).toLowerCase()
-
-// remove all cache entries matching ${abs}/**
-const pruneCache = (cache: Map<string, boolean>, abs: string) => {
-  abs = cacheKeyNormalize(abs)
-  for (const path of cache.keys()) {
-    const pnorm = cacheKeyNormalize(path)
-    if (pnorm === abs || pnorm.indexOf(abs + '/') === 0) {
-      cache.delete(path)
-    }
-  }
-}
-
-const dropCache = (cache: Map<string, boolean>) => {
-  for (const key of cache.keys()) {
-    cache.delete(key)
-  }
-}
-
 export class Unpack extends Parser {
   [ENDED]: boolean = false;
   [CHECKED_CWD]: boolean = false;
@@ -149,7 +115,6 @@ export class Unpack extends Parser {
   transform?: TarOptions['transform']
   writable: true = true
   readable: false = false
-  dirCache: Exclude<TarOptions['dirCache'], undefined>
   uid?: number
   gid?: number
   setOwner: boolean
@@ -182,7 +147,6 @@ export class Unpack extends Parser {
 
     this.transform = opt.transform
 
-    this.dirCache = opt.dirCache || new Map()
     this.chmod = !!opt.chmod
 
     if (typeof opt.uid === 'number' || typeof opt.gid === 'number') {
@@ -467,7 +431,6 @@ export class Unpack extends Parser {
         umask: this.processUmask,
         preserve: this.preservePaths,
         unlink: this.unlink,
-        cache: this.dirCache,
         cwd: this.cwd,
         mode: mode,
       },
@@ -701,29 +664,8 @@ export class Unpack extends Parser {
     )
   }
 
-  [PRUNECACHE](entry: ReadEntry) {
-    // if we are not creating a directory, and the path is in the dirCache,
-    // then that means we are about to delete the directory we created
-    // previously, and it is no longer going to be a directory, and neither
-    // is any of its children.
-    // If a symbolic link is encountered, all bets are off.  There is no
-    // reasonable way to sanitize the cache in such a way we will be able to
-    // avoid having filesystem collisions.  If this happens with a non-symlink
-    // entry, it'll just fail to unpack, but a symlink to a directory, using an
-    // 8.3 shortname or certain unicode attacks, can evade detection and lead
-    // to arbitrary writes to anywhere on the system.
-    if (entry.type === 'SymbolicLink') {
-      dropCache(this.dirCache)
-    } else if (entry.type !== 'Directory') {
-      pruneCache(this.dirCache, String(entry.absolute))
-    }
-  }
-
   [CHECKFS2](entry: ReadEntry, fullyDone: (er?: Error) => void) {
-    this[PRUNECACHE](entry)
-
     const done = (er?: Error) => {
-      this[PRUNECACHE](entry)
       fullyDone(er)
     }
 
@@ -890,8 +832,6 @@ export class UnpackSync extends Unpack {
   }
 
   [CHECKFS](entry: ReadEntry) {
-    this[PRUNECACHE](entry)
-
     if (!this[CHECKED_CWD]) {
       const er = this[MKDIR](this.cwd, this.dmode)
       if (er) {
@@ -986,9 +926,14 @@ export class UnpackSync extends Unpack {
         getWriteFlag(entry.size),
         mode,
       )
+      /* c8 ignore start - This is only a problem if the file was successfully
+       * statted, BUT failed to open. Testing this is annoying, and we
+       * already have ample testint for other uses of oner() methods.
+       */
     } catch (er) {
       return oner(er as Error)
     }
+    /* c8 ignore stop */
     const tx = this.transform ? this.transform(entry) || entry : entry
     if (tx !== entry) {
       tx.on('error', (er: Error) => this[ONERROR](er, entry))
@@ -1088,7 +1033,6 @@ export class UnpackSync extends Unpack {
         umask: this.processUmask,
         preserve: this.preservePaths,
         unlink: this.unlink,
-        cache: this.dirCache,
         cwd: this.cwd,
         mode: mode,
       })
