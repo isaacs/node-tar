@@ -53,6 +53,26 @@ if (fakePlatform === 'win32') {
   })
 }
 
+t.test('blow out the cache', t => {
+  const cafBuf = Buffer.from([0x63, 0x61, 0x66])
+  const e1 = Buffer.from([0x65, 0xcc, 0x81])
+  const e2 = Buffer.from([0xc3, 0xa9])
+  let cafe1 = cafBuf
+  let cafe2 = cafBuf
+  for (let i = 0; i < 11_001; i++) {
+    cafe1 = Buffer.concat([cafe1, e1])
+    cafe2 = Buffer.concat([cafe2, e2])
+
+    const n1 = normalizeUnicode(cafe1.toString())
+    const n2 = normalizeUnicode(cafe2.toString())
+    // don't test all of these, too noisy
+    if (!(i % 500)) {
+      t.equal(n1, n2)
+    }
+  }
+  t.end()
+})
+
 if (fakePlatform !== 'win32') {
   t.spawn(process.execPath, [__filename, 'win32'], {
     env: {
