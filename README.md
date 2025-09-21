@@ -366,20 +366,23 @@ track the files added to an archive, for example.
 ```js
 import * as tar from 'tar'
 const filesAdded = []
-tar.c({
-  sync: true,
-  file: 'lowercase-executable.tar',
-  onWriteEntry(entry) {
-    // initially, it's uppercase and 0o644
-    console.log('adding', entry.path, entry.stat.mode.toString(8))
-    // make all the paths lowercase
-    entry.path = entry.path.toLowerCase()
-    // make the entry executable
-    entry.stat.mode = 0o755
-    // in the archive, it's lowercase and 0o755
-    filesAdded.push([entry.path, entry.stat.mode.toString(8)])
+tar.c(
+  {
+    sync: true,
+    file: 'lowercase-executable.tar',
+    onWriteEntry(entry) {
+      // initially, it's uppercase and 0o644
+      console.log('adding', entry.path, entry.stat.mode.toString(8))
+      // make all the paths lowercase
+      entry.path = entry.path.toLowerCase()
+      // make the entry executable
+      entry.stat.mode = 0o755
+      // in the archive, it's lowercase and 0o755
+      filesAdded.push([entry.path, entry.stat.mode.toString(8)])
+    },
   },
-}, ['./bin'])
+  ['./bin'],
+)
 console.log('added', filesAdded)
 ```
 
