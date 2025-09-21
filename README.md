@@ -525,7 +525,7 @@ If the archive is gzipped, then tar will detect this and unzip it.
 If the `file` option is _not_ provided, then returns an event emitter that
 emits `entry` events with `tar.ReadEntry` objects. However, they don't
 emit `'data'` or `'end'` events. (If you want to get actual readable
-entries, use the `tar.Parse` class instead.)
+entries, use the `tar.Parser` class instead.)
 
 If a `file` option _is_ provided, then the return value will be a promise
 that resolves when the file has been fully traversed in async mode, or
@@ -842,7 +842,7 @@ option will cause undefined behavior in sync unpack streams.
 [MiniPass](http://npm.im/minipass)-based streams are designed for this
 use case.
 
-### class tar.Parse
+### class tar.Parser
 
 A writable stream that parses a tar archive stream. All the standard
 writable stream stuff is supported.
