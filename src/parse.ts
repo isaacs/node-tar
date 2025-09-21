@@ -2,7 +2,7 @@
 // the full 512 bytes of a header to come in.  We will Buffer.concat()
 // it to the next write(), which is a mem copy, but a small one.
 //
-// this[QUEUE] is a Yallist of entries that haven't been emitted
+// this[QUEUE] is a list of entries that haven't been emitted
 // yet this can only get filled up if the user keeps write()ing after
 // a write() returns false, or does a write() with more than one entry
 //
@@ -20,7 +20,6 @@
 
 import { EventEmitter as EE } from 'events'
 import { BrotliDecompress, Unzip } from 'minizlib'
-import { Yallist } from 'yallist'
 import { Header } from './header.js'
 import { TarOptions } from './options.js'
 import { Pax } from './pax.js'
@@ -79,8 +78,7 @@ export class Parser extends EE implements Warner {
   writable: true = true
   readable: false = false;
 
-  [QUEUE]: Yallist<ReadEntry | [string | symbol, any, any]> =
-    new Yallist();
+  [QUEUE]: (ReadEntry | [string | symbol, any, any])[] = [];
   [BUFFER]?: Buffer;
   [READENTRY]?: ReadEntry;
   [WRITEENTRY]?: ReadEntry;

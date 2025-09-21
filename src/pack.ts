@@ -92,6 +92,14 @@ export class Pack
 
   [WRITEENTRYCLASS]: typeof WriteEntry | typeof WriteEntrySync
   onWriteEntry?: (entry: WriteEntry) => void;
+  // Note: we actually DO need a linked list here, because we
+  // shift() to update the head of the list where we start, but still
+  // while that happens, need to know what the next item in the queue
+  // will be. Since we do multiple jobs in parallel, it's not as simple
+  // as just an Array.shift(), since that would lose the information about
+  // the next job in the list. We could add a .next field on the PackJob
+  // class, but then we'd have to be tracking the tail of the queue the
+  // whole time, and Yallist just does that for us anyway.
   [QUEUE]: Yallist<PackJob>;
   [JOBS]: number = 0;
   [PROCESSING]: boolean = false;
