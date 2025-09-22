@@ -57,16 +57,18 @@ export const filesFilter = (opt: TarOptions, files: string[]) => {
 const listFileSync = (opt: TarOptionsSyncFile) => {
   const p = new Parser(opt)
   const file = opt.file
-  let fd
+  let fd: number | undefined
   try {
-    const stat = fs.statSync(file)
-    const readSize = opt.maxReadSize || 16 * 1024 * 1024
+    fd = fs.openSync(file, 'r')
+    const stat: fs.Stats = fs.fstatSync(fd)
+    const readSize: number = opt.maxReadSize || 16 * 1024 * 1024
     if (stat.size < readSize) {
-      p.end(fs.readFileSync(file))
+      const buf = Buffer.allocUnsafe(stat.size)
+      fs.readSync(fd, buf, 0, stat.size, 0)
+      p.end(buf)
     } else {
       let pos = 0
       const buf = Buffer.allocUnsafe(readSize)
-      fd = fs.openSync(file, 'r')
       while (pos < stat.size) {
         const bytesRead = fs.readSync(fd, buf, 0, readSize, pos)
         pos += bytesRead
