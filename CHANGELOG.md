@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.5
+
+- Added `zstd` compression support.
+
 ## 7.4
 
 - Deprecate `onentry` in favor of `onReadEntry` for clarity.
