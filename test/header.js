@@ -669,3 +669,14 @@ t.test('gnutar-generated 10gb file size', t => {
   t.throws(() => (h.type = 'Z'))
   t.end()
 })
+
+t.test('tarmageddon, ensure that Header prioritizes Pax size', async t => {
+  const h = new Header({
+    path: 'file.txt',
+    size: 0,
+  })
+  h.encode()
+  t.equal(h.size, 0, 'size is zero in raw ustar header')
+  const hPax = new Header(h.block, 0, { size: 123 })
+  t.equal(hPax.size, 123, 'if size is set in pax, takes priority')
+})

@@ -8,6 +8,7 @@ import { Minipass } from 'minipass'
 import { Header } from '../dist/esm/header.js'
 import EE from 'events'
 import { fileURLToPath } from 'url'
+import { Pax } from '../dist/esm/pax.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -994,4 +995,96 @@ t.test('warnings that are not so bad', t => {
     t.end()
   })
   p.end(data)
+})
+
+// verify that node-tar is not vulnerable to tarmageddon attack
+// https://edera.dev/stories/tarmageddon
+t.test('tarmageddon', t => {
+  // this is the nested tarball that will be inside the archive
+
+  const nested = makeTar([
+    {
+      path: 'one',
+      size: 1,
+      type: 'File',
+    },
+    '1',
+  ])
+
+  // gutcheck
+  t.equal(nested.byteLength, 1024)
+
+  // Expect this one to have 2 entries.
+  // First a zero-length nested.tar, then the 'one' file.
+  t.test('no pax, 2 entries', t => {
+    const noPax = makeTar([
+      {
+        path: 'nested.tar',
+        size: 0,
+      },
+      nested,
+      '',
+      '',
+    ])
+
+    const expect = [
+      { size: 0, path: 'nested.tar' },
+      { size: 1, path: 'one' },
+    ]
+
+    const actual = []
+    const p = new Parser()
+    p.on('entry', e => {
+      e.resume()
+      actual.push({
+        size: e.size,
+        path: e.path,
+      })
+    })
+
+    p.on('end', () => {
+      t.strictSame(actual, expect)
+      t.end()
+    })
+
+    p.end(noPax)
+  })
+
+  t.test('with pax, 1 entry', async t => {
+    // when there is a Pax header, that size overrides the size in
+    // the ustar header block.
+    const withPax = makeTar([
+      new Pax({
+        path: 'nested.tar',
+        // actual size of nested tarball, 1024 bytes
+        size: nested.byteLength
+      }).encode(),
+      {
+        path: 'nested.tar',
+        // fake size, attempting to unpack tar's contents directly
+        size: 0,
+      },
+      nested,
+    ])
+
+    // expect a single 1024 byte file entry to be emitted
+    const expect = [{ size: 1024, path: 'nested.tar' }]
+
+    const actual = []
+    const p = new Parser()
+    p.on('entry', e => {
+      actual.push({
+        size: e.size,
+        path: e.path,
+      })
+      e.resume()
+    })
+    p.on('end', () => {
+      t.strictSame(actual, expect)
+      t.end()
+    })
+    p.end(withPax)
+  })
+
+  t.end()
 })
