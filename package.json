@@ -40,7 +40,7 @@
     "tshy": "^1.13.1",
     "typedoc": "^0.25.13"
   },
-  "license": "ISC",
+  "license": "BlueOak-1.0.0",
   "engines": {
     "node": ">=18"
   },
