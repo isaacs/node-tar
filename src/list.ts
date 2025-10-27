@@ -64,8 +64,8 @@ const listFileSync = (opt: TarOptionsSyncFile) => {
     const readSize: number = opt.maxReadSize || 16 * 1024 * 1024
     if (stat.size < readSize) {
       const buf = Buffer.allocUnsafe(stat.size)
-      fs.readSync(fd, buf, 0, stat.size, 0)
-      p.end(buf)
+      const bytesRead = fs.readSync(fd, buf, 0, stat.size, 0)
+      p.end(buf.subarray(0, bytesRead))
     } else {
       let pos = 0
       const buf = Buffer.allocUnsafe(readSize)
