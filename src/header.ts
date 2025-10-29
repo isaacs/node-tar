@@ -86,12 +86,12 @@ export class Header implements HeaderData {
       throw new Error('need 512 bytes for header')
     }
 
-    this.path = decString(buf, off, 100)
-    this.mode = decNumber(buf, off + 100, 8)
-    this.uid = decNumber(buf, off + 108, 8)
-    this.gid = decNumber(buf, off + 116, 8)
-    this.size = decNumber(buf, off + 124, 12)
-    this.mtime = decDate(buf, off + 136, 12)
+    this.path = ex?.path ?? decString(buf, off, 100)
+    this.mode = ex?.mode ?? gex?.mode ?? decNumber(buf, off + 100, 8)
+    this.uid = ex?.uid ?? gex?.uid ?? decNumber(buf, off + 108, 8)
+    this.gid = ex?.gid ?? gex?.gid ?? decNumber(buf, off + 116, 8)
+    this.size = ex?.size ?? gex?.size ?? decNumber(buf, off + 124, 12)
+    this.mtime = ex?.mtime ?? gex?.mtime ?? decDate(buf, off + 136, 12)
     this.cksum = decNumber(buf, off + 148, 12)
 
     // if we have extended or global extended headers, apply them now
@@ -123,11 +123,11 @@ export class Header implements HeaderData {
       buf.subarray(off + 257, off + 265).toString() ===
       'ustar\u000000'
     ) {
-      this.uname = decString(buf, off + 265, 32)
-      this.gname = decString(buf, off + 297, 32)
       /* c8 ignore start */
-      this.devmaj = decNumber(buf, off + 329, 8) ?? 0
-      this.devmin = decNumber(buf, off + 337, 8) ?? 0
+      this.uname = ex?.uname ?? gex?.uname ?? decString(buf, off + 265, 32)
+      this.gname = ex?.gname ?? gex?.gname ?? decString(buf, off + 297, 32)
+      this.devmaj = ex?.devmaj ?? gex?.devmaj ?? decNumber(buf, off + 329, 8) ?? 0
+      this.devmin = ex?.devmin ?? gex?.devmin ?? decNumber(buf, off + 337, 8) ?? 0
       /* c8 ignore stop */
       if (buf[off + 475] !== 0) {
         // definitely a prefix, definitely >130 chars.
@@ -138,8 +138,10 @@ export class Header implements HeaderData {
         if (prefix) {
           this.path = prefix + '/' + this.path
         }
-        this.atime = decDate(buf, off + 476, 12)
-        this.ctime = decDate(buf, off + 488, 12)
+        /* c8 ignore start */
+        this.atime = ex?.atime ?? gex?.atime ?? decDate(buf, off + 476, 12)
+        this.ctime = ex?.ctime ?? gex?.ctime ?? decDate(buf, off + 488, 12)
+        /* c8 ignore stop */
       }
     }
 
