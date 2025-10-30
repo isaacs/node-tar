@@ -91,7 +91,8 @@ export class Header implements HeaderData {
     this.uid = ex?.uid ?? gex?.uid ?? decNumber(buf, off + 108, 8)
     this.gid = ex?.gid ?? gex?.gid ?? decNumber(buf, off + 116, 8)
     this.size = ex?.size ?? gex?.size ?? decNumber(buf, off + 124, 12)
-    this.mtime = ex?.mtime ?? gex?.mtime ?? decDate(buf, off + 136, 12)
+    this.mtime =
+      ex?.mtime ?? gex?.mtime ?? decDate(buf, off + 136, 12)
     this.cksum = decNumber(buf, off + 148, 12)
 
     // if we have extended or global extended headers, apply them now
@@ -124,10 +125,14 @@ export class Header implements HeaderData {
       'ustar\u000000'
     ) {
       /* c8 ignore start */
-      this.uname = ex?.uname ?? gex?.uname ?? decString(buf, off + 265, 32)
-      this.gname = ex?.gname ?? gex?.gname ?? decString(buf, off + 297, 32)
-      this.devmaj = ex?.devmaj ?? gex?.devmaj ?? decNumber(buf, off + 329, 8) ?? 0
-      this.devmin = ex?.devmin ?? gex?.devmin ?? decNumber(buf, off + 337, 8) ?? 0
+      this.uname =
+        ex?.uname ?? gex?.uname ?? decString(buf, off + 265, 32)
+      this.gname =
+        ex?.gname ?? gex?.gname ?? decString(buf, off + 297, 32)
+      this.devmaj =
+        ex?.devmaj ?? gex?.devmaj ?? decNumber(buf, off + 329, 8) ?? 0
+      this.devmin =
+        ex?.devmin ?? gex?.devmin ?? decNumber(buf, off + 337, 8) ?? 0
       /* c8 ignore stop */
       if (buf[off + 475] !== 0) {
         // definitely a prefix, definitely >130 chars.
@@ -139,8 +144,10 @@ export class Header implements HeaderData {
           this.path = prefix + '/' + this.path
         }
         /* c8 ignore start */
-        this.atime = ex?.atime ?? gex?.atime ?? decDate(buf, off + 476, 12)
-        this.ctime = ex?.ctime ?? gex?.ctime ?? decDate(buf, off + 488, 12)
+        this.atime =
+          ex?.atime ?? gex?.atime ?? decDate(buf, off + 476, 12)
+        this.ctime =
+          ex?.ctime ?? gex?.ctime ?? decDate(buf, off + 488, 12)
         /* c8 ignore stop */
       }
     }

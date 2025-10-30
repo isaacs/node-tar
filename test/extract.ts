@@ -490,7 +490,10 @@ t.test('zstd', async t => {
 
   t.test('succeeds based on magic bytes', async t => {
     // copy the file to a new location with a different extension
-    const unknownExtension = path.resolve(__dirname, 'zstd/example.unknown')
+    const unknownExtension = path.resolve(
+      __dirname,
+      'zstd/example.unknown',
+    )
     fs.copyFileSync(file, unknownExtension)
 
     x({ sync: true, file: unknownExtension, C: dir })

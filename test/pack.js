@@ -47,7 +47,7 @@ t.test('set up', t => {
   if (one.dev !== two.dev || one.ino !== two.ino) {
     try {
       fs.unlinkSync(files + '/hardlink-2')
-    } catch (e) { }
+    } catch (e) {}
     fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   }
   chmodr.sync(files, 0o644)
@@ -1419,30 +1419,30 @@ t.test('warnings', t => {
 
   t.test('preservePaths=true', t => {
     t.plan(2)
-      // with preservePaths, strictness doens't matter
-      ;[true, false].forEach(strict => {
-        t.test('strict=' + strict, t => {
-          const warnings = []
-          const out = []
-          const p = new Pack({
-            cwd: files,
-            strict: strict,
-            preservePaths: true,
-            onwarn: (c, m, p) => warnings.push([c, m, p]),
-          })
-            .end(f)
-            .on('data', c => out.push(c))
-          p.on('end', _ => {
-            const data = Buffer.concat(out)
-            t.equal(warnings.length, 0)
+    // with preservePaths, strictness doens't matter
+    ;[true, false].forEach(strict => {
+      t.test('strict=' + strict, t => {
+        const warnings = []
+        const out = []
+        const p = new Pack({
+          cwd: files,
+          strict: strict,
+          preservePaths: true,
+          onwarn: (c, m, p) => warnings.push([c, m, p]),
+        })
+          .end(f)
+          .on('data', c => out.push(c))
+        p.on('end', _ => {
+          const data = Buffer.concat(out)
+          t.equal(warnings.length, 0)
 
-            t.match(new Header(data), {
-              path: normPath(f),
-            })
-            t.end()
+          t.match(new Header(data), {
+            path: normPath(f),
           })
+          t.end()
         })
       })
+    })
   })
 
   t.test('preservePaths=false strict=true', t => {

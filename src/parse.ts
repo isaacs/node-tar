@@ -140,7 +140,7 @@ export class Parser extends EE implements Warner {
     this.brotli =
       !(opt.gzip || opt.zstd) && opt.brotli !== undefined ? opt.brotli
       : isTBR ? undefined
-        : false
+      : false
 
     // zstd has magic bytes to identify it, but we also support explicit options
     // and file extension detection
@@ -150,7 +150,7 @@ export class Parser extends EE implements Warner {
     this.zstd =
       !(opt.gzip || opt.brotli) && opt.zstd !== undefined ? opt.zstd
       : isTZST ? true
-        : undefined
+      : undefined
 
     // have to set this so that streams are ok piping into it
     this.on('end', () => this[CLOSESTREAM]())
@@ -517,10 +517,8 @@ export class Parser extends EE implements Warner {
         const ended = this[ENDED]
         this[ENDED] = false
         this[UNZIP] =
-          this[UNZIP] === undefined ?
-            new Unzip({})
-          : isZstd ?
-            new ZstdDecompress({})
+          this[UNZIP] === undefined ? new Unzip({})
+          : isZstd ? new ZstdDecompress({})
           : new BrotliDecompress({})
         this[UNZIP].on('data', chunk => this[CONSUMECHUNK](chunk))
         this[UNZIP].on('error', er => this.abort(er as Error))

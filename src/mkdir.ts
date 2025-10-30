@@ -151,15 +151,7 @@ const onmkdir =
             fs.mkdir(
               part,
               mode,
-              onmkdir(
-                part,
-                parts,
-                mode,
-                unlink,
-                cwd,
-                created,
-                cb,
-              ),
+              onmkdir(part, parts, mode, unlink, cwd, created, cb),
             )
           })
         } else if (st.isSymbolicLink()) {
@@ -225,7 +217,9 @@ export const mkdirSync = (dir: string, opt: MkdirOptions) => {
   }
 
   if (preserve) {
-    return done(fs.mkdirSync(dir, { mode, recursive: true }) ?? undefined)
+    return done(
+      fs.mkdirSync(dir, { mode, recursive: true }) ?? undefined,
+    )
   }
 
   const sub = normalizeWindowsPath(path.relative(cwd, dir))

@@ -297,22 +297,19 @@ t.test('fixture tests', t => {
           bs.end(zlib.brotliCompressSync(tardata))
         })
 
-        t.test(
-          'compress with zstd based on filename .tar.zst',
-          t => {
-            const p = new Parser({
-              maxMetaEntrySize: maxMeta,
-              filter:
-                filter ?
-                  (_path, entry) => entry.size % 2 !== 0
-                  : undefined,
-              strict: strict,
-              file: 'example.tar.zst',
-            })
-            trackEvents(t, expect, p)
-            p.end(zlib.zstdCompressSync(tardata))
-          },
-        )
+        t.test('compress with zstd based on filename .tar.zst', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter:
+              filter ?
+                (_path, entry) => entry.size % 2 !== 0
+              : undefined,
+            strict: strict,
+            file: 'example.tar.zst',
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.zstdCompressSync(tardata))
+        })
 
         t.test('compress with zstd based on filename .tzst', t => {
           const p = new Parser({
@@ -320,7 +317,7 @@ t.test('fixture tests', t => {
             filter:
               filter ?
                 (_path, entry) => entry.size % 2 !== 0
-                : undefined,
+              : undefined,
             strict: strict,
             file: 'example.tzst',
           })
@@ -334,7 +331,7 @@ t.test('fixture tests', t => {
             filter:
               filter ?
                 (_path, entry) => entry.size % 2 !== 0
-                : undefined,
+              : undefined,
             strict: strict,
             zstd: {},
           })
@@ -349,7 +346,7 @@ t.test('fixture tests', t => {
             filter:
               filter ?
                 (_path, entry) => entry.size % 2 !== 0
-                : undefined,
+              : undefined,
             strict: strict,
             zstd: {},
           })
@@ -365,7 +362,7 @@ t.test('fixture tests', t => {
             filter:
               filter ?
                 (_path, entry) => entry.size % 2 !== 0
-                : undefined,
+              : undefined,
             strict: strict,
             file: 'example.tzst',
           })
@@ -1057,7 +1054,7 @@ t.test('tarmageddon', t => {
       new Pax({
         path: 'nested.tar',
         // actual size of nested tarball, 1024 bytes
-        size: nested.byteLength
+        size: nested.byteLength,
       }).encode(),
       {
         path: 'nested.tar',

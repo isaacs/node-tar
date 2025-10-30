@@ -103,7 +103,6 @@ Handlers receive 3 arguments:
 
 - `TAR_ENTRY_INVALID` An indication that a given entry is not a valid tar
   archive entry, and will be skipped. This occurs when:
-
   - a checksum fails,
   - a `linkpath` is missing for a link type, or
   - a `linkpath` is provided for a non-link type.
@@ -115,7 +114,6 @@ Handlers receive 3 arguments:
 - `TAR_ENTRY_ERROR` The entry appears to be a valid tar archive entry, but
   encountered an error which prevented it from being unpacked. This occurs
   when:
-
   - an unrecoverable fs error happens during unpacking,
   - an entry is trying to extract into an excessively deep
     location (by default, limited to 1024 subfolders),
@@ -133,7 +131,6 @@ Handlers receive 3 arguments:
 
 - `TAR_BAD_ARCHIVE` The archive file is totally hosed. This can happen for
   a number of reasons, and always occurs at the end of a parse or extract:
-
   - An entry body was truncated before seeing the full number of bytes.
   - The archive contained only invalid entries, indicating that it is
     likely not an archive, or at least, not an archive this library can

@@ -126,12 +126,12 @@ export interface TarOptions {
   /**
    * Set to `true` or an object with settings for `zstd.compress()` to
    * create a zstd-compressed archive
-   * 
+   *
    * When extracting, this will cause the archive to be treated as a
    * zstd-compressed file if set to `true` or a ZlibOptions object.
-   * 
+   *
    * If set `false`, then zstd options will not be used.
-   * 
+   *
    * If this, the `gzip`, and `brotli` options are left `undefined`, then tar
    * will attempt to infer the zstd compression status, but can only do so
    * based on the filename. If the filename ends in `.tzst` or `.tar.zst`, and

@@ -5,6 +5,7 @@
 
 # keep these
 !**/.gitignore
+!/.prettierignore
 !/src
 !/.tshy
 !/.commitlintrc.js
