@@ -1,4 +1,4 @@
-import fs, { readFileSync } from 'fs'
+import fs, { readFileSync, Stats } from 'fs'
 //@ts-ignore
 import mutateFS from 'mutate-fs'
 import { dirname, resolve } from 'path'
@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url'
 import { list } from '../dist/esm/list.js'
 import { Parser } from '../dist/esm/parse.js'
 import { ReadEntry } from '../dist/esm/read-entry.js'
+import { makeTar } from './fixtures/make-tar.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -275,4 +276,95 @@ t.test('typechecks', t => {
   p.then
   t.type(p, Parser)
   t.end()
+})
+
+// GHSA-29xp-372q-xqph
+t.test('reduce file size while synchronously reading', async t => {
+  const data = makeTar([
+    {
+      type: 'File',
+      path: 'a',
+      size: 1,
+    },
+    'a',
+    {
+      type: 'File',
+      path: 'b',
+      size: 1,
+    },
+    'b',
+    '',
+    '',
+  ])
+  const dataLen = data.byteLength
+  const truncLen = 512 * 2
+  const truncData = data.subarray(0, truncLen)
+
+  const setup = async (t: Test) => {
+    const dir = t.testdir({ 'file.tar': data })
+    const file = resolve(dir, 'file.tar')
+    const { list } = await t.mockImport<
+      typeof import('../src/list.js')
+    >('../src/list.js', {
+      'node:fs': t.createMock(fs, {
+        fstatSync: (fd: number): Stats => {
+          const st = fs.fstatSync(fd)
+          // truncate the file before we have a chance to read
+          fs.writeFileSync(file, truncData)
+          return st
+        },
+      }),
+    })
+
+    return { file, list }
+  }
+
+  t.test(
+    'gutcheck, reading normally reads the whole file',
+    async t => {
+      const dir = t.testdir({ 'file.tar': data })
+      const file = resolve(dir, 'file.tar')
+      const entries: string[] = []
+      list({
+        file,
+        sync: true,
+        maxReadSize: dataLen + 1,
+        onReadEntry: e => entries.push(e.path),
+      })
+      t.strictSame(entries, ['a', 'b'])
+
+      entries.length = 0
+      list({
+        file,
+        sync: true,
+        maxReadSize: dataLen - 1,
+        onReadEntry: e => entries.push(e.path),
+      })
+      t.strictSame(entries, ['a', 'b'])
+    },
+  )
+
+  t.test('read in one go', async t => {
+    const { file, list } = await setup(t)
+    const entries: string[] = []
+    list({
+      file,
+      sync: true,
+      maxReadSize: dataLen + 1,
+      onReadEntry: e => entries.push(e.path),
+    })
+    t.strictSame(entries, ['a'])
+  })
+
+  t.test('read in parts', async t => {
+    const { file, list } = await setup(t)
+    const entries: string[] = []
+    list({
+      file,
+      sync: true,
+      maxReadSize: dataLen / 4,
+      onReadEntry: e => entries.push(e.path),
+    })
+    t.strictSame(entries, ['a'])
+  })
 })
