@@ -348,15 +348,15 @@ advanced use cases, such as re-using caches between runs.
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
 
-#### Using `onWriteMethod` to alter entries
+#### Using `onWriteEntry` to alter entries
 
-The `onWriteMethod` function, if provided, will get a reference
+The `onWriteEntry` function, if provided, will get a reference
 to each `entry` object on its way into the archive.
 
 If any fields on this entry are changed, then these changes will
 be reflected in the entry that is written to the archive.
 
-The return value of the method is ignored. All that matters is
+The return value of the function is ignored. All that matters is
 the final state of the entry object. This can also be used to
 track the files added to an archive, for example.
 
