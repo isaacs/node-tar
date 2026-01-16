@@ -15,8 +15,7 @@ import { Parser } from '../dist/esm/parse.js'
 import { rimraf } from 'rimraf'
 import { normalizeWindowsPath as normPath } from '../dist/esm/normalize-windows-path.js'
 import { fileURLToPath } from 'url'
-
-const { default: chmodr } = await import('chmodr')
+import { chmodrSync } from 'chmodr'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -46,7 +45,7 @@ t.test('set up', t => {
     fs.unlinkSync(files + '/hardlink-2')
     fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   }
-  chmodr.sync(files, isWindows ? 0o666 : 0o644)
+  chmodrSync(files, isWindows ? 0o666 : 0o644)
   t.end()
 })
 

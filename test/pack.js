@@ -14,8 +14,7 @@ import { rimraf } from 'rimraf'
 import { mkdirp } from 'mkdirp'
 import { ReadEntry } from '../dist/esm/read-entry.js'
 import { normalizeWindowsPath as normPath } from '../dist/esm/normalize-windows-path.js'
-
-const { default: chmodr } = await import('chmodr')
+import { chmodrSync } from 'chmodr'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -50,7 +49,7 @@ t.test('set up', t => {
     } catch (e) {}
     fs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
   }
-  chmodr.sync(files, 0o644)
+  chmodrSync(files, 0o644)
   t.end()
 })
 

@@ -6,6 +6,8 @@
 # keep these
 !**/.gitignore
 !/.prettierignore
+!/.prettierrc.json
+!/.taprc
 !/src
 !/.tshy
 !/.commitlintrc.js

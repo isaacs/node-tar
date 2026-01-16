@@ -1,0 +1,4 @@
+# vim: set filetype=yaml :
+coverage-map: "map.js"
+timeout: 0
+typecheck: true
