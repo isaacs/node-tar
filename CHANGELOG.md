@@ -3,6 +3,10 @@
 ## 7.5
 
 - Added `zstd` compression support.
+- Consistent TOCTOU behavior in sync t.list
+- Only read from ustar block if not specified in Pax
+- Fix sync tar.list when file size reduces while reading
+- Sanitize absolute linkpaths properly
 
 ## 7.4
 
