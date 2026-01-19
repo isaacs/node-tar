@@ -9,7 +9,11 @@ const MAX = 10000
 const cache = new Set<string>()
 export const normalizeUnicode = (s: string): string => {
   if (!cache.has(s)) {
-    normalizeCache[s] = s.normalize('NFD')
+    // shake out identical accents and ligatures
+    normalizeCache[s] = s
+      .normalize('NFD')
+      .toLocaleLowerCase('en')
+      .toLocaleUpperCase('en')
   } else {
     cache.delete(s)
   }

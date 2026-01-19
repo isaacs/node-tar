@@ -42,7 +42,10 @@ t.test('verify that linkpaths get sanitized properly', async t => {
   })
 
   writeFileSync(resolve(out, 'exploit_hard'), 'OVERWRITTEN')
-  t.equal(readFileSync(resolve(dir, 'secret.txt'), 'utf8'), 'ORIGINAL DATA')
+  t.equal(
+    readFileSync(resolve(dir, 'secret.txt'), 'utf8'),
+    'ORIGINAL DATA',
+  )
 
   t.not(readlinkSync(resolve(out, 'exploit_sym')), targetSym)
 })

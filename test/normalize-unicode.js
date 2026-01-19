@@ -21,7 +21,7 @@ t.equal(
   'matching unicodes',
 )
 t.equal(normalizeUnicode(cafe1), normalizeUnicode(cafe2), 'cached')
-t.equal(normalizeUnicode('foo'), 'foo', 'non-unicode string')
+t.equal(normalizeUnicode('foo'), 'FOO', 'non-unicode string')
 
 if (fakePlatform === 'win32') {
   t.test('normalize with strip slashes', t => {

@@ -6,25 +6,25 @@
  */
 'use strict'
 exports[`test/normalize-unicode.js win32 > TAP > normalize with strip slashes > "＼＼＼＼＼eee＼＼＼＼＼＼" > normalized 1`] = `
-＼＼＼＼＼eee＼＼＼＼＼＼
+＼＼＼＼＼EEE＼＼＼＼＼＼
 `
 
 exports[`test/normalize-unicode.js win32 > TAP > normalize with strip slashes > "\\\\a\\\\b\\\\c\\\\d\\\\" > normalized 1`] = `
-/a/b/c/d
+/A/B/C/D
 `
 
 exports[`test/normalize-unicode.js win32 > TAP > normalize with strip slashes > "﹨aaaa﹨dddd﹨" > normalized 1`] = `
-﹨aaaa﹨dddd﹨
+﹨AAAA﹨DDDD﹨
 `
 
 exports[`test/normalize-unicode.js win32 > TAP > normalize with strip slashes > "＼bbb＼eee＼" > normalized 1`] = `
-＼bbb＼eee＼
+＼BBB＼EEE＼
 `
 
 exports[`test/normalize-unicode.js win32 > TAP > normalize with strip slashes > "1/4foo.txt" > normalized 1`] = `
-1/4foo.txt
+1/4FOO.TXT
 `
 
 exports[`test/normalize-unicode.js win32 > TAP > normalize with strip slashes > "¼foo.txt" > normalized 1`] = `
-¼foo.txt
+¼FOO.TXT
 `

@@ -56,9 +56,7 @@ export class PathReservations {
         ['win32 parallelization disabled']
       : paths.map(p => {
           // don't need normPath, because we skip this entirely for windows
-          return stripTrailingSlashes(
-            join(normalizeUnicode(p)),
-          ).toLowerCase()
+          return stripTrailingSlashes(join(normalizeUnicode(p)))
         })
 
     const dirs = new Set<string>(
