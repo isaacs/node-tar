@@ -1,6 +1,6 @@
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
 
-import fs, { readdirSync } from 'fs'
+import fs, { readdirSync, statSync } from 'fs'
 import { Minipass } from 'minipass'
 import * as z from 'minizlib'
 import path from 'path'
@@ -8,6 +8,7 @@ import { rimraf } from 'rimraf'
 import t from 'tap'
 import { fileURLToPath } from 'url'
 import { Header } from '../dist/esm/header.js'
+import { extract } from '../dist/esm/extract.js'
 import { makeTar } from './fixtures/make-tar.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -3337,3 +3338,87 @@ t.test('ignore self-referential hardlinks', async t => {
     check(t, warnings)
   })
 })
+
+t.test(
+  'valid relative symlink with .. should be extracted',
+  async t => {
+    const makeTar = () => {
+      // foo/file.txt (regular file)
+      // bar/link.txt -> ../foo/file.txt (valid relative symlink)
+      const chunks = []
+
+      const fooDirHeader = Buffer.alloc(512)
+      new Header({
+        path: 'foo/',
+        type: 'Directory',
+        mode: 0o755,
+      }).encode(fooDirHeader, 0)
+      chunks.push(fooDirHeader)
+
+      const fileContent = 'hello world'
+      const fileHeader = Buffer.alloc(512)
+      new Header({
+        path: 'foo/file.txt',
+        type: 'File',
+        mode: 0o644,
+        size: fileContent.length,
+      }).encode(fileHeader, 0)
+      chunks.push(fileHeader)
+
+      const contentBuf = Buffer.alloc(512)
+      contentBuf.write(fileContent)
+      chunks.push(contentBuf)
+
+      const barDirHeader = Buffer.alloc(512)
+      new Header({
+        path: 'bar/',
+        type: 'Directory',
+        mode: 0o755,
+      }).encode(barDirHeader, 0)
+      chunks.push(barDirHeader)
+
+      const symlinkHeader = Buffer.alloc(512)
+      new Header({
+        path: 'bar/link.txt',
+        type: 'SymbolicLink',
+        linkpath: '../foo/file.txt',
+      }).encode(symlinkHeader, 0)
+      chunks.push(symlinkHeader)
+
+      const escapedSymlinkHeader = Buffer.alloc(512)
+      new Header({
+        path: 'bar/badlink.txt',
+        type: 'SymbolicLink',
+        linkpath: '../../oh/no',
+      }).encode(escapedSymlinkHeader)
+      chunks.push(escapedSymlinkHeader)
+
+      chunks.push(Buffer.alloc(1024))
+
+      return Buffer.concat(chunks)
+    }
+
+    const dir = t.testdir({
+      'test.tar': makeTar(),
+    })
+
+    const warnings = []
+
+    await extract({
+      cwd: dir,
+      file: dir + '/test.tar',
+      onwarn: (c, m) => warnings.push([c, m]),
+    })
+
+    t.ok(fs.lstatSync(dir + '/foo/file.txt').isFile())
+    t.ok(fs.lstatSync(dir + '/bar/link.txt').isSymbolicLink())
+    t.equal(fs.readlinkSync(dir + '/bar/link.txt'), '../foo/file.txt')
+    t.equal(
+      fs.readFileSync(dir + '/bar/link.txt', 'utf8'),
+      'hello world',
+    )
+    t.throws(() => statSync(dir+ '/bar/badlink.txt'))
+    t.match(warnings, [['TAR_ENTRY_ERROR', 'linkpath escapes extraction directory']])
+
+  },
+)
