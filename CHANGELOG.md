@@ -7,6 +7,8 @@
 - Only read from ustar block if not specified in Pax
 - Fix sync tar.list when file size reduces while reading
 - Sanitize absolute linkpaths properly
+- Prevent writing hardlink entries to the archive ahead of their
+  file target
 
 ## 7.4
 

@@ -70,6 +70,7 @@ export class Pack
   extends Minipass<Buffer, ReadEntry | string, WarnEvent<Buffer>>
   implements Warner
 {
+  sync: boolean = false
   opt: TarOptions
   cwd: string
   maxReadSize?: number
@@ -286,6 +287,18 @@ export class Pack
     // now we have the stat, we can filter it.
     if (!this.filter(job.path, stat)) {
       job.ignore = true
+    } else if (
+      stat.isFile() &&
+      stat.nlink > 1 &&
+      job === this[CURRENT] &&
+      !this.linkCache.get(`${stat.dev}:${stat.ino}`) &&
+      !this.sync
+    ) {
+      // if it's not filtered, and it's a new File entry,
+      // jump the queue in case any pending Link entries are about
+      // to try to link to it. This prevents a hardlink from coming ahead
+      // of its target in the archive.
+      this[PROCESSJOB](job)
     }
 
     this[PROCESS]()

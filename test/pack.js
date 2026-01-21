@@ -1,7 +1,7 @@
 import t from 'tap'
 import { Pack, PackSync } from '../dist/esm/pack.js'
 import fs from 'fs'
-import path from 'path'
+import path, { resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 import { Header } from '../dist/esm/header.js'
@@ -92,9 +92,10 @@ t.test('pack a file', t => {
         throw new Error('no data!')
       }
 
+      t.equal(sync.subarray(512).length, data.subarray(512).length)
       t.equal(
-        sync.subarray(512).toString(),
-        data.subarray(512).toString(),
+        (sync.subarray(512).toString()),
+        (data.subarray(512).toString()),
       )
       const hs = new Header(sync)
       t.match(hs, expect)
@@ -1816,14 +1817,22 @@ t.test('prefix and subdirs', t => {
 
 // https://github.com/npm/node-tar/issues/284
 t.test('prefix and hard links', t => {
-  const dir = path.resolve(fixtures, 'pack-prefix-hardlinks')
-  t.teardown(_ => rimraf.sync(dir))
-  mkdirp.sync(dir + '/in/z/b/c')
-  fs.writeFileSync(dir + '/in/target', 'ddd')
-  fs.linkSync(dir + '/in/target', dir + '/in/z/b/c/d')
-  fs.linkSync(dir + '/in/target', dir + '/in/z/b/d')
-  fs.linkSync(dir + '/in/target', dir + '/in/z/d')
-  fs.linkSync(dir + '/in/target', dir + '/in/y')
+  const target = resolve(t.testdirName, 'in', 'target')
+  const dir = t.testdir({
+    in: {
+      target: 'ddd',
+      z: {
+        b: {
+          c: {
+            d: t.fixture('link', target),
+          },
+          d: t.fixture('link', target),
+        },
+        d: t.fixture('link', target),
+      },
+      y: t.fixture('link', target),
+    },
+  })
 
   const expect = [
     'out/x/\0',
@@ -1901,14 +1910,14 @@ t.test('prefix and hard links', t => {
     p.end()
   }
 
-  t.test('async', t => {
+  t.test('async', async t => {
     t.test('.', t => runTest(t, '.', Pack))
-    return t.test('./', t => runTest(t, './', Pack))
+    t.test('./', t => runTest(t, './', Pack))
   })
 
-  t.test('sync', t => {
+  t.test('sync', async t => {
     t.test('.', t => runTest(t, '.', PackSync))
-    return t.test('./', t => runTest(t, './', PackSync))
+    t.test('./', t => runTest(t, './', PackSync))
   })
 
   t.end()

@@ -167,7 +167,6 @@ t.test('create', t => {
   const p = c(['README.md'])
   //@ts-expect-error
   p.then
-  //@ts-expect-error
   p.sync
   t.type(c(['README.md']), Pack)
 
