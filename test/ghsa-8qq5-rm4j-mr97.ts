@@ -23,6 +23,20 @@ const getExploitTar = () => {
   }).encode(hardHeader, 0)
   chunks.push(hardHeader)
 
+  const hardSubHeader = Buffer.alloc(1024)
+  new Header({
+    path: 'sub/',
+    type: 'Directory',
+    size: 0,
+  }).encode(hardSubHeader, 0)
+  new Header({
+    path: 'sub/exploit_sub',
+    type: 'Link',
+    size: 0,
+    linkpath: '../secret.txt',
+  }).encode(hardSubHeader, 512)
+  chunks.push(hardSubHeader)
+
   const symHeader = Buffer.alloc(512)
   new Header({
     path: 'exploit_sym',
@@ -73,6 +87,12 @@ t.test('hardlink escape does not clobber target', async t => {
   await x({ cwd: out, file: tarFile })
 
   writeFileSync(resolve(out, 'exploit_hard'), 'OVERWRITTEN')
+  t.equal(
+    readFileSync(resolve(dir, 'secret.txt'), 'utf8'),
+    'ORIGINAL DATA',
+  )
+
+  writeFileSync(resolve(out, 'sub/exploit_sub'), 'OVERWRITTEN SUB')
   t.equal(
     readFileSync(resolve(dir, 'secret.txt'), 'utf8'),
     'ORIGINAL DATA',

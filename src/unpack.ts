@@ -271,6 +271,7 @@ export class Unpack extends Parser {
     field: 'path' | 'linkpath',
   ): boolean {
     const p = entry[field]
+    const { type } = entry
     if (!p || this.preservePaths) return true
 
     const parts = p.split('/')
@@ -284,7 +285,7 @@ export class Unpack extends Parser {
       // just rejecting any path with '..' - relative symlinks like
       // '../sibling/file' are valid if they resolve within the cwd.
       // For paths, they just simply may not ever use .. at all.
-      if (field === 'path') {
+      if (field === 'path' || type === 'Link') {
         this.warn('TAR_ENTRY_ERROR', `${field} contains '..'`, {
           entry,
           [field]: p,
