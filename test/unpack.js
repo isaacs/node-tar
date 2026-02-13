@@ -1,6 +1,6 @@
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
 
-import fs, { readdirSync, statSync } from 'fs'
+import fs from 'fs'
 import { Minipass } from 'minipass'
 import * as z from 'minizlib'
 import path from 'path'
@@ -3317,7 +3317,7 @@ t.test('ignore self-referential hardlinks', async t => {
   ])
   const check = (t, warnings) => {
     t.matchSnapshot(warnings)
-    t.strictSame(readdirSync(t.testdirName), [], 'nothing extracted')
+    t.strictSame(fs.readdirSync(t.testdirName), [], 'nothing extracted')
     t.end()
   }
   t.test('async', t => {
@@ -3417,8 +3417,70 @@ t.test(
       fs.readFileSync(dir + '/bar/link.txt', 'utf8'),
       'hello world',
     )
-    t.throws(() => statSync(dir+ '/bar/badlink.txt'))
-    t.match(warnings, [['TAR_ENTRY_ERROR', 'linkpath escapes extraction directory']])
-
+    t.throws(() => fs.statSync(dir + '/bar/badlink.txt'))
+    t.match(warnings, [
+      ['TAR_ENTRY_ERROR', 'linkpath escapes extraction directory'],
+    ])
   },
 )
+
+t.test('no linking through a symlink', t => {
+  const types = ['Link', 'SymbolicLink']
+  for (const type of types) {
+    t.test(type, t => {
+      const exploit = makeTar([
+        {
+          type: 'SymbolicLink',
+          path: 'a/b/up',
+          linkpath: '../..',
+          mode: 0o755,
+        },
+        {
+          type: 'SymbolicLink',
+          path: 'a/b/escape',
+          linkpath: 'up/..',
+          mode: 0o755,
+        },
+        {
+          type,
+          path: 'exploit',
+          linkpath: 'a/b/escape/exploited-file',
+          mode: 0o755,
+        },
+        '',
+        '',
+      ])
+      const setup = t =>  t.testdir({
+        x: {},
+        'exploited-file': 'original content',
+      })
+      const check = t => {
+        fs.writeFileSync(t.testdirName + '/x/exploit', 'pwned')
+        t.equal(
+          fs.readFileSync(t.testdirName + '/exploited-file', 'utf8'),
+          'original content',
+        )
+      }
+      t.test('sync', t => {
+        const cwd = setup(t)
+        t.throws(() => {
+          new UnpackSync({ cwd, strict: true }).end(exploit)
+        })
+        check(t)
+        t.end()
+      })
+      t.test('async', async t => {
+        const cwd = setup(t)
+        await t.rejects(new Promise((res, rej) => {
+          new Unpack({ cwd, strict: true })
+            .on('finish', res)
+            .on('error', rej)
+            .end(exploit)
+        }))
+        check(t)
+      })
+      t.end()
+    })
+  }
+  t.end()
+})

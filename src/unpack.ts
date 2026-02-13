@@ -20,6 +20,8 @@ import { TarOptions } from './options.js'
 import { PathReservations } from './path-reservations.js'
 import { ReadEntry } from './read-entry.js'
 import { WarnData } from './warn-method.js'
+import { SymlinkError } from './symlink-error.js'
+import { umask } from './process-umask.js'
 
 const ONENTRY = Symbol('onEntry')
 const CHECKFS = Symbol('checkFs')
@@ -31,6 +33,7 @@ const DIRECTORY = Symbol('directory')
 const LINK = Symbol('link')
 const SYMLINK = Symbol('symlink')
 const HARDLINK = Symbol('hardlink')
+const ENSURE_NO_SYMLINK = Symbol('ensureNoSymlink')
 const UNSUPPORTED = Symbol('unsupported')
 const CHECKPATH = Symbol('checkPath')
 const STRIPABSOLUTEPATH = Symbol('stripAbsolutePath')
@@ -235,7 +238,7 @@ export class Unpack extends Parser {
     this.processUmask =
       !this.chmod ? 0
       : typeof opt.processUmask === 'number' ? opt.processUmask
-      : process.umask()
+      : umask()
     this.umask =
       typeof opt.umask === 'number' ? opt.umask : this.processUmask
 
@@ -332,6 +335,7 @@ export class Unpack extends Parser {
     return true
   }
 
+  // no IO, just string checking for absolute indicators
   [CHECKPATH](entry: ReadEntry) {
     const p = normalizeWindowsPath(entry.path)
     const parts = p.split('/')
@@ -663,14 +667,66 @@ export class Unpack extends Parser {
   }
 
   [SYMLINK](entry: ReadEntry, done: () => void) {
-    this[LINK](entry, String(entry.linkpath), 'symlink', done)
+    const parts = normalizeWindowsPath(
+      path.relative(
+        this.cwd,
+        path.resolve(
+          path.dirname(String(entry.absolute)),
+          String(entry.linkpath),
+        ),
+      ),
+    ).split('/')
+    this[ENSURE_NO_SYMLINK](
+      entry,
+      this.cwd,
+      parts,
+      () =>
+        this[LINK](entry, String(entry.linkpath), 'symlink', done),
+      er => {
+        this[ONERROR](er, entry)
+        done()
+      },
+    )
   }
 
   [HARDLINK](entry: ReadEntry, done: () => void) {
     const linkpath = normalizeWindowsPath(
       path.resolve(this.cwd, String(entry.linkpath)),
     )
-    this[LINK](entry, linkpath, 'link', done)
+    const parts = normalizeWindowsPath(String(entry.linkpath)).split(
+      '/',
+    )
+    this[ENSURE_NO_SYMLINK](
+      entry,
+      this.cwd,
+      parts,
+      () => this[LINK](entry, linkpath, 'link', done),
+      er => {
+        this[ONERROR](er, entry)
+        done()
+      },
+    )
+  }
+
+  [ENSURE_NO_SYMLINK](
+    entry: ReadEntry,
+    cwd: string,
+    parts: string[],
+    done: () => void,
+    onError: (er: SymlinkError) => void,
+  ) {
+    const p = parts.shift()
+    if (this.preservePaths || p === undefined) return done()
+    const t = path.resolve(cwd, p)
+    fs.lstat(t, (er, st) => {
+      if (er) return done()
+      if (st?.isSymbolicLink()) {
+        return onError(
+          new SymlinkError(t, path.resolve(t, parts.join('/'))),
+        )
+      }
+      this[ENSURE_NO_SYMLINK](entry, t, parts, done, onError)
+    })
   }
 
   [PEND]() {
@@ -851,7 +907,6 @@ export class Unpack extends Parser {
     link: 'link' | 'symlink',
     done: () => void,
   ) {
-    // XXX: get the type ('symlink' or 'junction') for windows
     fs[link](linkpath, String(entry.absolute), er => {
       if (er) {
         this[ONERROR](er, entry)
@@ -864,11 +919,13 @@ export class Unpack extends Parser {
   }
 }
 
-const callSync = (fn: () => any) => {
+const callSync = <T>(
+  fn: () => T,
+): [null, T] | [NodeJS.ErrnoException, null] => {
   try {
     return [null, fn()]
   } catch (er) {
-    return [er, null]
+    return [er as NodeJS.ErrnoException, null]
   }
 }
 
@@ -1089,15 +1146,37 @@ export class UnpackSync extends Unpack {
     }
   }
 
+  [ENSURE_NO_SYMLINK](
+    _entry: ReadEntry,
+    cwd: string,
+    parts: string[],
+    done: () => void,
+    onError: (er: SymlinkError) => void,
+  ) {
+    if (this.preservePaths || !parts.length) return done()
+    let t = cwd
+    for (const p of parts) {
+      t = path.resolve(t, p)
+      const [er, st] = callSync(() => fs.lstatSync(t))
+      if (er) return done()
+      if (st.isSymbolicLink()) {
+        return onError(
+          new SymlinkError(t, path.resolve(t, parts.join('/'))),
+        )
+      }
+    }
+    done()
+  }
+
   [LINK](
     entry: ReadEntry,
     linkpath: string,
     link: 'link' | 'symlink',
     done: () => void,
   ) {
-    const ls: `${typeof link}Sync` = `${link}Sync`
+    const linkSync: `${typeof link}Sync` = `${link}Sync`
     try {
-      fs[ls](linkpath, String(entry.absolute))
+      fs[linkSync](linkpath, String(entry.absolute))
       done()
       entry.resume()
     } catch (er) {
