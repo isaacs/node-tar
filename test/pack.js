@@ -94,8 +94,8 @@ t.test('pack a file', t => {
 
       t.equal(sync.subarray(512).length, data.subarray(512).length)
       t.equal(
-        (sync.subarray(512).toString()),
-        (data.subarray(512).toString()),
+        sync.subarray(512).toString(),
+        data.subarray(512).toString(),
       )
       const hs = new Header(sync)
       t.match(hs, expect)

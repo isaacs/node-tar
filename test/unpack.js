@@ -3317,7 +3317,11 @@ t.test('ignore self-referential hardlinks', async t => {
   ])
   const check = (t, warnings) => {
     t.matchSnapshot(warnings)
-    t.strictSame(fs.readdirSync(t.testdirName), [], 'nothing extracted')
+    t.strictSame(
+      fs.readdirSync(t.testdirName),
+      [],
+      'nothing extracted',
+    )
     t.end()
   }
   t.test('async', t => {
@@ -3450,10 +3454,11 @@ t.test('no linking through a symlink', t => {
         '',
         '',
       ])
-      const setup = t =>  t.testdir({
-        x: {},
-        'exploited-file': 'original content',
-      })
+      const setup = t =>
+        t.testdir({
+          x: {},
+          'exploited-file': 'original content',
+        })
       const check = t => {
         fs.writeFileSync(t.testdirName + '/x/exploit', 'pwned')
         t.equal(
@@ -3463,20 +3468,38 @@ t.test('no linking through a symlink', t => {
       }
       t.test('sync', t => {
         const cwd = setup(t)
-        t.throws(() => {
-          new UnpackSync({ cwd, strict: true }).end(exploit)
-        })
+        t.throws(
+          () => {
+            new UnpackSync({ cwd, strict: true }).end(exploit)
+          },
+          {
+            name: 'SymlinkError',
+            message: /^TAR_SYMLINK_ERROR/,
+            path: /a.b.escape.exploited-file$/,
+            symlink: /a.b.escape$/,
+          },
+        )
         check(t)
         t.end()
       })
       t.test('async', async t => {
         const cwd = setup(t)
-        await t.rejects(new Promise((res, rej) => {
-          new Unpack({ cwd, strict: true })
-            .on('finish', res)
-            .on('error', rej)
-            .end(exploit)
-        }))
+        await t.rejects(
+          new Promise(
+            (res, rej) => {
+              new Unpack({ cwd, strict: true })
+                .on('finish', res)
+                .on('error', rej)
+                .end(exploit)
+            },
+            {
+              name: 'SymlinkError',
+              message: /^TAR_SYMLINK_ERROR/,
+              path: /a.b.escape.exploited-file$/,
+              symlink: /a.b.escape$/,
+            },
+          ),
+        )
         check(t)
       })
       t.end()

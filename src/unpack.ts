@@ -1161,7 +1161,7 @@ export class UnpackSync extends Unpack {
       if (er) return done()
       if (st.isSymbolicLink()) {
         return onError(
-          new SymlinkError(t, path.resolve(t, parts.join('/'))),
+          new SymlinkError(t, path.resolve(cwd, parts.join('/'))),
         )
       }
     }
