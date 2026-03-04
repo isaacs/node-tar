@@ -8,7 +8,7 @@ const { isAbsolute, parse } = win32
 // explicitly if it's the first character.
 // drive-specific relative paths on Windows get their root stripped off even
 // though they are not absolute, so `c:../foo` becomes ['c:', '../foo']
-export const stripAbsolutePath = (path: string) => {
+export const stripAbsolutePath = (path: string): [string, string] => {
   let r = ''
 
   let parsed = parse(path)

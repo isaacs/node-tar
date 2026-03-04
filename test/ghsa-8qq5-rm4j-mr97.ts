@@ -70,6 +70,14 @@ const getExploitTar = () => {
   }).encode(absWithDotDotHeader, 0)
   chunks.push(absWithDotDotHeader)
 
+  const winAbsWithDotDotHeader = Buffer.alloc(512)
+  new Header({
+    path: 'a/winrootdotslink',
+    type: 'SymbolicLink',
+    linkpath: 'c:..\\foo\\bar',
+  }).encode(winAbsWithDotDotHeader, 0)
+  chunks.push(winAbsWithDotDotHeader)
+
   chunks.push(Buffer.alloc(1024))
   return Buffer.concat(chunks)
 }
@@ -83,9 +91,9 @@ const dir = t.testdir({
 const out = resolve(dir, 'out')
 const tarFile = resolve(dir, 'exploit.tar')
 
-t.test('hardlink escape does not clobber target', async t => {
-  await x({ cwd: out, file: tarFile })
+t.before(() => x({ cwd: out, file: tarFile }))
 
+t.test('writefile exploits fail', async t => {
   writeFileSync(resolve(out, 'exploit_hard'), 'OVERWRITTEN')
   t.equal(
     readFileSync(resolve(dir, 'secret.txt'), 'utf8'),
@@ -100,8 +108,6 @@ t.test('hardlink escape does not clobber target', async t => {
 })
 
 t.test('symlink escapes are sanitized', async t => {
-  await x({ cwd: out, file: tarFile })
-
   t.not(readlinkSync(resolve(out, 'exploit_sym')), targetSym)
   t.throws(() => lstatSync(resolve(out, 'secret.txt')), {
     code: 'ENOENT',
@@ -109,11 +115,15 @@ t.test('symlink escapes are sanitized', async t => {
 })
 
 t.test('absolute symlink with .. has prefix stripped', async t => {
-  await x({ cwd: out, file: tarFile })
-
   t.equal(
     readlinkSync(resolve(out, 'a/link')),
     '../a/target',
+    'symlink target should be normalized',
+  )
+
+  t.equal(
+    readlinkSync(resolve(out, 'a/winrootdotslink')),
+    '..\\foo\\bar',
     'symlink target should be normalized',
   )
 })

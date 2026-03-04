@@ -277,7 +277,9 @@ export class Unpack extends Parser {
     const { type } = entry
     if (!p || this.preservePaths) return true
 
-    const parts = p.split('/')
+    // strip off the root
+    const [root, stripped] = stripAbsolutePath(p)
+    const parts = stripped.replace(/\\/g, '/').split('/')
 
     if (
       parts.includes('..') ||
@@ -318,8 +320,6 @@ export class Unpack extends Parser {
       }
     }
 
-    // strip off the root
-    const [root, stripped] = stripAbsolutePath(p)
     if (root) {
       // ok, but triggers warning about stripping root
       entry[field] = String(stripped)
