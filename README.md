@@ -7,6 +7,66 @@ If you are familiar with how tar works, most of this will hopefully be
 straightforward for you. If not, then hopefully this module can teach
 you useful unix skills that may come in handy someday :)
 
+## Security Information
+
+Significant efforts have been taken to harden this library
+against a wide variety of filesystem based attacks, especially as
+it is used to unpack packages that are published by unknown
+agents to [the npm registry](https://npmjs.com/).
+
+A brief overview of some of the hardening that has gone into this
+implementation. (Note that most of these are disabled if
+`preservePaths: true` is set in the options.)
+
+- Paths that attempt to walk up outside of the extraction target
+  are ignored, and a warning is raised.
+- `Link` and `SymbolicLink` entries are not allowed to target
+  locations outside of the extraction folder.
+- Extraction is not allowed through a symbolic link that appears
+  within the extraction target.
+- Absolute paths are turned into relative paths underneath the
+  extraction target.
+- Character Device, Block Device, and FIFO entries are never
+  extracted.
+- File and directory ownership is not mutated unless `forceChown`
+  is set, or the extraction is run as root.
+- File and directory modes in the archive are ignored, unless
+  the `chmod: true` option is set.
+
+**However**, care must still be taken when dealing with data from
+unknown sources, especially when extracting files, with this or
+any library, no matter how hardened it may be.
+
+1. **NEVER** extract tarball data into a folder that could be
+   potentially controlled by an unknown actor. A clever attacker
+   can swap out the target of an extracted file with a symbolic
+   link to some location of their choosing, resulting in writing
+   files outside the target folder. There is no reasonable way to
+   harden against this category of attack, and security reports
+   about it will be closed. TOCTOU exposure is unavoidable when
+   creating files based on entries in an archive file.
+2. If you are unpacking tarballs that may come from an unknown
+   source, it is **highly recommended** that you use a filter
+   function that rejects all hardlinks and symbolic links. Link
+   files are historically the root of nearly every file
+   extraction vulnerability. (npm filters links out of package
+   artifacts for this reason.)
+3. If you are extracting tarballs that are compressed (eg, with
+   gzip, brotli, or zstd), then it is a very good idea to also
+   filter out any files that are excessively large. Even if you
+   are restricting the size of the archive file itself, an
+   excessively large file of repetitive data can compress down
+   very small, and extract to take up a lot of disk space.
+4. **Stay up to date.** Old versions of tar are not maintained or
+   tested for newly discovered security advisories, and should be
+   assumed to contain every known security vulnerability, and
+   many that are unknown.
+
+If you find a security vulnerability in node-tar, where it is not
+properly enforcing the intended security protections, then please
+report it using the GitHub Security Advisories system, where it
+will be triaged and corrected if possible.
+
 ## Background
 
 A "tar file" or "tarball" is an archive of file system entries
