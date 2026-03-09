@@ -11,6 +11,14 @@ import { Header, x } from 'tar'
 const targetSym = '/some/absolute/path'
 const absoluteWithDotDot = '/../a/target'
 
+const secretLinkpath = resolve(t.testdirName, 'secret.txt')
+
+t.formatSnapshot = (o: unknown): unknown =>
+  typeof o === 'string' ? o.replace(
+    /^ENOENT: no such file or directory, link .*? -> .*?$/, 'ENOENT: no such file or directory, link')
+  : Array.isArray(o) ? o.map(o => t.formatSnapshot?.(o))
+  : o
+
 const getExploitTar = () => {
   const chunks: Buffer[] = []
 
@@ -19,7 +27,7 @@ const getExploitTar = () => {
     path: 'exploit_hard',
     type: 'Link',
     size: 0,
-    linkpath: resolve(t.testdirName, 'secret.txt'),
+    linkpath: secretLinkpath,
   }).encode(hardHeader, 0)
   chunks.push(hardHeader)
 
@@ -78,6 +86,14 @@ const getExploitTar = () => {
   }).encode(winAbsWithDotDotHeader, 0)
   chunks.push(winAbsWithDotDotHeader)
 
+  const winAbsWithDotDotEscapeHeader = Buffer.alloc(512)
+  new Header({
+    path: 'a/winrootdotsescapelink',
+    type: 'SymbolicLink',
+    linkpath: 'c:..\\..\\..\\..\\foo\\bar',
+  }).encode(winAbsWithDotDotEscapeHeader, 0)
+  chunks.push(winAbsWithDotDotEscapeHeader)
+
   chunks.push(Buffer.alloc(1024))
   return Buffer.concat(chunks)
 }
@@ -91,7 +107,17 @@ const dir = t.testdir({
 const out = resolve(dir, 'out')
 const tarFile = resolve(dir, 'exploit.tar')
 
-t.before(() => x({ cwd: out, file: tarFile }))
+const WARNINGS: [code: string, message: string][] = []
+t.before(() =>
+  x({
+    cwd: out,
+    file: tarFile,
+    onwarn: (code: string, message: string) =>
+      WARNINGS.push([code, message]),
+  }),
+)
+
+t.test('warnings', async t => t.matchSnapshot(WARNINGS))
 
 t.test('writefile exploits fail', async t => {
   writeFileSync(resolve(out, 'exploit_hard'), 'OVERWRITTEN')
@@ -125,5 +151,9 @@ t.test('absolute symlink with .. has prefix stripped', async t => {
     readlinkSync(resolve(out, 'a/winrootdotslink')),
     '..\\foo\\bar',
     'symlink target should be normalized',
+  )
+  t.throws(
+    () => lstatSync(resolve(out, 'a/winrootdotsescapelink')),
+    'escaping symlink is not created',
   )
 })

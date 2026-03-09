@@ -303,7 +303,7 @@ export class Unpack extends Parser {
         // tar paths, not a filesystem.
         const entryDir = path.posix.dirname(entry.path)
         const resolved = path.posix.normalize(
-          path.posix.join(entryDir, p),
+          path.posix.join(entryDir, parts.join('/'))
         )
         // If the resolved path escapes (starts with ..), reject it
         if (resolved.startsWith('../') || resolved === '..') {
