@@ -14,8 +14,11 @@ const absoluteWithDotDot = '/../a/target'
 const secretLinkpath = resolve(t.testdirName, 'secret.txt')
 
 t.formatSnapshot = (o: unknown): unknown =>
-  typeof o === 'string' ? o.replace(
-    /^ENOENT: no such file or directory, link .*? -> .*?$/, 'ENOENT: no such file or directory, link')
+  typeof o === 'string' ?
+    o.replace(
+      /^ENOENT: no such file or directory, link .*? -> .*?$/,
+      'ENOENT: no such file or directory, link',
+    )
   : Array.isArray(o) ? o.map(o => t.formatSnapshot?.(o))
   : o
 

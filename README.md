@@ -32,10 +32,27 @@ implementation. (Note that most of these are disabled if
   is set, or the extraction is run as root.
 - File and directory modes in the archive are ignored, unless
   the `chmod: true` option is set.
+- A path-reservation system is used to ensure that even when
+  multiple entries are being extracted in parallel, subsequent
+  entries with the same filename will not interfere with one
+  another (for example, exchanging a file with a symbolic link
+  while it is being written to).
+- Unicode characters in path names are fully normalized, to
+  prevent evading these protections with unicode equivalences.
 
-**However**, care must still be taken when dealing with data from
-unknown sources, especially when extracting files, with this or
-any library, no matter how hardened it may be.
+It is frankly unlikely that any tar implementation in JavaScript
+is going to be as secure as this one, unless a similar amount of
+work is put into it, putting it to the test over many years of
+intensive use and scrutiny. You can vibe-code a tar extractor in
+an afternoon, but you'll regret it.
+
+> [!WARNING]
+>
+> **However**, all that being said, _care must still be taken_
+> when dealing with data from unknown sources, especially when
+> extracting files, with this or any library, no matter how
+> hardened it may be. It is _your_ responsibility to use this
+> library safely.
 
 1. **NEVER** extract tarball data into a folder that could be
    potentially controlled by an unknown actor. A clever attacker
@@ -43,8 +60,10 @@ any library, no matter how hardened it may be.
    link to some location of their choosing, resulting in writing
    files outside the target folder. There is no reasonable way to
    harden against this category of attack, and security reports
-   about it will be closed. TOCTOU exposure is unavoidable when
-   creating files based on entries in an archive file.
+   about it will be closed.
+   [TOCTOU](https://cwe.mitre.org/data/definitions/367.html)
+   exposure is unavoidable when creating files based on entries
+   in an archive file.
 2. If you are unpacking tarballs that may come from an unknown
    source, it is **highly recommended** that you use a filter
    function that rejects all hardlinks and symbolic links. Link
