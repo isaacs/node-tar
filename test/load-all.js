@@ -9,7 +9,7 @@ const lib = path.resolve(__dirname, '../dist/esm')
 await Promise.all(
   fs
     .readdirSync(lib)
-    .filter(f => /\.js$/.test(f))
+    .filter(f => f.endsWith('.js'))
     .map(f => import('../dist/esm/' + f)),
 )
 

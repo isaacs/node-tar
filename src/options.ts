@@ -4,32 +4,30 @@ import { type GzipOptions, type ZlibOptions } from 'minizlib'
 import { type Stats } from 'node:fs'
 import { type ReadEntry } from './read-entry.js'
 import { type WarnData } from './warn-method.js'
-import { WriteEntry } from './write-entry.js'
+import type { WriteEntry } from './write-entry.js'
 
-const argmap = new Map<keyof TarOptionsWithAliases, keyof TarOptions>(
-  [
-    ['C', 'cwd'],
-    ['f', 'file'],
-    ['z', 'gzip'],
-    ['P', 'preservePaths'],
-    ['U', 'unlink'],
-    ['strip-components', 'strip'],
-    ['stripComponents', 'strip'],
-    ['keep-newer', 'newer'],
-    ['keepNewer', 'newer'],
-    ['keep-newer-files', 'newer'],
-    ['keepNewerFiles', 'newer'],
-    ['k', 'keep'],
-    ['keep-existing', 'keep'],
-    ['keepExisting', 'keep'],
-    ['m', 'noMtime'],
-    ['no-mtime', 'noMtime'],
-    ['p', 'preserveOwner'],
-    ['L', 'follow'],
-    ['h', 'follow'],
-    ['onentry', 'onReadEntry'],
-  ],
-)
+const argmap = new Map<keyof TarOptionsWithAliases, keyof TarOptions>([
+  ['C', 'cwd'],
+  ['f', 'file'],
+  ['z', 'gzip'],
+  ['P', 'preservePaths'],
+  ['U', 'unlink'],
+  ['strip-components', 'strip'],
+  ['stripComponents', 'strip'],
+  ['keep-newer', 'newer'],
+  ['keepNewer', 'newer'],
+  ['keep-newer-files', 'newer'],
+  ['keepNewerFiles', 'newer'],
+  ['k', 'keep'],
+  ['keep-existing', 'keep'],
+  ['keepExisting', 'keep'],
+  ['m', 'noMtime'],
+  ['no-mtime', 'noMtime'],
+  ['p', 'preserveOwner'],
+  ['L', 'follow'],
+  ['h', 'follow'],
+  ['onentry', 'onReadEntry'],
+])
 
 /**
  * The options that can be provided to tar commands.
@@ -153,7 +151,7 @@ export interface TarOptions {
    * Note: if `strict` is set, then the warning will throw, and this method
    * will not be called.
    */
-  onwarn?: (code: string, message: string, data: WarnData) => any
+  onwarn?: (code: string, message: string, data: WarnData) => unknown
 
   //////////////////////////
   // extraction options
@@ -239,7 +237,7 @@ export interface TarOptions {
    * [MiniPass](http://npm.im/minipass)-based streams are designed for this use
    * case.
    */
-  transform?: (entry: ReadEntry) => any
+  transform?: (entry: ReadEntry) => ReadEntry
 
   /**
    * Call `chmod()` to ensure that extracted files match the entry's mode
@@ -298,7 +296,7 @@ export interface TarOptions {
    * When creating, updating, or replacing within archives, this method will
    * be called with each WriteEntry that is created.
    */
-  onWriteEntry?: (entry: WriteEntry) => any
+  onWriteEntry?: (entry: WriteEntry) => unknown
 
   /**
    * When extracting or listing archives, this method will be called with
@@ -307,7 +305,7 @@ export interface TarOptions {
    * Important when listing archives synchronously from a file, because there
    * is otherwise no way to interact with the data!
    */
-  onReadEntry?: (entry: ReadEntry) => any
+  onReadEntry?: (entry: ReadEntry) => unknown
 
   /**
    * Pack the targets of symbolic links rather than the link itself.
@@ -497,7 +495,7 @@ export interface TarOptions {
    *
    * @deprecated
    */
-  onentry?: (entry: ReadEntry) => any
+  onentry?: (entry: ReadEntry) => unknown
 }
 
 export type TarOptionsSync = TarOptions & { sync: true }
@@ -659,20 +657,20 @@ export type TarOptionsWithAliasesFile =
       file: string
     })
   | (TarOptionsWithAliases & { f: string })
-export type TarOptionsWithAliasesSyncFile =
-  TarOptionsWithAliasesSync & TarOptionsWithAliasesFile
-export type TarOptionsWithAliasesAsyncFile =
-  TarOptionsWithAliasesAsync & TarOptionsWithAliasesFile
+export type TarOptionsWithAliasesSyncFile = TarOptionsWithAliasesSync &
+  TarOptionsWithAliasesFile
+export type TarOptionsWithAliasesAsyncFile = TarOptionsWithAliasesAsync &
+  TarOptionsWithAliasesFile
 
 export type TarOptionsWithAliasesNoFile = TarOptionsWithAliases & {
   f?: undefined
   file?: undefined
 }
 
-export type TarOptionsWithAliasesSyncNoFile =
-  TarOptionsWithAliasesSync & TarOptionsWithAliasesNoFile
-export type TarOptionsWithAliasesAsyncNoFile =
-  TarOptionsWithAliasesAsync & TarOptionsWithAliasesNoFile
+export type TarOptionsWithAliasesSyncNoFile = TarOptionsWithAliasesSync &
+  TarOptionsWithAliasesNoFile
+export type TarOptionsWithAliasesAsyncNoFile = TarOptionsWithAliasesAsync &
+  TarOptionsWithAliasesNoFile
 
 export const isSyncFile = <O extends TarOptions>(
   o: O,
@@ -699,22 +697,18 @@ export const isNoFile = <O extends TarOptions>(
   o: O,
 ): o is O & TarOptionsNoFile => !o.file
 
-const dealiasKey = (
-  k: keyof TarOptionsWithAliases,
-): keyof TarOptions => {
+const dealiasKey = (k: keyof TarOptionsWithAliases): keyof TarOptions => {
   const d = argmap.get(k)
   if (d) return d
   return k as keyof TarOptions
 }
 
-export const dealias = (
-  opt: TarOptionsWithAliases = {},
-): TarOptions => {
+export const dealias = (opt: TarOptionsWithAliases = {}): TarOptions => {
   if (!opt) return {}
-  const result: Record<string, any> = {}
+  const result: Record<string, unknown> = {}
   for (const [key, v] of Object.entries(opt) as [
     keyof TarOptionsWithAliases,
-    any,
+    unknown,
   ][]) {
     // TS doesn't know that aliases are going to always be the same type
     const k = dealiasKey(key)

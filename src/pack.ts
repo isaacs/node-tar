@@ -33,12 +33,8 @@ import { Minipass } from 'minipass'
 import * as zlib from 'minizlib'
 import { Yallist } from 'yallist'
 import { ReadEntry } from './read-entry.js'
-import {
-  WarnEvent,
-  warnMethod,
-  type WarnData,
-  type Warner,
-} from './warn-method.js'
+import type { WarnEvent } from './warn-method.js'
+import { warnMethod, type WarnData, type Warner } from './warn-method.js'
 
 const EOF = Buffer.alloc(1024)
 const ONSTAT = Symbol('onStat')
@@ -64,7 +60,7 @@ const ONDRAIN = Symbol('ondrain')
 
 import path from 'path'
 import { normalizeWindowsPath } from './normalize-windows-path.js'
-import { TarOptions } from './options.js'
+import type { TarOptions } from './options.js'
 
 export class Pack
   extends Minipass<Buffer, ReadEntry | string, WarnEvent<Buffer>>
@@ -107,7 +103,6 @@ export class Pack
   [ENDED]: boolean = false
 
   constructor(opt: TarOptions = {}) {
-    //@ts-ignore
     super()
     this.opt = opt
     this.file = opt.file || ''
@@ -131,14 +126,10 @@ export class Pack
 
     if (opt.gzip || opt.brotli || opt.zstd) {
       if (
-        (opt.gzip ? 1 : 0) +
-          (opt.brotli ? 1 : 0) +
-          (opt.zstd ? 1 : 0) >
+        (opt.gzip ? 1 : 0) + (opt.brotli ? 1 : 0) + (opt.zstd ? 1 : 0) >
         1
       ) {
-        throw new TypeError(
-          'gzip, brotli, zstd are mutually exclusive',
-        )
+        throw new TypeError('gzip, brotli, zstd are mutually exclusive')
       }
       if (opt.gzip) {
         if (typeof opt.gzip !== 'object') {
@@ -242,9 +233,7 @@ export class Pack
   }
 
   [ADDTARENTRY](p: ReadEntry) {
-    const absolute = normalizeWindowsPath(
-      path.resolve(this.cwd, p.path),
-    )
+    const absolute = normalizeWindowsPath(path.resolve(this.cwd, p.path))
     // in this case, we don't have to wait for the stat
     if (!this.filter(p.path, p)) {
       p.resume()
@@ -344,7 +333,7 @@ export class Pack
 
     this[PROCESSING] = false
 
-    if (this[ENDED] && !this[QUEUE].length && this[JOBS] === 0) {
+    if (this[ENDED] && this[QUEUE].length === 0 && this[JOBS] === 0) {
       if (this.zip) {
         this.zip.end(EOF)
       } else {
@@ -393,11 +382,7 @@ export class Pack
       return
     }
 
-    if (
-      !this.noDirRecurse &&
-      job.stat.isDirectory() &&
-      !job.readdir
-    ) {
+    if (!this.noDirRecurse && job.stat.isDirectory() && !job.readdir) {
       const rc = this.readdirCache.get(job.absolute)
       if (rc) {
         this[ONREADDIR](job, rc)
@@ -443,10 +428,7 @@ export class Pack
   [ENTRY](job: PackJob) {
     this[JOBS] += 1
     try {
-      const e = new this[WRITEENTRYCLASS](
-        job.path,
-        this[ENTRYOPT](job),
-      )
+      const e = new this[WRITEENTRYCLASS](job.path, this[ENTRYOPT](job))
       return e
         .on('end', () => this[JOBDONE](job))
         .on('error', er => this.emit('error', er))
@@ -500,11 +482,7 @@ export class Pack
     }
     return super.pause()
   }
-  warn(
-    code: string,
-    message: string | Error,
-    data: WarnData = {},
-  ): void {
+  warn(code: string, message: string | Error, data: WarnData = {}): void {
     warnMethod(this, code, message, data)
   }
 }

@@ -1,9 +1,4 @@
-import {
-  dealias,
-  isAsyncFile,
-  isAsyncNoFile,
-  isSyncFile,
-  isSyncNoFile,
+import type {
   TarOptions,
   TarOptionsAsyncFile,
   TarOptionsAsyncNoFile,
@@ -19,21 +14,22 @@ import {
   TarOptionsWithAliasesSyncFile,
   TarOptionsWithAliasesSyncNoFile,
 } from './options.js'
+import {
+  dealias,
+  isAsyncFile,
+  isAsyncNoFile,
+  isSyncFile,
+  isSyncNoFile,
+} from './options.js'
 
-export type CB = (er?: Error) => any
+export type CB = (er?: Error) => unknown
 
-export type TarCommand<
-  AsyncClass,
-  SyncClass extends { sync: true },
-> = {
+export type TarCommand<AsyncClass, SyncClass extends { sync: true }> = {
   // async and no file specified
   (): AsyncClass
   (opt: TarOptionsWithAliasesAsyncNoFile): AsyncClass
   (entries: string[]): AsyncClass
-  (
-    opt: TarOptionsWithAliasesAsyncNoFile,
-    entries: string[],
-  ): AsyncClass
+  (opt: TarOptionsWithAliasesAsyncNoFile, entries: string[]): AsyncClass
 } & {
   // sync and no file
   (opt: TarOptionsWithAliasesSyncNoFile): SyncClass
@@ -41,10 +37,7 @@ export type TarCommand<
 } & {
   // async and file
   (opt: TarOptionsWithAliasesAsyncFile): Promise<void>
-  (
-    opt: TarOptionsWithAliasesAsyncFile,
-    entries: string[],
-  ): Promise<void>
+  (opt: TarOptionsWithAliasesAsyncFile, entries: string[]): Promise<void>
   (opt: TarOptionsWithAliasesAsyncFile, cb: CB): Promise<void>
   (
     opt: TarOptionsWithAliasesAsyncFile,
@@ -146,10 +139,7 @@ export type TarCommand<
     entries: string[],
     cb?: CB,
   ) => Promise<void>
-  syncNoFile: (
-    opt: TarOptionsSyncNoFile,
-    entries: string[],
-  ) => SyncClass
+  syncNoFile: (opt: TarOptionsSyncNoFile, entries: string[]) => SyncClass
   asyncNoFile: (
     opt: TarOptionsAsyncNoFile,
     entries: string[],
@@ -157,20 +147,14 @@ export type TarCommand<
   validate?: (opt: TarOptions, entries?: string[]) => void
 }
 
-export const makeCommand = <
-  AsyncClass,
-  SyncClass extends { sync: true },
->(
+export const makeCommand = <AsyncClass, SyncClass extends { sync: true }>(
   syncFile: (opt: TarOptionsSyncFile, entries: string[]) => void,
   asyncFile: (
     opt: TarOptionsAsyncFile,
     entries: string[],
     cb?: CB,
   ) => Promise<void>,
-  syncNoFile: (
-    opt: TarOptionsSyncNoFile,
-    entries: string[],
-  ) => SyncClass,
+  syncNoFile: (opt: TarOptionsSyncNoFile, entries: string[]) => SyncClass,
   asyncNoFile: (
     opt: TarOptionsAsyncNoFile,
     entries: string[],
@@ -193,11 +177,7 @@ export const makeCommand = <
         entries = undefined
       }
 
-      if (!entries) {
-        entries = []
-      } else {
-        entries = Array.from(entries)
-      }
+      entries = !entries ? [] : Array.from(entries)
 
       const opt = dealias(opt_)
 
@@ -212,9 +192,7 @@ export const makeCommand = <
         return syncFile(opt, entries)
       } else if (isAsyncFile(opt)) {
         const p = asyncFile(opt, entries)
-        // weirdness to make TS happy
-        const c = cb ? cb : undefined
-        return c ? p.then(() => c(), c) : p
+        return cb ? p.then(() => cb(), cb) : p
       } else if (isSyncNoFile(opt)) {
         if (typeof cb === 'function') {
           throw new TypeError(
@@ -224,15 +202,13 @@ export const makeCommand = <
         return syncNoFile(opt, entries)
       } else if (isAsyncNoFile(opt)) {
         if (typeof cb === 'function') {
-          throw new TypeError(
-            'callback only supported with file option',
-          )
+          throw new TypeError('callback only supported with file option')
         }
         return asyncNoFile(opt, entries)
         /* c8 ignore start */
-      } else {
-        throw new Error('impossible options??')
       }
+      throw new Error('impossible options??')
+
       /* c8 ignore stop */
     },
     {

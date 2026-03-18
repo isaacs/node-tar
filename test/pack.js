@@ -93,10 +93,7 @@ t.test('pack a file', t => {
       }
 
       t.equal(sync.subarray(512).length, data.subarray(512).length)
-      t.equal(
-        sync.subarray(512).toString(),
-        data.subarray(512).toString(),
-      )
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
       t.strictSame(
@@ -140,10 +137,7 @@ t.test('pack a file with a prefix', t => {
         .add('.dotfile')
         .end()
         .read()
-      t.equal(
-        sync.subarray(512).toString(),
-        data.subarray(512).toString(),
-      )
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -198,10 +192,7 @@ t.test('portable pack a dir', t => {
       t.equal(syncgz[9], 255, 'gzip OS flag set to "unknown"')
       const sync = new miniz.Gunzip().end(zipped).read()
 
-      t.equal(
-        sync.subarray(512).toString(),
-        data.subarray(512).toString(),
-      )
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
 
@@ -267,14 +258,8 @@ t.test('use process cwd if cwd not specified', t => {
       t.equal(data.length, 2048)
       t.match(data.subarray(1024).toString(), /^\0{1024}$/)
 
-      const sync = new PackSync({ cwd: files })
-        .add('dir')
-        .end()
-        .read()
-      t.equal(
-        sync.subarray(512).toString(),
-        data.subarray(512).toString(),
-      )
+      const sync = new PackSync({ cwd: files }).add('dir').end().read()
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
 
@@ -342,10 +327,7 @@ t.test('filter', t => {
         .add('dir')
         .end()
         .read()
-      t.equal(
-        sync.subarray(512).toString(),
-        data.subarray(512).toString(),
-      )
+      t.equal(sync.subarray(512).toString(), data.subarray(512).toString())
       const hs = new Header(sync)
       t.match(hs, expect)
       t.end()
@@ -493,10 +475,8 @@ t.test('gzip, also a very deep path', t => {
           entries.push('null block')
         } else if (h.cksumValid) {
           entries.push([h.type, h.path])
-        } else if (entries[entries.length - 1][0] === 'File') {
-          entries[entries.length - 1].push(
-            slice.toString().replace(/\0.*$/, ''),
-          )
+        } else if (entries.at(-1)[0] === 'File') {
+          entries.at(-1).push(slice.toString().replace(/\0.*$/, ''))
         }
       }
 
@@ -521,14 +501,8 @@ t.test('gzip, also a very deep path', t => {
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
-        [
-          'Directory',
-          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/',
-        ],
-        [
-          'Directory',
-          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/',
-        ],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
         [
           'Directory',
           'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
@@ -619,10 +593,8 @@ t.test('brotli, also a very deep path', t => {
           entries.push('null block')
         } else if (h.cksumValid) {
           entries.push([h.type, h.path])
-        } else if (entries[entries.length - 1][0] === 'File') {
-          entries[entries.length - 1].push(
-            slice.toString().replace(/\0.*$/, ''),
-          )
+        } else if (entries.at(-1)[0] === 'File') {
+          entries.at(-1).push(slice.toString().replace(/\0.*$/, ''))
         }
       }
 
@@ -647,14 +619,8 @@ t.test('brotli, also a very deep path', t => {
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
-        [
-          'Directory',
-          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/',
-        ],
-        [
-          'Directory',
-          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/',
-        ],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
         [
           'Directory',
           'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
@@ -744,10 +710,8 @@ t.test('zstd, also a very deep path', t => {
           entries.push('null block')
         } else if (h.cksumValid) {
           entries.push([h.type, h.path])
-        } else if (entries[entries.length - 1][0] === 'File') {
-          entries[entries.length - 1].push(
-            slice.toString().replace(/\0.*$/, ''),
-          )
+        } else if (entries.at(-1)[0] === 'File') {
+          entries.at(-1).push(slice.toString().replace(/\0.*$/, ''))
         }
       }
 
@@ -772,14 +736,8 @@ t.test('zstd, also a very deep path', t => {
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/'],
         ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
-        [
-          'Directory',
-          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/',
-        ],
-        [
-          'Directory',
-          'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/',
-        ],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
+        ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
         [
           'Directory',
           'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
@@ -871,10 +829,8 @@ t.test('very deep gzip path, sync', t => {
       entries.push('null block')
     } else if (h.cksumValid) {
       entries.push([h.type, h.path])
-    } else if (entries[entries.length - 1][0] === 'File') {
-      entries[entries.length - 1].push(
-        slice.toString().replace(/\0.*$/, ''),
-      )
+    } else if (entries.at(-1)[0] === 'File') {
+      entries.at(-1).push(slice.toString().replace(/\0.*$/, ''))
     }
   }
 
@@ -901,14 +857,8 @@ t.test('very deep gzip path, sync', t => {
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
-    [
-      'Directory',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
-    ],
-    [
-      'Directory',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
-    ],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/'],
     [
       'Directory',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
@@ -992,10 +942,8 @@ t.test('very deep brotli path, sync', t => {
       entries.push('null block')
     } else if (h.cksumValid) {
       entries.push([h.type, h.path])
-    } else if (entries[entries.length - 1][0] === 'File') {
-      entries[entries.length - 1].push(
-        slice.toString().replace(/\0.*$/, ''),
-      )
+    } else if (entries.at(-1)[0] === 'File') {
+      entries.at(-1).push(slice.toString().replace(/\0.*$/, ''))
     }
   }
 
@@ -1022,14 +970,8 @@ t.test('very deep brotli path, sync', t => {
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
-    [
-      'Directory',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
-    ],
-    [
-      'Directory',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
-    ],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/'],
     [
       'Directory',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
@@ -1112,10 +1054,8 @@ t.test('very deep zstd path, sync', t => {
       entries.push('null block')
     } else if (h.cksumValid) {
       entries.push([h.type, h.path])
-    } else if (entries[entries.length - 1][0] === 'File') {
-      entries[entries.length - 1].push(
-        slice.toString().replace(/\0.*$/, ''),
-      )
+    } else if (entries.at(-1)[0] === 'File') {
+      entries.at(-1).push(slice.toString().replace(/\0.*$/, ''))
     }
   }
 
@@ -1142,14 +1082,8 @@ t.test('very deep zstd path, sync', t => {
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/'],
     ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/'],
-    [
-      'Directory',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/',
-    ],
-    [
-      'Directory',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/',
-    ],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/'],
+    ['Directory', 'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/'],
     [
       'Directory',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
@@ -1230,10 +1164,7 @@ t.test('emit error when stat fail', t => {
 
 t.test('readdir fail', t => {
   t.teardown(mutateFS.fail('readdir', new Error('xyz')))
-  t.throws(
-    _ => new PackSync({ cwd: files }).add('dir'),
-    new Error('xyz'),
-  )
+  t.throws(_ => new PackSync({ cwd: files }).add('dir'), new Error('xyz'))
 
   new Pack({ cwd: files }).add('dir').on('error', e => {
     t.match(e, { message: 'xyz' })
@@ -1275,10 +1206,7 @@ t.test('pipe into a slow reader', t => {
     }
     t.match(h, expect)
     t.equal(data.length, 21504)
-    t.match(
-      data.subarray(data.length - 1024).toString(),
-      /^\0{1024}$/,
-    )
+    t.match(data.subarray(data.length - 1024).toString(), /^\0{1024}$/)
     t.end()
   })
 })
@@ -1286,9 +1214,7 @@ t.test('pipe into a slow reader', t => {
 t.test('pipe into a slow gzip reader', t => {
   const out = []
   const mp2 = new miniz.Unzip()
-  const p = new Pack({ cwd: files, gzip: true })
-    .add('long-path')
-    .end()
+  const p = new Pack({ cwd: files, gzip: true }).add('long-path').end()
   p.pause()
 
   class SlowStream extends EE {
@@ -1339,10 +1265,7 @@ t.test('pipe into a slow gzip reader', t => {
     }
     t.match(h, expect)
     t.equal(data.length, 21504)
-    t.match(
-      data.subarray(data.length - 1024).toString(),
-      /^\0{1024}$/,
-    )
+    t.match(data.subarray(data.length - 1024).toString(), /^\0{1024}$/)
     t.end()
   })
 })
@@ -1371,14 +1294,8 @@ t.test('ignores mid-queue', t => {
   p.on('data', c => out.push(c))
   p.on('end', _ => {
     const data = Buffer.concat(out)
-    t.equal(
-      data.subarray(0, 100).toString().replace(/\0.*$/, ''),
-      './',
-    )
-    const file = data
-      .subarray(512, 612)
-      .toString()
-      .replace(/\0.*$/, '')
+    t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), './')
+    const file = data.subarray(512, 612).toString().replace(/\0.*$/, '')
     t.not(files.indexOf(file), -1)
     t.end()
   })
@@ -1567,10 +1484,7 @@ t.test('pack ReadEntries', t => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
       t.match(data.subarray(1024).toString(), /^\0+$/)
-      t.equal(
-        data.subarray(0, 100).toString().replace(/\0.*$/, ''),
-        'x',
-      )
+      t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), 'x')
       t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
@@ -1595,10 +1509,7 @@ t.test('pack ReadEntries', t => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
       t.match(data.subarray(1024).toString(), /^\0+$/)
-      t.equal(
-        data.subarray(0, 100).toString().replace(/\0.*$/, ''),
-        'y/x',
-      )
+      t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), 'y/x')
       t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
@@ -1639,10 +1550,7 @@ t.test('pack ReadEntries', t => {
       const data = Buffer.concat(out)
       t.equal(data.length, 2048)
       t.match(data.subarray(1024).toString(), /^\0+$/)
-      t.equal(
-        data.subarray(0, 100).toString().replace(/\0.*$/, ''),
-        'x',
-      )
+      t.equal(data.subarray(0, 100).toString().replace(/\0.*$/, ''), 'x')
       t.equal(data.subarray(512, 514).toString(), 'x\0')
       t.end()
     })
@@ -1708,10 +1616,7 @@ t.test('fs.open fails', t => {
 
   t.test('sync', t => {
     t.plan(1)
-    t.throws(
-      _ => new PackSync({ cwd: files }).end('one-byte.txt'),
-      poop,
-    )
+    t.throws(_ => new PackSync({ cwd: files }).end('one-byte.txt'), poop)
   })
 
   t.end()
@@ -1744,15 +1649,13 @@ const write = opts =>
   })
 
 t.test('padding works regardless of arite/add order', t =>
-  Promise.all([
-    write({ before: true }),
-    write({ before: false }),
-  ]).then(res =>
-    t.equal(
-      res[0],
-      res[1],
-      'length is the same regardless of write/add order',
-    ),
+  Promise.all([write({ before: true }), write({ before: false })]).then(
+    res =>
+      t.equal(
+        res[0],
+        res[1],
+        'length is the same regardless of write/add order',
+      ),
   ),
 )
 
@@ -1785,10 +1688,7 @@ t.test('prefix and subdirs', t => {
   const check = (out, t) => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) =>
-      t.equal(
-        e,
-        data.subarray(i * 512, i * 512 + e.length).toString(),
-      ),
+      t.equal(e, data.subarray(i * 512, i * 512 + e.length).toString()),
     )
     t.end()
   }
@@ -1874,10 +1774,7 @@ t.test('prefix and hard links', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(
-          data.subarray(i * 512, i * 512 + e.length).toString(),
-          e,
-        )
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else {
         t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }

@@ -11,18 +11,11 @@ t.test('basic', t => {
     'c:///a/b/c': ['c:///', 'a/b/c'],
     '\\\\foo\\bar\\baz': ['\\\\foo\\bar\\', 'baz'],
     '//foo//bar//baz': ['//', 'foo//bar//baz'],
-    'c:\\c:\\c:\\c:\\\\d:\\e/f/g': [
-      'c:\\c:\\c:\\c:\\\\d:\\',
-      'e/f/g',
-    ],
+    'c:\\c:\\c:\\c:\\\\d:\\e/f/g': ['c:\\c:\\c:\\c:\\\\d:\\', 'e/f/g'],
   }
 
   for (const [input, [root, stripped]] of Object.entries(cases)) {
-    t.strictSame(
-      stripAbsolutePath(input, cwd),
-      [root, stripped],
-      input,
-    )
+    t.strictSame(stripAbsolutePath(input, cwd), [root, stripped], input)
   }
   t.end()
 })
@@ -47,10 +40,7 @@ t.test('drive-local paths', async t => {
     'c:///a/b/c': ['c:///', 'a/b/c'],
     '\\\\foo\\bar\\baz': ['\\\\foo\\bar\\', 'baz'],
     '//foo//bar//baz': ['//', 'foo//bar//baz'],
-    'c:\\c:\\c:\\c:\\\\d:\\e/f/g': [
-      'c:\\c:\\c:\\c:\\\\d:\\',
-      'e/f/g',
-    ],
+    'c:\\c:\\c:\\c:\\\\d:\\e/f/g': ['c:\\c:\\c:\\c:\\\\d:\\', 'e/f/g'],
     'c:..\\system\\explorer.exe': ['c:', '..\\system\\explorer.exe'],
     'd:..\\..\\unsafe\\land': ['d:', '..\\..\\unsafe\\land'],
     'c:foo': ['c:', 'foo'],
@@ -60,11 +50,7 @@ t.test('drive-local paths', async t => {
   }
   for (const [input, [root, stripped]] of Object.entries(cases)) {
     if (
-      !t.strictSame(
-        stripAbsolutePath(input, cwd),
-        [root, stripped],
-        input,
-      )
+      !t.strictSame(stripAbsolutePath(input, cwd), [root, stripped], input)
     ) {
       break
     }

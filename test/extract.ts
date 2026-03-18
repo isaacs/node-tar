@@ -5,7 +5,8 @@ import nock from 'nock'
 import path from 'path'
 import { rimraf } from 'rimraf'
 import { pipeline as PL } from 'stream'
-import t, { Test } from 'tap'
+import type { Test } from 'tap'
+import t from 'tap'
 import { fileURLToPath } from 'url'
 import { promisify } from 'util'
 import { extract as x } from '../dist/esm/extract.js'
@@ -228,14 +229,8 @@ t.test('no file list', t => {
   })
 
   const check = async (t: Test) => {
-    t.equal(
-      fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size,
-      1024,
-    )
-    t.equal(
-      fs.lstatSync(path.resolve(dir, '512-bytes.txt')).size,
-      512,
-    )
+    t.equal(fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size, 1024)
+    t.equal(fs.lstatSync(path.resolve(dir, '512-bytes.txt')).size, 512)
     t.equal(fs.lstatSync(path.resolve(dir, 'one-byte.txt')).size, 1)
     t.equal(fs.lstatSync(path.resolve(dir, 'zero-byte.txt')).size, 0)
     await rimraf(dir)
@@ -295,14 +290,8 @@ t.test('read in itty bits', t => {
   })
 
   const check = async (t: Test) => {
-    t.equal(
-      fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size,
-      1024,
-    )
-    t.equal(
-      fs.lstatSync(path.resolve(dir, '512-bytes.txt')).size,
-      512,
-    )
+    t.equal(fs.lstatSync(path.resolve(dir, '1024-bytes.txt')).size, 1024)
+    t.equal(fs.lstatSync(path.resolve(dir, '512-bytes.txt')).size, 512)
     t.equal(fs.lstatSync(path.resolve(dir, 'one-byte.txt')).size, 1)
     t.equal(fs.lstatSync(path.resolve(dir, 'zero-byte.txt')).size, 0)
     await rimraf(dir)
@@ -319,15 +308,12 @@ t.test('read in itty bits', t => {
   })
 
   t.test('async cb', t => {
-    return x(
-      { file: file, cwd: dir, maxReadSize: maxReadSize },
-      er => {
-        if (er) {
-          throw er
-        }
-        return check(t)
-      },
-    )
+    return x({ file: file, cwd: dir, maxReadSize: maxReadSize }, er => {
+      if (er) {
+        throw er
+      }
+      return check(t)
+    })
   })
 
   t.end()

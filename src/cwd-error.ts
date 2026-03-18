@@ -1,7 +1,7 @@
 export class CwdError extends Error {
   path: string
   code: string
-  syscall: 'chdir' = 'chdir'
+  syscall = 'chdir' as const
 
   constructor(path: string, code: string) {
     super(`${code}: Cannot cd into '${path}'`)

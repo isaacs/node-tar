@@ -4,7 +4,7 @@
 const raw = ['|', '<', '>', '?', ':']
 
 const win = raw.map(char =>
-  String.fromCharCode(0xf000 + char.charCodeAt(0)),
+  String.fromCodePoint(0xf000 + Number(char.codePointAt(0))),
 )
 
 const toWin = new Map(raw.map((char, i) => [char, win[i]]))

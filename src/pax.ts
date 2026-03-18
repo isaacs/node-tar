@@ -1,5 +1,6 @@
 import { basename } from 'node:path'
-import { Header, HeaderData } from './header.js'
+import type { HeaderData } from './header.js'
+import { Header } from './header.js'
 
 export class Pax implements HeaderData {
   atime?: Date
@@ -153,7 +154,7 @@ const parseKV = (str: string) =>
     .split('\n')
     .reduce(parseKVLine, Object.create(null))
 
-const parseKVLine = (set: Record<string, any>, line: string) => {
+const parseKVLine = (set: Record<string, unknown>, line: string) => {
   const n = parseInt(line, 10)
 
   // XXX Values with \n in them will fail this.

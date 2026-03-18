@@ -3,10 +3,9 @@
 // so, on windows, and only on windows, we replace all \ chars with /,
 // so that we can use / as our one and only directory separator char.
 
-const platform =
-  process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
+const platform = process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
 
 export const normalizeWindowsPath =
   platform !== 'win32' ?
     (p: string) => p
-  : (p: string) => p && p.replace(/\\/g, '/')
+  : (p: string) => p && p.replaceAll(/\\/g, '/')

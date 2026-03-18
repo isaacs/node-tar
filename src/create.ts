@@ -1,9 +1,9 @@
 import { WriteStream, WriteStreamSync } from '@isaacs/fs-minipass'
-import { Minipass } from 'minipass'
+import type { Minipass } from 'minipass'
 import path from 'node:path'
 import { list } from './list.js'
 import { makeCommand } from './make-command.js'
-import {
+import type {
   TarOptions,
   TarOptionsFile,
   TarOptionsSync,
@@ -54,12 +54,8 @@ const addFilesSync = (p: PackSync, files: string[]) => {
   p.end()
 }
 
-const addFilesAsync = async (
-  p: Pack,
-  files: string[],
-): Promise<void> => {
-  for (let i = 0; i < files.length; i++) {
-    const file = String(files[i])
+const addFilesAsync = async (p: Pack, files: string[]): Promise<void> => {
+  for (const file of files) {
     if (file.charAt(0) === '@') {
       await list({
         file: path.resolve(String(p.cwd), file.slice(1)),

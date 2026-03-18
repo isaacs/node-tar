@@ -71,10 +71,7 @@ t.test('encode', t => {
   t.test('allocUnsafe', t => {
     t.plan(cases.size)
     cases.forEach((value, hex) =>
-      t.equal(
-        encode(value, Buffer.allocUnsafe(12)).toString('hex'),
-        hex,
-      ),
+      t.equal(encode(value, Buffer.allocUnsafe(12)).toString('hex'), hex),
     )
   })
 })

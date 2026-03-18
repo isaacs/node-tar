@@ -56,9 +56,7 @@ export const parse = (buf: Buffer) => {
   if (!Number.isSafeInteger(value)) {
     // The number is so large that javascript cannot represent it with integer
     // precision.
-    throw Error(
-      'parsed number outside of javascript safe integer range',
-    )
+    throw Error('parsed number outside of javascript safe integer range')
   }
 
   return value

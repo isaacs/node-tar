@@ -2,7 +2,8 @@ import fs from 'fs'
 import { mkdirp } from 'mkdirp'
 import path from 'path'
 import { rimraf } from 'rimraf'
-import t, { Test } from 'tap'
+import type { Test } from 'tap'
+import t from 'tap'
 import { c, list, Pack, PackSync } from '../dist/esm/index.js'
 import { spawn } from 'child_process'
 //@ts-ignore
@@ -302,8 +303,5 @@ t.test('transform a filename', async t => {
     },
     ['README.md'],
   ).concat()
-  t.equal(
-    data.subarray(0, 'bloorg.md'.length).toString(),
-    'bloorg.md',
-  )
+  t.equal(data.subarray(0, 'bloorg.md'.length).toString(), 'bloorg.md')
 })

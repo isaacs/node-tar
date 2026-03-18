@@ -4,23 +4,19 @@ import path from 'path'
 import { Header } from './header.js'
 import { modeFix } from './mode-fix.js'
 import { normalizeWindowsPath } from './normalize-windows-path.js'
-import {
-  dealias,
+import type {
   LinkCacheKey,
   TarOptions,
   TarOptionsWithAliases,
 } from './options.js'
+import { dealias } from './options.js'
 import { Pax } from './pax.js'
-import { ReadEntry } from './read-entry.js'
+import type { ReadEntry } from './read-entry.js'
 import { stripAbsolutePath } from './strip-absolute-path.js'
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
-import { EntryTypeName } from './types.js'
-import {
-  WarnData,
-  Warner,
-  WarnEvent,
-  warnMethod,
-} from './warn-method.js'
+import type { EntryTypeName } from './types.js'
+import type { WarnData, Warner, WarnEvent } from './warn-method.js'
+import { warnMethod } from './warn-method.js'
 import * as winchars from './winchars.js'
 
 const prefixPath = (path: string, prefix?: string) => {
@@ -88,7 +84,7 @@ export class WriteEntry
   type?: EntryTypeName | 'Unsupported'
   linkpath?: string
   stat?: Stats
-  onWriteEntry?: (entry: WriteEntry) => any
+  onWriteEntry?: (entry: WriteEntry) => unknown
 
   #hadError: boolean = false
 
@@ -107,8 +103,7 @@ export class WriteEntry
     this.noPax = !!opt.noPax
     this.noMtime = !!opt.noMtime
     this.mtime = opt.mtime
-    this.prefix =
-      opt.prefix ? normalizeWindowsPath(opt.prefix) : undefined
+    this.prefix = opt.prefix ? normalizeWindowsPath(opt.prefix) : undefined
     this.onWriteEntry = opt.onWriteEntry
 
     if (typeof opt.onwarn === 'function') {
@@ -128,8 +123,8 @@ export class WriteEntry
     if (this.win32) {
       // force the \ to / normalization, since we might not *actually*
       // be on windows, but want \ to be considered a path separator.
-      this.path = winchars.decode(this.path.replace(/\\/g, '/'))
-      p = p.replace(/\\/g, '/')
+      this.path = winchars.decode(this.path.replaceAll(/\\/g, '/'))
+      p = p.replaceAll(/\\/g, '/')
     }
 
     this.absolute = normalizeWindowsPath(
@@ -163,7 +158,7 @@ export class WriteEntry
     return warnMethod(this, code, message, data)
   }
 
-  emit(ev: keyof WarnEvent, ...data: any[]) {
+  emit(ev: keyof WarnEvent, ...data: unknown[]) {
     if (ev === 'error') {
       this.#hadError = true
     }
@@ -255,9 +250,7 @@ export class WriteEntry
           ctime: this.portable ? undefined : this.header.ctime,
           gid: this.portable ? undefined : this.header.gid,
           mtime:
-            this.noMtime ? undefined : (
-              this.mtime || this.header.mtime
-            ),
+            this.noMtime ? undefined : this.mtime || this.header.mtime,
           path: this[PREFIX](this.path),
           linkpath:
             this.type === 'Link' && this.linkpath !== undefined ?
@@ -317,9 +310,7 @@ export class WriteEntry
     }
     /* c8 ignore stop */
     this.type = 'Link'
-    this.linkpath = normalizeWindowsPath(
-      path.relative(this.cwd, linkpath),
-    )
+    this.linkpath = normalizeWindowsPath(path.relative(this.cwd, linkpath))
     this.stat.size = 0
     this[HEADER]()
     this.end()
@@ -332,8 +323,7 @@ export class WriteEntry
     }
     /* c8 ignore stop */
     if (this.stat.nlink > 1) {
-      const linkKey =
-        `${this.stat.dev}:${this.stat.ino}` as LinkCacheKey
+      const linkKey = `${this.stat.dev}:${this.stat.ino}` as LinkCacheKey
       const linkpath = this.linkCache.get(linkKey)
       if (linkpath?.indexOf(this.cwd) === 0) {
         return this[HARDLINK](linkpath)
@@ -397,7 +387,7 @@ export class WriteEntry
 
   /* c8 ignore start */
   [CLOSE](
-    cb: (er?: null | Error | NodeJS.ErrnoException) => any = () => {},
+    cb: (er?: null | Error | NodeJS.ErrnoException) => unknown = () => {},
   ) {
     /* c8 ignore stop */
     if (this.fd !== undefined) fs.close(this.fd, cb)
@@ -405,14 +395,11 @@ export class WriteEntry
 
   [ONREAD](bytesRead: number) {
     if (bytesRead <= 0 && this.remain > 0) {
-      const er = Object.assign(
-        new Error('encountered unexpected EOF'),
-        {
-          path: this.absolute,
-          syscall: 'read',
-          code: 'EOF',
-        },
-      )
+      const er = Object.assign(new Error('encountered unexpected EOF'), {
+        path: this.absolute,
+        syscall: 'read',
+        code: 'EOF',
+      })
       return this[CLOSE](() => this.emit('error', er))
     }
 
@@ -465,7 +452,7 @@ export class WriteEntry
     }
   }
 
-  [AWAITDRAIN](cb: () => any) {
+  [AWAITDRAIN](cb: () => unknown) {
     this.once('drain', cb)
   }
 
@@ -477,8 +464,8 @@ export class WriteEntry
   ): boolean
   write(
     chunk: Buffer | string,
-    encoding?: BufferEncoding | (() => any) | null,
-    cb?: () => any,
+    encoding?: BufferEncoding | (() => unknown) | null,
+    cb?: () => unknown,
   ): boolean {
     /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
     if (typeof encoding === 'function') {
@@ -514,9 +501,7 @@ export class WriteEntry
       if (this.blockRemain) {
         super.write(Buffer.alloc(this.blockRemain))
       }
-      return this[CLOSE](er =>
-        er ? this.emit('error', er) : this.end(),
-      )
+      return this[CLOSE](er => (er ? this.emit('error', er) : this.end()))
     }
 
     /* c8 ignore start */
@@ -571,18 +556,18 @@ export class WriteEntrySync extends WriteEntry implements Warner {
       if (threw) {
         try {
           this[CLOSE](() => {})
-        } catch (er) {}
+        } catch {}
       }
     }
   }
 
-  [AWAITDRAIN](cb: () => any) {
+  [AWAITDRAIN](cb: () => unknown) {
     cb()
   }
 
   /* c8 ignore start */
   [CLOSE](
-    cb: (er?: null | Error | NodeJS.ErrnoException) => any = () => {},
+    cb: (er?: null | Error | NodeJS.ErrnoException) => unknown = () => {},
   ) {
     /* c8 ignore stop */
     if (this.fd !== undefined) fs.closeSync(this.fd)
@@ -620,16 +605,13 @@ export class WriteEntryTar
   ctime?: Date
   linkpath?: string
   size: number
-  onWriteEntry?: (entry: WriteEntry) => any
+  onWriteEntry?: (entry: WriteEntry) => unknown
 
   warn(code: string, message: string | Error, data: WarnData = {}) {
     return warnMethod(this, code, message, data)
   }
 
-  constructor(
-    readEntry: ReadEntry,
-    opt_: TarOptionsWithAliases = {},
-  ) {
+  constructor(readEntry: ReadEntry, opt_: TarOptionsWithAliases = {}) {
     const opt = dealias(opt_)
     super()
     this.preservePaths = !!opt.preservePaths
@@ -655,16 +637,13 @@ export class WriteEntryTar
 
     this.path = normalizeWindowsPath(readEntry.path)
     this.mode =
-      readEntry.mode !== undefined ?
-        this[MODE](readEntry.mode)
-      : undefined
+      readEntry.mode !== undefined ? this[MODE](readEntry.mode) : undefined
     this.uid = this.portable ? undefined : readEntry.uid
     this.gid = this.portable ? undefined : readEntry.gid
     this.uname = this.portable ? undefined : readEntry.uname
     this.gname = this.portable ? undefined : readEntry.gname
     this.size = readEntry.size
-    this.mtime =
-      this.noMtime ? undefined : opt.mtime || readEntry.mtime
+    this.mtime = this.noMtime ? undefined : opt.mtime || readEntry.mtime
     this.atime = this.portable ? undefined : readEntry.atime
     this.ctime = this.portable ? undefined : readEntry.ctime
     this.linkpath =
@@ -765,8 +744,8 @@ export class WriteEntryTar
   ): boolean
   write(
     chunk: Buffer | string,
-    encoding?: BufferEncoding | (() => any) | null,
-    cb?: () => any,
+    encoding?: BufferEncoding | (() => unknown) | null,
+    cb?: () => unknown,
   ): boolean {
     /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
     if (typeof encoding === 'function') {
@@ -817,7 +796,8 @@ export class WriteEntryTar
       chunk = Buffer.from(chunk, encoding ?? 'utf8')
     }
     if (cb) this.once('finish', cb)
-    chunk ? super.end(chunk, cb) : super.end(cb)
+    if (chunk) super.end(chunk, cb)
+    else super.end(cb)
     /* c8 ignore stop */
     return this
   }

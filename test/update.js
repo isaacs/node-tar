@@ -42,10 +42,7 @@ t.test('basic file add to archive (good or truncated)', t => {
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
-      const actual = Buffer.concat(out)
-        .toString()
-        .trim()
-        .split(/\r?\n/)
+      const actual = Buffer.concat(out).toString().trim().split(/\r?\n/)
       t.same(actual, [
         '1024-bytes.txt',
         '512-bytes.txt',
@@ -139,10 +136,7 @@ t.test('add to empty archive', t => {
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
-      const actual = Buffer.concat(out)
-        .toString()
-        .trim()
-        .split(/\r?\n/)
+      const actual = Buffer.concat(out).toString().trim().split(/\r?\n/)
       t.same(actual, [path.basename(__filename)])
       t.end()
     })
@@ -225,9 +219,7 @@ t.test('cannot append to gzipped archives', t => {
   const file = resolve(dir, 'compressed.tgz')
 
   const expect = new Error('cannot append to compressed archives')
-  const expectT = new TypeError(
-    'cannot append to compressed archives',
-  )
+  const expectT = new TypeError('cannot append to compressed archives')
 
   t.throws(
     _ =>
@@ -275,9 +267,7 @@ t.test('cannot append to brotli archives', t => {
   const file = resolve(dir, 'compressed.tbr')
 
   const expect = new Error('cannot append to compressed archives')
-  const expectT = new TypeError(
-    'cannot append to compressed archives',
-  )
+  const expectT = new TypeError('cannot append to compressed archives')
 
   t.throws(
     _ =>
@@ -315,9 +305,7 @@ t.test('cannot append to zstd archives', t => {
   const file = resolve(dir, 'compressed.tzst')
 
   const expect = new Error('cannot append to compressed archives')
-  const expectT = new TypeError(
-    'cannot append to compressed archives',
-  )
+  const expectT = new TypeError('cannot append to compressed archives')
 
   t.throws(
     _ =>
@@ -460,8 +448,7 @@ t.test('do add newer file', t => {
   }
 
   // a chunk for the header, then 2 for the body
-  const expect =
-    fixtureDef['body-byte-counts.tar'].length + 512 + 1024
+  const expect = fixtureDef['body-byte-counts.tar'].length + 512 + 1024
   const check = (file, t) => {
     t.equal(fs.statSync(file).size, expect)
     t.end()
@@ -486,9 +473,7 @@ t.test('do add newer file', t => {
   t.test('async', t => {
     const dir = setup(t)
     const file = resolve(dir, 'body-byte-counts.tar')
-    u({ file, cwd: dir }, ['1024-bytes.txt']).then(_ =>
-      check(file, t),
-    )
+    u({ file, cwd: dir }, ['1024-bytes.txt']).then(_ => check(file, t))
   })
 
   t.test('async cb', t => {
