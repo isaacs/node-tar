@@ -18,14 +18,11 @@ export type MkdirOptions = {
   mode: number
 }
 
-export type MkdirError =
-  | NodeJS.ErrnoException
-  | CwdError
-  | SymlinkError
+export type MkdirError = NodeJS.ErrnoException | CwdError | SymlinkError
 
 const checkCwd = (
   dir: string,
-  cb: (er?: null | MkdirError) => any,
+  cb: (er?: null | MkdirError) => unknown,
 ) => {
   fs.stat(dir, (er, st) => {
     if (er || !st.isDirectory()) {
@@ -76,9 +73,7 @@ export const mkdir = (
       cb(er)
     } else {
       if (created && doChown) {
-        chownr(created, uid, gid, er =>
-          done(er as NodeJS.ErrnoException),
-        )
+        chownr(created, uid, gid, er => done(er as NodeJS.ErrnoException))
       } else if (needChmod) {
         fs.chmod(dir, mode, cb)
       } else {
@@ -112,7 +107,7 @@ const mkdir_ = (
   created: string | undefined,
   cb: (er?: null | MkdirError, made?: string) => void,
 ): void => {
-  if (!parts.length) {
+  if (parts.length === 0) {
     return cb(null, created)
   }
   const p = parts.shift()
@@ -138,8 +133,7 @@ const onmkdir =
     if (er) {
       fs.lstat(part, (statEr, st) => {
         if (statEr) {
-          statEr.path =
-            statEr.path && normalizeWindowsPath(statEr.path)
+          statEr.path = statEr.path && normalizeWindowsPath(statEr.path)
           cb(statEr)
         } else if (st.isDirectory()) {
           mkdir_(part, parts, mode, unlink, cwd, created, cb)
@@ -155,9 +149,7 @@ const onmkdir =
             )
           })
         } else if (st.isSymbolicLink()) {
-          return cb(
-            new SymlinkError(part, part + '/' + parts.join('/')),
-          )
+          return cb(new SymlinkError(part, part + '/' + parts.join('/')))
         } else {
           cb(er)
         }
@@ -170,7 +162,7 @@ const onmkdir =
 
 const checkCwdSync = (dir: string) => {
   let ok = false
-  let code: string | undefined = undefined
+  let code
   try {
     ok = fs.statSync(dir).isDirectory()
   } catch (er) {
@@ -217,14 +209,12 @@ export const mkdirSync = (dir: string, opt: MkdirOptions) => {
   }
 
   if (preserve) {
-    return done(
-      fs.mkdirSync(dir, { mode, recursive: true }) ?? undefined,
-    )
+    return done(fs.mkdirSync(dir, { mode, recursive: true }) ?? undefined)
   }
 
   const sub = normalizeWindowsPath(path.relative(cwd, dir))
   const parts = sub.split('/')
-  let created: string | undefined = undefined
+  let created
   for (
     let p = parts.shift(), part = cwd;
     p && (part += '/' + p);
@@ -235,7 +225,7 @@ export const mkdirSync = (dir: string, opt: MkdirOptions) => {
     try {
       fs.mkdirSync(part, mode)
       created = created || part
-    } catch (er) {
+    } catch {
       const st = fs.lstatSync(part)
       if (st.isDirectory()) {
         continue

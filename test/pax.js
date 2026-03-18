@@ -155,7 +155,6 @@ t.test('parse', t => {
       comment: undefined,
       gid: undefined,
       gname: undefined,
-      uname: undefined,
       linkpath: undefined,
       path: 'ab',
       size: undefined,
@@ -171,7 +170,6 @@ t.test('parse', t => {
 
   t.same(Pax.parse('9 gid=20\n9 path=x\n'), {
     atime: undefined,
-    mtime: undefined,
     ctime: undefined,
     charset: undefined,
     comment: undefined,

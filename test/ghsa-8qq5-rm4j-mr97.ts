@@ -1,9 +1,4 @@
-import {
-  lstatSync,
-  readFileSync,
-  readlinkSync,
-  writeFileSync,
-} from 'fs'
+import { lstatSync, readFileSync, readlinkSync, writeFileSync } from 'fs'
 import { resolve } from 'path'
 import t from 'tap'
 import { Header, x } from 'tar'

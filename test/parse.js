@@ -35,8 +35,7 @@ t.test('fixture tests', t => {
     let ok = true
     let cursor = 0
     p.on('entry', entry => {
-      ok =
-        ok && t.match(['entry', entry], expect[cursor++], entry.path)
+      ok = ok && t.match(['entry', entry], expect[cursor++], entry.path)
       if (slow) {
         setTimeout(() => entry.resume())
       } else {
@@ -49,12 +48,11 @@ t.test('fixture tests', t => {
         t.match(
           ['ignoredEntry', entry],
           expect[cursor++],
-          'ignored: ' + entry.path,
+          `ignored: ${entry.path}`,
         )
     })
     p.on('warn', (c, message, _data) => {
-      ok =
-        ok && t.match(['warn', c, message], expect[cursor++], 'warn')
+      ok = ok && t.match(['warn', c, message], expect[cursor++], 'warn')
     })
     p.on('nullBlock', () => {
       ok = ok && t.match(['nullBlock'], expect[cursor++], 'null')
@@ -84,15 +82,7 @@ t.test('fixture tests', t => {
     const tardata = fs.readFileSync(file)
     const base = path.basename(file, '.tar')
     t.test(
-      'file=' +
-        base +
-        '.tar' +
-        ' maxmeta=' +
-        maxMeta +
-        ' filter=' +
-        filter +
-        ' strict=' +
-        strict,
+      `file=${base}.tar maxmeta=${maxMeta} filter=${filter} strict=${strict}`,
       t => {
         const o =
           (maxMeta ? '-meta-' + maxMeta : '') +
@@ -131,45 +121,38 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
           })
           trackEvents(t, expect, p)
           p.end(tardata.toString('hex'), 'hex', () => {})
         })
 
-        t.test(
-          'uncompressed one byte at a time, filename .tbr',
-          t => {
-            const bs = new ByteStream()
-            const opt =
-              maxMeta || filter || strict ?
-                {
-                  maxMetaEntrySize: maxMeta,
-                  filter:
-                    filter ?
-                      (_path, entry) => entry.size % 2 !== 0
-                    : undefined,
-                  strict: strict,
-                  file: 'example.tbr',
-                }
-              : undefined
-            const bp = new Parser(opt)
-            trackEvents(t, expect, bp)
-            bs.pipe(bp)
-            bs.end(tardata)
-          },
-        )
+        t.test('uncompressed one byte at a time, filename .tbr', t => {
+          const bs = new ByteStream()
+          const opt =
+            maxMeta || filter || strict ?
+              {
+                maxMetaEntrySize: maxMeta,
+                filter:
+                  filter ?
+                    (_path, entry) => entry.size % 2 !== 0
+                  : undefined,
+                strict: strict,
+                file: 'example.tbr',
+              }
+            : undefined
+          const bp = new Parser(opt)
+          trackEvents(t, expect, bp)
+          bs.pipe(bp)
+          bs.end(tardata)
+        })
 
         t.test('uncompressed all at once, filename .tar.br', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             file: 'example.tar.br',
           })
@@ -181,9 +164,7 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
           })
           trackEvents(t, expect, p)
@@ -194,9 +175,7 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             file: 'example.tbr',
           })
@@ -210,9 +189,7 @@ t.test('fixture tests', t => {
           const bp = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
           })
           trackEvents(t, expect, bp)
@@ -220,30 +197,23 @@ t.test('fixture tests', t => {
           bs.end(zlib.gzipSync(tardata))
         })
 
-        t.test(
-          'compress with brotli based on filename .tar.br',
-          t => {
-            const p = new Parser({
-              maxMetaEntrySize: maxMeta,
-              filter:
-                filter ?
-                  (_path, entry) => entry.size % 2 !== 0
-                : undefined,
-              strict: strict,
-              file: 'example.tar.br',
-            })
-            trackEvents(t, expect, p)
-            p.end(zlib.brotliCompressSync(tardata))
-          },
-        )
+        t.test('compress with brotli based on filename .tar.br', t => {
+          const p = new Parser({
+            maxMetaEntrySize: maxMeta,
+            filter:
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
+            strict: strict,
+            file: 'example.tar.br',
+          })
+          trackEvents(t, expect, p)
+          p.end(zlib.brotliCompressSync(tardata))
+        })
 
         t.test('compress with brotli based on filename .tbr', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             file: 'example.tbr',
           })
@@ -255,9 +225,7 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             brotli: {},
           })
@@ -270,9 +238,7 @@ t.test('fixture tests', t => {
           const bp = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             brotli: {},
           })
@@ -286,9 +252,7 @@ t.test('fixture tests', t => {
           const bp = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             file: 'example.tbr',
           })
@@ -301,9 +265,7 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             file: 'example.tar.zst',
           })
@@ -315,9 +277,7 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             file: 'example.tzst',
           })
@@ -329,9 +289,7 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             zstd: {},
           })
@@ -344,9 +302,7 @@ t.test('fixture tests', t => {
           const bp = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             zstd: {},
           })
@@ -360,9 +316,7 @@ t.test('fixture tests', t => {
           const bp = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
             file: 'example.tzst',
           })
@@ -375,16 +329,11 @@ t.test('fixture tests', t => {
           const p = new Parser({
             maxMetaEntrySize: maxMeta,
             filter:
-              filter ?
-                (_path, entry) => entry.size % 2 !== 0
-              : undefined,
+              filter ? (_path, entry) => entry.size % 2 !== 0 : undefined,
             strict: strict,
           })
           trackEvents(t, expect, p, true)
-          const first = tardata.subarray(
-            0,
-            Math.floor(tardata.length / 2),
-          )
+          const first = tardata.subarray(0, Math.floor(tardata.length / 2))
           p.write(first.toString('hex'), 'hex')
           process.nextTick(() =>
             p.end(tardata.subarray(Math.floor(tardata.length / 2))),
@@ -626,7 +575,6 @@ t.test('drain event timings', t => {
     }
   })
 
-  let interval
   const go = () => {
     const d = data.shift()
     if (d === undefined) {
@@ -649,11 +597,7 @@ t.test('drain event timings', t => {
     }
 
     if (
-      !t.equal(
-        p.write(hunks[1]),
-        false,
-        'write should return false: ' + d,
-      )
+      !t.equal(p.write(hunks[1]), false, 'write should return false: ' + d)
     ) {
       return t.end()
     }
@@ -667,7 +611,6 @@ t.test('drain event timings', t => {
 
   p.once('drain', go)
   p.on('end', () => {
-    clearInterval(interval)
     t.ok(sawOndone)
     t.end()
   })
@@ -951,14 +894,9 @@ t.test('header that throws', t => {
   })
   h.encode()
   const buf = h.block
-  const bad = Buffer.from([
-    0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  ])
+  const bad = Buffer.from([0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
   bad.copy(buf, 100)
-  t.throws(
-    () => new Header(buf),
-    'the header with that buffer throws',
-  )
+  t.throws(() => new Header(buf), 'the header with that buffer throws')
   p.write(buf)
 })
 

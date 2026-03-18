@@ -17,8 +17,7 @@ const makeTest = (tarfile, tardata, maxMeta, filter, strict) => {
     (filter ? '-filter' : '') +
     (strict ? '-strict' : '')
   const tail = (o ? '-' + o : '') + '.json'
-  const eventsfile =
-    parsedir + '/' + path.basename(tarfile, '.tar') + tail
+  const eventsfile = parsedir + '/' + path.basename(tarfile, '.tar') + tail
 
   const p = new Parser({
     maxMetaEntrySize: maxMeta,

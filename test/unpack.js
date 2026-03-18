@@ -49,8 +49,7 @@ t.test('basic file unpack tests', t => {
     'utf8.tar': {
       '🌟.txt': '🌟✧✩⭐︎✪✫✬✭✮⚝✯✰✵✶✷✸✹❂⭑⭒★☆✡☪✴︎✦✡️🔯✴️🌠\n',
       'Ω.txt': 'Ω',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt':
-        'Ω',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω',
     },
     'file.tar': {
       'one-byte.txt': 'a',
@@ -77,8 +76,7 @@ t.test('basic file unpack tests', t => {
         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc':
         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt':
-        'Ω',
+      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt': 'Ω',
     },
   }
 
@@ -201,9 +199,7 @@ t.test('links!', t => {
     const unpack = new Unpack({ cwd: dir })
     let finished = false
     unpack.on('finish', () => (finished = true))
-    unpack.on('close', () =>
-      t.ok(finished, 'emitted finish before close'),
-    )
+    unpack.on('close', () => t.ok(finished, 'emitted finish before close'))
     unpack.on('close', () => check(t))
     unpack.end(data)
   })
@@ -224,9 +220,7 @@ t.test('links!', t => {
     const unpack = new Unpack({ cwd: dir, strip: 1 })
     let finished = false
     unpack.on('finish', () => (finished = true))
-    unpack.on('close', () =>
-      t.ok(finished, 'emitted finish before close'),
-    )
+    unpack.on('close', () => t.ok(finished, 'emitted finish before close'))
     unpack.on('close', () => checkForStrip(t))
     unpack.end(stripData)
   })
@@ -241,9 +235,7 @@ t.test('links!', t => {
     const unpack = new Unpack({ cwd: dir, strip: 3 })
     let finished = false
     unpack.on('finish', () => (finished = true))
-    unpack.on('close', () =>
-      t.ok(finished, 'emitted finish before close'),
-    )
+    unpack.on('close', () => t.ok(finished, 'emitted finish before close'))
     unpack.on('close', () => checkForStrip3(t))
     unpack.end(stripData)
   })
@@ -502,10 +494,7 @@ t.test(
           fs.lstatSync(cwd + '/d/i/r/symlink').isSymbolicLink(),
           'got symlink',
         )
-        t.ok(
-          fs.lstatSync(cwd + '/d/i/r/dir/x').isFile(),
-          'x thru link',
-        )
+        t.ok(fs.lstatSync(cwd + '/d/i/r/dir/x').isFile(), 'x thru link')
         t.ok(
           fs.lstatSync(cwd + '/d/i/r/symlink/x').isFile(),
           'x thru link',
@@ -532,10 +521,7 @@ t.test(
         'got symlink',
       )
       t.ok(fs.lstatSync(cwd + '/d/i/r/dir/x').isFile(), 'x thru link')
-      t.ok(
-        fs.lstatSync(cwd + '/d/i/r/symlink/x').isFile(),
-        'x thru link',
-      )
+      t.ok(fs.lstatSync(cwd + '/d/i/r/symlink/x').isFile(), 'x thru link')
       t.end()
     })
 
@@ -606,10 +592,7 @@ t.test(
         fs.lstatSync(cwd + '/d/i/r/symlink').isDirectory(),
         'sym is dir',
       )
-      t.ok(
-        fs.lstatSync(cwd + '/d/i/r/symlink/x').isFile(),
-        'x thru link',
-      )
+      t.ok(fs.lstatSync(cwd + '/d/i/r/symlink/x').isFile(), 'x thru link')
       t.end()
     })
 
@@ -950,10 +933,7 @@ t.test('absolute paths', t => {
           { path: normPath(absolute), code: 'TAR_ENTRY_INFO' },
         ],
       ])
-      t.ok(
-        fs.lstatSync(path.resolve(dir, relative)).isFile(),
-        'is file',
-      )
+      t.ok(fs.lstatSync(path.resolve(dir, relative)).isFile(), 'is file')
       t.end()
     }
 
@@ -1061,10 +1041,7 @@ t.test('.. paths', t => {
   t.test('warn and skip', t => {
     const check = t => {
       t.match(warnings, [
-        [
-          "path contains '..'",
-          { path: dotted, code: 'TAR_ENTRY_ERROR' },
-        ],
+        ["path contains '..'", { path: dotted, code: 'TAR_ENTRY_ERROR' }],
       ])
       t.throws(() => fs.lstatSync(resolved))
       t.end()
@@ -1909,9 +1886,7 @@ t.test('set owner', t => {
       t.not(fileStat.gid, 813708013)
       const dirStat2 = fs.statSync(dir + '/foo/different-uid-nogid')
       t.not(dirStat2.uid, 2456124561)
-      const fileStat2 = fs.statSync(
-        dir + '/foo/different-uid-nogid/bar',
-      )
+      const fileStat2 = fs.statSync(dir + '/foo/different-uid-nogid/bar')
       t.not(fileStat2.uid, 2456124561)
       t.end()
     }
@@ -2328,8 +2303,7 @@ t.test('bad cwd setting', t => {
           .on('error', er => {
             t.match(er, {
               name: 'CwdError',
-              message:
-                "ENOTDIR: Cannot cd into '" + normPath(cwd) + "'",
+              message: "ENOTDIR: Cannot cd into '" + normPath(cwd) + "'",
               path: normPath(cwd),
               code: 'ENOTDIR',
             })
@@ -2353,8 +2327,7 @@ t.test('bad cwd setting', t => {
           .on('error', er => {
             t.match(er, {
               name: 'CwdError',
-              message:
-                "ENOENT: Cannot cd into '" + normPath(cwd) + "'",
+              message: "ENOENT: Cannot cd into '" + normPath(cwd) + "'",
               path: normPath(cwd),
               code: 'ENOENT',
             })
@@ -2818,11 +2791,7 @@ t.test('trying to unpack a non-zlib gzip file should fail', t => {
     new Unpack(opts)
       .once('error', er => t.match(er, expect, 'async emits'))
       .end(data)
-    t.throws(
-      () => new UnpackSync(opts).end(data),
-      expect,
-      'sync throws',
-    )
+    t.throws(() => new UnpackSync(opts).end(data), expect, 'sync throws')
   })
 
   t.end()
@@ -3200,12 +3169,7 @@ t.test('recognize C:.. as a dot path part', async t => {
         'C:../x/y/z',
         'C:../x/y/z',
       ],
-      [
-        'TAR_ENTRY_ERROR',
-        "path contains '..'",
-        'x:../y/z',
-        'x:../y/z',
-      ],
+      ['TAR_ENTRY_ERROR', "path contains '..'", 'x:../y/z', 'x:../y/z'],
       [
         'TAR_ENTRY_INFO',
         'stripping Y: from absolute path',
@@ -3317,11 +3281,7 @@ t.test('ignore self-referential hardlinks', async t => {
   ])
   const check = (t, warnings) => {
     t.matchSnapshot(warnings)
-    t.strictSame(
-      fs.readdirSync(t.testdirName),
-      [],
-      'nothing extracted',
-    )
+    t.strictSame(fs.readdirSync(t.testdirName), [], 'nothing extracted')
     t.end()
   }
   t.test('async', t => {
@@ -3343,90 +3303,84 @@ t.test('ignore self-referential hardlinks', async t => {
   })
 })
 
-t.test(
-  'valid relative symlink with .. should be extracted',
-  async t => {
-    const makeTar = () => {
-      // foo/file.txt (regular file)
-      // bar/link.txt -> ../foo/file.txt (valid relative symlink)
-      const chunks = []
+t.test('valid relative symlink with .. should be extracted', async t => {
+  const makeTar = () => {
+    // foo/file.txt (regular file)
+    // bar/link.txt -> ../foo/file.txt (valid relative symlink)
+    const chunks = []
 
-      const fooDirHeader = Buffer.alloc(512)
-      new Header({
-        path: 'foo/',
-        type: 'Directory',
-        mode: 0o755,
-      }).encode(fooDirHeader, 0)
-      chunks.push(fooDirHeader)
+    const fooDirHeader = Buffer.alloc(512)
+    new Header({
+      path: 'foo/',
+      type: 'Directory',
+      mode: 0o755,
+    }).encode(fooDirHeader, 0)
+    chunks.push(fooDirHeader)
 
-      const fileContent = 'hello world'
-      const fileHeader = Buffer.alloc(512)
-      new Header({
-        path: 'foo/file.txt',
-        type: 'File',
-        mode: 0o644,
-        size: fileContent.length,
-      }).encode(fileHeader, 0)
-      chunks.push(fileHeader)
+    const fileContent = 'hello world'
+    const fileHeader = Buffer.alloc(512)
+    new Header({
+      path: 'foo/file.txt',
+      type: 'File',
+      mode: 0o644,
+      size: fileContent.length,
+    }).encode(fileHeader, 0)
+    chunks.push(fileHeader)
 
-      const contentBuf = Buffer.alloc(512)
-      contentBuf.write(fileContent)
-      chunks.push(contentBuf)
+    const contentBuf = Buffer.alloc(512)
+    contentBuf.write(fileContent)
+    chunks.push(contentBuf)
 
-      const barDirHeader = Buffer.alloc(512)
-      new Header({
-        path: 'bar/',
-        type: 'Directory',
-        mode: 0o755,
-      }).encode(barDirHeader, 0)
-      chunks.push(barDirHeader)
+    const barDirHeader = Buffer.alloc(512)
+    new Header({
+      path: 'bar/',
+      type: 'Directory',
+      mode: 0o755,
+    }).encode(barDirHeader, 0)
+    chunks.push(barDirHeader)
 
-      const symlinkHeader = Buffer.alloc(512)
-      new Header({
-        path: 'bar/link.txt',
-        type: 'SymbolicLink',
-        linkpath: '../foo/file.txt',
-      }).encode(symlinkHeader, 0)
-      chunks.push(symlinkHeader)
+    const symlinkHeader = Buffer.alloc(512)
+    new Header({
+      path: 'bar/link.txt',
+      type: 'SymbolicLink',
+      linkpath: '../foo/file.txt',
+    }).encode(symlinkHeader, 0)
+    chunks.push(symlinkHeader)
 
-      const escapedSymlinkHeader = Buffer.alloc(512)
-      new Header({
-        path: 'bar/badlink.txt',
-        type: 'SymbolicLink',
-        linkpath: '../../oh/no',
-      }).encode(escapedSymlinkHeader)
-      chunks.push(escapedSymlinkHeader)
+    const escapedSymlinkHeader = Buffer.alloc(512)
+    new Header({
+      path: 'bar/badlink.txt',
+      type: 'SymbolicLink',
+      linkpath: '../../oh/no',
+    }).encode(escapedSymlinkHeader)
+    chunks.push(escapedSymlinkHeader)
 
-      chunks.push(Buffer.alloc(1024))
+    chunks.push(Buffer.alloc(1024))
 
-      return Buffer.concat(chunks)
-    }
+    return Buffer.concat(chunks)
+  }
 
-    const dir = t.testdir({
-      'test.tar': makeTar(),
-    })
+  const dir = t.testdir({
+    'test.tar': makeTar(),
+  })
 
-    const warnings = []
+  const warnings = []
 
-    await extract({
-      cwd: dir,
-      file: dir + '/test.tar',
-      onwarn: (c, m) => warnings.push([c, m]),
-    })
+  await extract({
+    cwd: dir,
+    file: dir + '/test.tar',
+    onwarn: (c, m) => warnings.push([c, m]),
+  })
 
-    t.ok(fs.lstatSync(dir + '/foo/file.txt').isFile())
-    t.ok(fs.lstatSync(dir + '/bar/link.txt').isSymbolicLink())
-    t.equal(fs.readlinkSync(dir + '/bar/link.txt'), '../foo/file.txt')
-    t.equal(
-      fs.readFileSync(dir + '/bar/link.txt', 'utf8'),
-      'hello world',
-    )
-    t.throws(() => fs.statSync(dir + '/bar/badlink.txt'))
-    t.match(warnings, [
-      ['TAR_ENTRY_ERROR', 'linkpath escapes extraction directory'],
-    ])
-  },
-)
+  t.ok(fs.lstatSync(dir + '/foo/file.txt').isFile())
+  t.ok(fs.lstatSync(dir + '/bar/link.txt').isSymbolicLink())
+  t.equal(fs.readlinkSync(dir + '/bar/link.txt'), '../foo/file.txt')
+  t.equal(fs.readFileSync(dir + '/bar/link.txt', 'utf8'), 'hello world')
+  t.throws(() => fs.statSync(dir + '/bar/badlink.txt'))
+  t.match(warnings, [
+    ['TAR_ENTRY_ERROR', 'linkpath escapes extraction directory'],
+  ])
+})
 
 t.test('no linking through a symlink', t => {
   const types = ['Link', 'SymbolicLink']

@@ -10,16 +10,17 @@ import { randomBytes } from 'node:crypto'
 import fs, { type Stats } from 'node:fs'
 import path from 'node:path'
 import { getWriteFlag } from './get-write-flag.js'
-import { mkdir, MkdirError, mkdirSync } from './mkdir.js'
+import type { MkdirError } from './mkdir.js'
+import { mkdir, mkdirSync } from './mkdir.js'
 import { normalizeWindowsPath } from './normalize-windows-path.js'
 import { Parser } from './parse.js'
 import { stripAbsolutePath } from './strip-absolute-path.js'
 import * as wc from './winchars.js'
 
-import { TarOptions } from './options.js'
+import type { TarOptions } from './options.js'
 import { PathReservations } from './path-reservations.js'
-import { ReadEntry } from './read-entry.js'
-import { WarnData } from './warn-method.js'
+import type { ReadEntry } from './read-entry.js'
+import type { WarnData } from './warn-method.js'
 import { SymlinkError } from './symlink-error.js'
 import { umask } from './process-umask.js'
 
@@ -49,8 +50,7 @@ const DOCHOWN = Symbol('doChown')
 const UID = Symbol('uid')
 const GID = Symbol('gid')
 const CHECKED_CWD = Symbol('checkedCwd')
-const platform =
-  process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
+const platform = process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
 const isWindows = platform === 'win32'
 const DEFAULT_MAX_DEPTH = 1024
 
@@ -70,10 +70,7 @@ const DEFAULT_MAX_DEPTH = 1024
 //
 // See: https://github.com/npm/node-tar/issues/183
 /* c8 ignore start */
-const unlinkFile = (
-  path: string,
-  cb: (er?: Error | null) => void,
-) => {
+const unlinkFile = (path: string, cb: (er?: Error | null) => void) => {
   if (!isWindows) {
     return fs.unlink(path, cb)
   }
@@ -155,13 +152,8 @@ export class Unpack extends Parser {
 
     if (typeof opt.uid === 'number' || typeof opt.gid === 'number') {
       // need both or neither
-      if (
-        typeof opt.uid !== 'number' ||
-        typeof opt.gid !== 'number'
-      ) {
-        throw new TypeError(
-          'cannot set owner without number uid and gid',
-        )
+      if (typeof opt.uid !== 'number' || typeof opt.gid !== 'number') {
+        throw new TypeError('cannot set owner without number uid and gid')
       }
       if (opt.preserveOwner) {
         throw new TypeError(
@@ -178,16 +170,10 @@ export class Unpack extends Parser {
     }
 
     // default true for root
-    if (
-      opt.preserveOwner === undefined &&
-      typeof opt.uid !== 'number'
-    ) {
-      this.preserveOwner = !!(
-        process.getuid && process.getuid() === 0
-      )
-    } else {
-      this.preserveOwner = !!opt.preserveOwner
-    }
+    this.preserveOwner =
+      opt.preserveOwner === undefined && typeof opt.uid !== 'number' ?
+        !!(process.getuid && process.getuid() === 0)
+      : !!opt.preserveOwner
 
     this.processUid =
       (this.preserveOwner || this.setOwner) && process.getuid ?
@@ -201,9 +187,7 @@ export class Unpack extends Parser {
     // prevent excessively deep nesting of subfolders
     // set to `Infinity` to remove this restriction
     this.maxDepth =
-      typeof opt.maxDepth === 'number' ?
-        opt.maxDepth
-      : DEFAULT_MAX_DEPTH
+      typeof opt.maxDepth === 'number' ? opt.maxDepth : DEFAULT_MAX_DEPTH
 
     // mostly just for testing, but useful in some cases.
     // Forcibly trigger a chown on every entry, no matter what
@@ -230,9 +214,7 @@ export class Unpack extends Parser {
     // links, and removes symlink directories rather than erroring
     this.unlink = !!opt.unlink
 
-    this.cwd = normalizeWindowsPath(
-      path.resolve(opt.cwd || process.cwd()),
-    )
+    this.cwd = normalizeWindowsPath(path.resolve(opt.cwd || process.cwd()))
     this.strip = Number(opt.strip) || 0
     // if we're not chmodding, then we don't need the process umask
     this.processUmask =
@@ -279,7 +261,7 @@ export class Unpack extends Parser {
 
     // strip off the root
     const [root, stripped] = stripAbsolutePath(p)
-    const parts = stripped.replace(/\\/g, '/').split('/')
+    const parts = stripped.replaceAll(/\\/g, '/').split('/')
 
     if (
       parts.includes('..') ||
@@ -297,26 +279,25 @@ export class Unpack extends Parser {
         })
         // not ok!
         return false
-      } else {
-        // Resolve linkpath relative to the entry's directory.
-        // `path.posix` is safe to use because we're operating on
-        // tar paths, not a filesystem.
-        const entryDir = path.posix.dirname(entry.path)
-        const resolved = path.posix.normalize(
-          path.posix.join(entryDir, parts.join('/')),
+      }
+      // Resolve linkpath relative to the entry's directory.
+      // `path.posix` is safe to use because we're operating on
+      // tar paths, not a filesystem.
+      const entryDir = path.posix.dirname(entry.path)
+      const resolved = path.posix.normalize(
+        path.posix.join(entryDir, parts.join('/')),
+      )
+      // If the resolved path escapes (starts with ..), reject it
+      if (resolved.startsWith('../') || resolved === '..') {
+        this.warn(
+          'TAR_ENTRY_ERROR',
+          `${field} escapes extraction directory`,
+          {
+            entry,
+            [field]: p,
+          },
         )
-        // If the resolved path escapes (starts with ..), reject it
-        if (resolved.startsWith('../') || resolved === '..') {
-          this.warn(
-            'TAR_ENTRY_ERROR',
-            `${field} escapes extraction directory`,
-            {
-              entry,
-              [field]: p,
-            },
-          )
-          return false
-        }
+        return false
       }
     }
 
@@ -375,13 +356,10 @@ export class Unpack extends Parser {
       return false
     }
 
-    if (path.isAbsolute(entry.path)) {
-      entry.absolute = normalizeWindowsPath(path.resolve(entry.path))
-    } else {
-      entry.absolute = normalizeWindowsPath(
-        path.resolve(this.cwd, entry.path),
-      )
-    }
+    entry.absolute =
+      path.isAbsolute(entry.path) ?
+        normalizeWindowsPath(path.resolve(entry.path))
+      : normalizeWindowsPath(path.resolve(this.cwd, entry.path))
 
     // if we somehow ended up with a path that escapes the cwd, and we are
     // not in preservePaths mode, then something is fishy!  This should have
@@ -500,8 +478,7 @@ export class Unpack extends Parser {
           entry.uid !== this.processUid) ||
           (typeof entry.gid === 'number' &&
             entry.gid !== this.processGid))) ||
-      (typeof this.uid === 'number' &&
-        this.uid !== this.processUid) ||
+      (typeof this.uid === 'number' && this.uid !== this.processUid) ||
       (typeof this.gid === 'number' && this.gid !== this.processGid)
     )
   }
@@ -516,9 +493,7 @@ export class Unpack extends Parser {
 
   [FILE](entry: ReadEntry, fullyDone: () => void) {
     const mode =
-      typeof entry.mode === 'number' ?
-        entry.mode & 0o7777
-      : this.fmode
+      typeof entry.mode === 'number' ? entry.mode & 0o7777 : this.fmode
     const stream = new fsm.WriteStream(String(entry.absolute), {
       // slight lie, but it can be numeric flags
       flags: getWriteFlag(entry.size) as string,
@@ -590,9 +565,7 @@ export class Unpack extends Parser {
         const gid = this[GID](entry)
         if (typeof uid === 'number' && typeof gid === 'number') {
           fs.fchown(fd, uid, gid, er =>
-            er ?
-              fs.chown(abs, uid, gid, er2 => done(er2 && er))
-            : done(),
+            er ? fs.chown(abs, uid, gid, er2 => done(er2 && er)) : done(),
           )
         }
       }
@@ -602,8 +575,8 @@ export class Unpack extends Parser {
 
     const tx = this.transform ? this.transform(entry) || entry : entry
     if (tx !== entry) {
-      tx.on('error', (er: Error) => {
-        this[ONERROR](er, entry)
+      tx.on('error', er => {
+        this[ONERROR](er as Error, entry)
         fullyDone()
       })
       entry.pipe(tx)
@@ -613,9 +586,7 @@ export class Unpack extends Parser {
 
   [DIRECTORY](entry: ReadEntry, fullyDone: () => void) {
     const mode =
-      typeof entry.mode === 'number' ?
-        entry.mode & 0o7777
-      : this.dmode
+      typeof entry.mode === 'number' ? entry.mode & 0o7777 : this.dmode
     this[MKDIR](String(entry.absolute), mode, er => {
       if (er) {
         this[ONERROR](er, entry)
@@ -680,8 +651,7 @@ export class Unpack extends Parser {
       entry,
       this.cwd,
       parts,
-      () =>
-        this[LINK](entry, String(entry.linkpath), 'symlink', done),
+      () => this[LINK](entry, String(entry.linkpath), 'symlink', done),
       er => {
         this[ONERROR](er, entry)
         done()
@@ -693,9 +663,7 @@ export class Unpack extends Parser {
     const linkpath = normalizeWindowsPath(
       path.resolve(this.cwd, String(entry.linkpath)),
     )
-    const parts = normalizeWindowsPath(String(entry.linkpath)).split(
-      '/',
-    )
+    const parts = normalizeWindowsPath(String(entry.linkpath)).split('/')
     this[ENSURE_NO_SYMLINK](
       entry,
       this.cwd,
@@ -763,9 +731,7 @@ export class Unpack extends Parser {
     if (entry.linkpath) {
       paths.push(entry.linkpath)
     }
-    this.reservations.reserve(paths, done =>
-      this[CHECKFS2](entry, done),
-    )
+    this.reservations.reserve(paths, done => this[CHECKFS2](entry, done))
   }
 
   [CHECKFS2](entry: ReadEntry, fullyDone: (er?: Error) => void) {
@@ -823,9 +789,7 @@ export class Unpack extends Parser {
         if (st.isDirectory()) {
           if (entry.type === 'Directory') {
             const needChmod =
-              this.chmod &&
-              entry.mode &&
-              (st.mode & 0o7777) !== entry.mode
+              this.chmod && entry.mode && (st.mode & 0o7777) !== entry.mode
             const afterChmod = (er?: Error | null | undefined) =>
               this[MAKEFS](er ?? null, entry, done)
             if (!needChmod) {
@@ -845,10 +809,8 @@ export class Unpack extends Parser {
           // In that case, the user has opted out of path protections
           // explicitly, so if they blow away the cwd, c'est la vie.
           if (entry.absolute !== this.cwd) {
-            return fs.rmdir(
-              String(entry.absolute),
-              (er?: null | Error) =>
-                this[MAKEFS](er ?? null, entry, done),
+            return fs.rmdir(String(entry.absolute), (er?: null | Error) =>
+              this[MAKEFS](er ?? null, entry, done),
             )
           }
         }
@@ -978,9 +940,7 @@ export class UnpackSync extends Unpack {
     if (st.isDirectory()) {
       if (entry.type === 'Directory') {
         const needChmod =
-          this.chmod &&
-          entry.mode &&
-          (st.mode & 0o7777) !== entry.mode
+          this.chmod && entry.mode && (st.mode & 0o7777) !== entry.mode
         const [er] =
           needChmod ?
             callSync(() => {
@@ -990,9 +950,7 @@ export class UnpackSync extends Unpack {
         return this[MAKEFS](er, entry)
       }
       // not a dir entry, have to remove it
-      const [er] = callSync(() =>
-        fs.rmdirSync(String(entry.absolute)),
-      )
+      const [er] = callSync(() => fs.rmdirSync(String(entry.absolute)))
       this[MAKEFS](er, entry)
     }
 
@@ -1007,9 +965,7 @@ export class UnpackSync extends Unpack {
 
   [FILE](entry: ReadEntry, done: () => void) {
     const mode =
-      typeof entry.mode === 'number' ?
-        entry.mode & 0o7777
-      : this.fmode
+      typeof entry.mode === 'number' ? entry.mode & 0o7777 : this.fmode
 
     const oner = (er?: null | Error | undefined) => {
       let closeError
@@ -1041,7 +997,7 @@ export class UnpackSync extends Unpack {
     /* c8 ignore stop */
     const tx = this.transform ? this.transform(entry) || entry : entry
     if (tx !== entry) {
-      tx.on('error', (er: Error) => this[ONERROR](er, entry))
+      tx.on('error', er => this[ONERROR](er as Error, entry))
       entry.pipe(tx)
     }
 
@@ -1065,7 +1021,7 @@ export class UnpackSync extends Unpack {
         } catch (futimeser) {
           try {
             fs.utimesSync(String(entry.absolute), atime, mtime)
-          } catch (utimeser) {
+          } catch {
             er = futimeser
           }
         }
@@ -1079,12 +1035,8 @@ export class UnpackSync extends Unpack {
           fs.fchownSync(fd, Number(uid), Number(gid))
         } catch (fchowner) {
           try {
-            fs.chownSync(
-              String(entry.absolute),
-              Number(uid),
-              Number(gid),
-            )
-          } catch (chowner) {
+            fs.chownSync(String(entry.absolute), Number(uid), Number(gid))
+          } catch {
             er = er || fchowner
           }
         }
@@ -1096,9 +1048,7 @@ export class UnpackSync extends Unpack {
 
   [DIRECTORY](entry: ReadEntry, done: () => void) {
     const mode =
-      typeof entry.mode === 'number' ?
-        entry.mode & 0o7777
-      : this.dmode
+      typeof entry.mode === 'number' ? entry.mode & 0o7777 : this.dmode
     const er = this[MKDIR](String(entry.absolute), mode)
     if (er) {
       this[ONERROR](er as Error, entry)
@@ -1113,7 +1063,7 @@ export class UnpackSync extends Unpack {
           entry.mtime,
         )
         /* c8 ignore next */
-      } catch (er) {}
+      } catch {}
     }
     if (this[DOCHOWN](entry)) {
       try {
@@ -1122,7 +1072,7 @@ export class UnpackSync extends Unpack {
           Number(this[UID](entry)),
           Number(this[GID](entry)),
         )
-      } catch (er) {}
+      } catch {}
     }
     done()
     entry.resume()
@@ -1153,7 +1103,7 @@ export class UnpackSync extends Unpack {
     done: () => void,
     onError: (er: SymlinkError) => void,
   ) {
-    if (this.preservePaths || !parts.length) return done()
+    if (this.preservePaths || parts.length === 0) return done()
     let t = cwd
     for (const p of parts) {
       t = path.resolve(t, p)

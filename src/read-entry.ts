@@ -1,8 +1,8 @@
 import { Minipass } from 'minipass'
-import { Header } from './header.js'
+import type { Header } from './header.js'
 import { normalizeWindowsPath } from './normalize-windows-path.js'
-import { Pax } from './pax.js'
-import { EntryTypeName } from './types.js'
+import type { Pax } from './pax.js'
+import type { EntryTypeName } from './types.js'
 
 export class ReadEntry extends Minipass<Buffer, Buffer> {
   extended?: Pax
@@ -97,9 +97,7 @@ export class ReadEntry extends Minipass<Buffer, Buffer> {
     this.ctime = header.ctime
     /* c8 ignore start */
     this.linkpath =
-      header.linkpath ?
-        normalizeWindowsPath(header.linkpath)
-      : undefined
+      header.linkpath ? normalizeWindowsPath(header.linkpath) : undefined
     /* c8 ignore stop */
     this.uname = header.uname
     this.gname = header.gname
@@ -144,11 +142,7 @@ export class ReadEntry extends Minipass<Buffer, Buffer> {
           // we slurp in everything except for the path attribute in
           // a global extended header, because that's weird. Also, any
           // null/undefined values are ignored.
-          return !(
-            v === null ||
-            v === undefined ||
-            (k === 'path' && gex)
-          )
+          return !(v === null || v === undefined || (k === 'path' && gex))
         }),
       ),
     )

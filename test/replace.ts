@@ -1,4 +1,5 @@
-import t, { Test } from 'tap'
+import type { Test } from 'tap'
+import t from 'tap'
 import { replace as r } from '../dist/esm/replace.js'
 import path, { dirname, resolve } from 'path'
 import fs from 'fs'
@@ -42,10 +43,7 @@ t.test('basic file add to archive (good or truncated)', t => {
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
-      const actual = Buffer.concat(out)
-        .toString()
-        .trim()
-        .split(/\r?\n/)
+      const actual = Buffer.concat(out).toString().trim().split(/\r?\n/)
       t.same(actual, [
         '1024-bytes.txt',
         '512-bytes.txt',
@@ -213,9 +211,7 @@ t.test('cannot append to gzipped archives', async t => {
   const file = resolve(dir, 'compressed.tgz')
 
   const expect = new Error('cannot append to compressed archives')
-  const expectT = new TypeError(
-    'cannot append to compressed archives',
-  )
+  const expectT = new TypeError('cannot append to compressed archives')
 
   t.throws(
     () =>
@@ -260,9 +256,7 @@ t.test('cannot append to brotli compressed archives', async t => {
   const file = resolve(dir, 'compressed.tbr')
 
   const expect = new Error('cannot append to compressed archives')
-  const expectT = new TypeError(
-    'cannot append to compressed archives',
-  )
+  const expectT = new TypeError('cannot append to compressed archives')
 
   t.throws(
     () =>
@@ -300,9 +294,7 @@ t.test('cannot append to zstd compressed archives', async t => {
   const file = resolve(dir, 'compressed.tzst')
 
   const expect = new Error('cannot append to compressed archives')
-  const expectT = new TypeError(
-    'cannot append to compressed archives',
-  )
+  const expectT = new TypeError('cannot append to compressed archives')
 
   t.throws(
     () =>
@@ -395,10 +387,7 @@ t.test('mtime cache', async t => {
     c.on('close', (code, signal) => {
       t.equal(code, 0)
       t.equal(signal, null)
-      const actual = Buffer.concat(out)
-        .toString()
-        .trim()
-        .split(/\r?\n/)
+      const actual = Buffer.concat(out).toString().trim().split(/\r?\n/)
       t.same(actual, [
         '1024-bytes.txt',
         '512-bytes.txt',

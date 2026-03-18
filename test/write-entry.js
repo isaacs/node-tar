@@ -322,9 +322,7 @@ t.test('hardlinks far away', t => {
   const h1 = 'hardlink-1'
   const f = path.resolve(files, h1)
   const stat = fs.statSync(f)
-  const linkCache = new Map([
-    [stat.dev + ':' + stat.ino, '/a/b/c/d/e'],
-  ])
+  const linkCache = new Map([[stat.dev + ':' + stat.ino, '/a/b/c/d/e']])
 
   const ws = new WriteEntry('files/hardlink-2', {
     cwd: fixtures,
@@ -581,29 +579,22 @@ t.test('readlink fail', t => {
   t.throws(_ => {
     return new WriteEntrySync('write-entry.js', { cwd: __dirname })
   }, expect)
-  new WriteEntry('write-entry.js', { cwd: __dirname }).on(
-    'error',
-    er => {
-      t.match(er, expect)
-      t.equal(normPath(er.path), normPath(__filename))
-      t.end()
-    },
-  )
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
+    t.match(er, expect)
+    t.equal(normPath(er.path), normPath(__filename))
+    t.end()
+  })
 })
 
 t.test('open fail', t => {
   t.teardown(mutateFS.fail('open', new Error('pwn')))
-  t.throws(
-    _ => new WriteEntrySync('write-entry.js', { cwd: __dirname }),
-    { message: 'pwn' },
-  )
-  new WriteEntry('write-entry.js', { cwd: __dirname }).on(
-    'error',
-    er => {
-      t.match(er, { message: 'pwn' })
-      t.end()
-    },
-  )
+  t.throws(_ => new WriteEntrySync('write-entry.js', { cwd: __dirname }), {
+    message: 'pwn',
+  })
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
+    t.match(er, { message: 'pwn' })
+    t.end()
+  })
 })
 
 t.test('read fail', t => {
@@ -647,13 +638,10 @@ t.test('read invalid EOF', t => {
     _ => new WriteEntrySync('write-entry.js', { cwd: __dirname }),
     expect,
   )
-  new WriteEntry('write-entry.js', { cwd: __dirname }).on(
-    'error',
-    er => {
-      t.match(er, expect)
-      t.end()
-    },
-  )
+  new WriteEntry('write-entry.js', { cwd: __dirname }).on('error', er => {
+    t.match(er, expect)
+    t.end()
+  })
 })
 
 t.test('read overflow expectation', t => {
@@ -706,10 +694,7 @@ t.test('short reads', t => {
           ws.on('data', c => out.push(c))
           ws.on('end', _ => {
             out = Buffer.concat(out)
-            t.equal(
-              out.length,
-              512 * Math.ceil(1 + contents.length / 512),
-            )
+            t.equal(out.length, 512 * Math.ceil(1 + contents.length / 512))
             t.equal(
               out.slice(512).toString().replace(/\0.*$/, ''),
               contents,
@@ -749,8 +734,7 @@ t.test(
 t.test(
   'win32 <|>? in paths',
   {
-    skip:
-      isWindows && 'do not create annoying junk on windows systems',
+    skip: isWindows && 'do not create annoying junk on windows systems',
   },
   t => {
     const file = path.resolve(fixtures, '<|>?.txt')
@@ -1367,10 +1351,7 @@ t.test('prefix and hard links', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(
-          data.subarray(i * 512, i * 512 + e.length).toString(),
-          e,
-        )
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else if (e instanceof RegExp) {
         t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
@@ -1547,10 +1528,7 @@ t.test('prefix and hard links from tar entries', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(
-          data.subarray(i * 512, i * 512 + e.length).toString(),
-          e,
-        )
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else if (e instanceof RegExp) {
         t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {
@@ -1645,10 +1623,7 @@ t.test('hard links and no prefix', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(
-          data.subarray(i * 512, i * 512 + e.length).toString(),
-          e,
-        )
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else {
         t.match(new Header(data.subarray(i * 512, (i + 1) * 512)), e)
       }
@@ -1794,10 +1769,7 @@ t.test('hard links from tar entries and no prefix', t => {
     const data = Buffer.concat(out)
     expect.forEach((e, i) => {
       if (typeof e === 'string') {
-        t.equal(
-          data.subarray(i * 512, i * 512 + e.length).toString(),
-          e,
-        )
+        t.equal(data.subarray(i * 512, i * 512 + e.length).toString(), e)
       } else if (e instanceof RegExp) {
         t.match(data.subarray(i * 512, (i + 1) * 512).toString(), e)
       } else {

@@ -3,7 +3,7 @@ import * as fsm from '@isaacs/fs-minipass'
 import fs from 'node:fs'
 import { filesFilter } from './list.js'
 import { makeCommand } from './make-command.js'
-import { TarOptionsFile, TarOptionsSyncFile } from './options.js'
+import type { TarOptionsFile, TarOptionsSyncFile } from './options.js'
 import { Unpack, UnpackSync } from './unpack.js'
 
 const extractFileSync = (opt: TarOptionsSyncFile) => {

@@ -2,17 +2,12 @@ import { type Minipass } from 'minipass'
 
 /** has a warn method */
 export type Warner = {
-  warn(code: string, message: string | Error, data: any): void
+  warn(code: string, message: string | Error, data: unknown): void
   file?: string
   cwd?: string
   strict?: boolean
 
-  emit(
-    event: 'warn',
-    code: string,
-    message: string,
-    data?: WarnData,
-  ): void
+  emit(event: 'warn', code: string, message: string, data?: WarnData): void
   emit(event: 'error', error: TarError): void
 }
 
@@ -26,7 +21,7 @@ export type WarnData = {
   code?: string
   tarCode?: string
   recoverable?: boolean
-  [k: string]: any
+  [k: string]: unknown
 }
 
 export type TarError = Error & WarnData

@@ -21,14 +21,10 @@
 import { EventEmitter as EE } from 'events'
 import { BrotliDecompress, Unzip, ZstdDecompress } from 'minizlib'
 import { Header } from './header.js'
-import { TarOptions } from './options.js'
+import type { TarOptions } from './options.js'
 import { Pax } from './pax.js'
 import { ReadEntry } from './read-entry.js'
-import {
-  warnMethod,
-  type WarnData,
-  type Warner,
-} from './warn-method.js'
+import { warnMethod, type WarnData, type Warner } from './warn-method.js'
 
 const maxMetaEntrySize = 1024 * 1024
 const gzipHeader = Buffer.from([0x1f, 0x8b])
@@ -81,7 +77,7 @@ export class Parser extends EE implements Warner {
   writable: true = true
   readable: false = false;
 
-  [QUEUE]: (ReadEntry | [string | symbol, any, any])[] = [];
+  [QUEUE]: (ReadEntry | [string | symbol, unknown, unknown])[] = [];
   [BUFFER]?: Buffer;
   [READENTRY]?: ReadEntry;
   [WRITEENTRY]?: ReadEntry;
@@ -106,10 +102,7 @@ export class Parser extends EE implements Warner {
 
     // these BADARCHIVE errors can't be detected early. listen on DONE.
     this.on(DONE, () => {
-      if (
-        this[STATE] === 'begin' ||
-        this[SAW_VALID_ENTRY] === false
-      ) {
+      if (this[STATE] === 'begin' || this[SAW_VALID_ENTRY] === false) {
         // either less than 1 block of data, or all entries were invalid.
         // Either way, probably not even a tarball.
         this.warn('TAR_BAD_ARCHIVE', 'Unrecognized archive format')
@@ -163,11 +156,7 @@ export class Parser extends EE implements Warner {
     }
   }
 
-  warn(
-    code: string,
-    message: string | Error,
-    data: WarnData = {},
-  ): void {
+  warn(code: string, message: string | Error, data: WarnData = {}): void {
     warnMethod(this, code, message, data)
   }
 
@@ -250,8 +239,7 @@ export class Parser extends EE implements Warner {
             }
           } else {
             this[EX] = undefined
-            entry.ignore =
-              entry.ignore || !this.filter(entry.path, entry)
+            entry.ignore = entry.ignore || !this.filter(entry.path, entry)
 
             if (entry.ignore) {
               // probably valid, just not something we care about
@@ -283,14 +271,14 @@ export class Parser extends EE implements Warner {
     queueMicrotask(() => this.emit('close'))
   }
 
-  [PROCESSENTRY](entry?: ReadEntry | [string | symbol, any, any]) {
+  [PROCESSENTRY](entry?: ReadEntry | [string | symbol, unknown, unknown]) {
     let go = true
 
     if (!entry) {
       this[READENTRY] = undefined
       go = false
     } else if (Array.isArray(entry)) {
-      const [ev, ...args]: [string | symbol, any, any] = entry
+      const [ev, ...args]: [string | symbol, unknown, unknown] = entry
       this.emit(ev, ...args)
     } else {
       this[READENTRY] = entry
@@ -307,7 +295,7 @@ export class Parser extends EE implements Warner {
   [NEXTENTRY]() {
     do {} while (this[PROCESSENTRY](this[QUEUE].shift()))
 
-    if (!this[QUEUE].length) {
+    if (this[QUEUE].length === 0) {
       // At this point, there's nothing in the queue, but we may have an
       // entry which is being consumed (readEntry).
       // If we don't, then we definitely can handle more data.
@@ -364,8 +352,8 @@ export class Parser extends EE implements Warner {
     return ret
   }
 
-  [EMIT](ev: string | symbol, data?: any, extra?: any) {
-    if (!this[QUEUE].length && !this[READENTRY]) {
+  [EMIT](ev: string | symbol, data?: unknown, extra?: unknown) {
+    if (this[QUEUE].length === 0 && !this[READENTRY]) {
       this.emit(ev, data, extra)
     } else {
       this[QUEUE].push([ev, data, extra])
@@ -424,8 +412,8 @@ export class Parser extends EE implements Warner {
   ): boolean
   write(
     chunk: Buffer | string,
-    encoding?: BufferEncoding | (() => any),
-    cb?: () => any,
+    encoding?: BufferEncoding | (() => unknown),
+    cb?: () => unknown,
   ): boolean {
     if (typeof encoding === 'function') {
       cb = encoding
@@ -544,12 +532,12 @@ export class Parser extends EE implements Warner {
 
     // return false if there's a queue, or if the current entry isn't flowing
     const ret =
-      this[QUEUE].length ? false
+      this[QUEUE].length > 0 ? false
       : this[READENTRY] ? this[READENTRY].flowing
       : true
 
     // if we have no queue, then that means a clogged READENTRY
-    if (!ret && !this[QUEUE].length) {
+    if (!ret && this[QUEUE].length === 0) {
       this[READENTRY]?.once('drain', () => this.emit('drain'))
     }
 
@@ -560,8 +548,7 @@ export class Parser extends EE implements Warner {
 
   [BUFFERCONCAT](c: Buffer) {
     if (c && !this[ABORTED]) {
-      this[BUFFER] =
-        this[BUFFER] ? Buffer.concat([this[BUFFER], c]) : c
+      this[BUFFER] = this[BUFFER] ? Buffer.concat([this[BUFFER], c]) : c
     }
   }
 
@@ -630,11 +617,7 @@ export class Parser extends EE implements Warner {
     // the buffer.  Advance the position and put any remainder in the buffer.
     let position = 0
     const length = chunk.length
-    while (
-      position + 512 <= length &&
-      !this[ABORTED] &&
-      !this[SAW_EOF]
-    ) {
+    while (position + 512 <= length && !this[ABORTED] && !this[SAW_EOF]) {
       switch (this[STATE]) {
         case 'begin':
         case 'header':
@@ -659,14 +642,10 @@ export class Parser extends EE implements Warner {
     }
 
     if (position < length) {
-      if (this[BUFFER]) {
-        this[BUFFER] = Buffer.concat([
-          chunk.subarray(position),
-          this[BUFFER],
-        ])
-      } else {
-        this[BUFFER] = chunk.subarray(position)
-      }
+      this[BUFFER] =
+        this[BUFFER] ?
+          Buffer.concat([chunk.subarray(position), this[BUFFER]])
+        : chunk.subarray(position)
     }
   }
 

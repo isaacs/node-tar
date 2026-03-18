@@ -64,9 +64,7 @@ switch (process.argv[2]) {
     t.spawn(node, [__filename, 'unix'], {
       env: {
         ...process.env,
-        ...(platform === 'win32' ?
-          { __FAKE_PLATFORM__: 'linux' }
-        : {}),
+        ...(platform === 'win32' ? { __FAKE_PLATFORM__: 'linux' } : {}),
       },
     })
   }

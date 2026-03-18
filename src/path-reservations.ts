@@ -10,8 +10,7 @@ import { join } from 'node:path'
 import { normalizeUnicode } from './normalize-unicode.js'
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
 
-const platform =
-  process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
+const platform = process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
 const isWindows = platform === 'win32'
 
 export type Reservation = {
@@ -28,7 +27,7 @@ const getDirs = (path: string) => {
     .split('/')
     .slice(0, -1)
     .reduce((set: string[], path) => {
-      const s = set[set.length - 1]
+      const s = set.at(-1)
       if (s !== undefined) {
         path = join(s, path)
       }
@@ -76,7 +75,7 @@ export class PathReservations {
       if (!q) {
         this.#queues.set(dir, [new Set([fn])])
       } else {
-        const l = q[q.length - 1]
+        const l = q.at(-1)
         if (l instanceof Set) {
           l.add(fn)
         } else {

@@ -1,16 +1,13 @@
 // tar -r
 import { WriteStream, WriteStreamSync } from '@isaacs/fs-minipass'
-import { Minipass } from 'minipass'
+import type { Minipass } from 'minipass'
 import fs from 'node:fs'
 import path from 'node:path'
 import { Header } from './header.js'
 import { list } from './list.js'
 import { makeCommand } from './make-command.js'
-import {
-  isFile,
-  TarOptionsFile,
-  TarOptionsSyncFile,
-} from './options.js'
+import type { TarOptionsFile, TarOptionsSyncFile } from './options.js'
+import { isFile } from './options.js'
 import { Pack, PackSync } from './pack.js'
 
 // starting at the head of the file, read a Header
@@ -40,11 +37,7 @@ const replaceSync = (opt: TarOptionsSyncFile, files: string[]) => {
     const st = fs.fstatSync(fd)
     const headBuf = Buffer.alloc(512)
 
-    POSITION: for (
-      position = 0;
-      position < st.size;
-      position += 512
-    ) {
+    POSITION: for (position = 0; position < st.size; position += 512) {
       for (let bufPos = 0, bytes = 0; bufPos < 512; bufPos += bytes) {
         bytes = fs.readSync(
           fd,
@@ -54,11 +47,7 @@ const replaceSync = (opt: TarOptionsSyncFile, files: string[]) => {
           position + bufPos,
         )
 
-        if (
-          position === 0 &&
-          headBuf[0] === 0x1f &&
-          headBuf[1] === 0x8b
-        ) {
+        if (position === 0 && headBuf[0] === 0x1f && headBuf[1] === 0x8b) {
           throw new Error('cannot append to compressed archives')
         }
 
@@ -89,7 +78,7 @@ const replaceSync = (opt: TarOptionsSyncFile, files: string[]) => {
     if (threw) {
       try {
         fs.closeSync(fd as number)
-      } catch (er) {}
+      } catch {}
     }
   }
 }
@@ -137,7 +126,7 @@ const replaceAsync = (
     let bufPos = 0
     const headBuf = Buffer.alloc(512)
     const onread = (er?: null | Error, bytes?: number): void => {
-      if (er || typeof bytes === 'undefined') {
+      if (er || bytes === undefined) {
         return cb(er)
       }
       bufPos += bytes
@@ -152,11 +141,7 @@ const replaceAsync = (
         )
       }
 
-      if (
-        position === 0 &&
-        headBuf[0] === 0x1f &&
-        headBuf[1] === 0x8b
-      ) {
+      if (position === 0 && headBuf[0] === 0x1f && headBuf[1] === 0x8b) {
         return cb(new Error('cannot append to compressed archives'))
       }
 
@@ -193,10 +178,7 @@ const replaceAsync = (
   const promise = new Promise<void>((resolve, reject) => {
     p.on('error', reject)
     let flag = 'r+'
-    const onopen = (
-      er?: NodeJS.ErrnoException | null,
-      fd?: number,
-    ) => {
+    const onopen = (er?: NodeJS.ErrnoException | null, fd?: number) => {
       if (er && er.code === 'ENOENT' && flag === 'r+') {
         flag = 'w+'
         return fs.open(opt.file, flag, onopen)
@@ -248,12 +230,8 @@ const addFilesSync = (p: Pack, files: string[]) => {
   p.end()
 }
 
-const addFilesAsync = async (
-  p: Pack,
-  files: string[],
-): Promise<void> => {
-  for (let i = 0; i < files.length; i++) {
-    const file = String(files[i])
+const addFilesAsync = async (p: Pack, files: string[]): Promise<void> => {
+  for (const file of files) {
     if (file.charAt(0) === '@') {
       await list({
         file: path.resolve(String(p.cwd), file.slice(1)),

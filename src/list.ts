@@ -3,7 +3,7 @@ import * as fsm from '@isaacs/fs-minipass'
 import fs from 'node:fs'
 import { dirname, parse } from 'path'
 import { makeCommand } from './make-command.js'
-import {
+import type {
   TarOptions,
   TarOptionsFile,
   TarOptionsSyncFile,
@@ -36,11 +36,7 @@ export const filesFilter = (opt: TarOptions, files: string[]) => {
     if (file === root) ret = false
     else {
       const m = map.get(file)
-      if (m !== undefined) {
-        ret = m
-      } else {
-        ret = mapHas(dirname(file), root)
-      }
+      ret = m !== undefined ? m : mapHas(dirname(file), root)
     }
 
     map.set(file, ret)
@@ -82,7 +78,7 @@ const listFileSync = (opt: TarOptionsSyncFile) => {
       try {
         fs.closeSync(fd)
         /* c8 ignore next */
-      } catch (er) {}
+      } catch {}
     }
   }
 }
