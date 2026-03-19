@@ -33,7 +33,7 @@ const createFile = (opt: TarOptionsFile, files: string[]) => {
     p.on('error', rej)
   })
 
-  addFilesAsync(p, files)
+  addFilesAsync(p, files).catch(er => p.emit('error', er))
 
   return promise
 }
@@ -79,7 +79,7 @@ const createSync = (opt: TarOptionsSync, files: string[]) => {
 
 const createAsync = (opt: TarOptions, files: string[]) => {
   const p = new Pack(opt)
-  addFilesAsync(p, files)
+  addFilesAsync(p, files).catch(er => p.emit('error', er))
   return p
 }
 

@@ -289,6 +289,37 @@ t.test('must specify some files', t => {
   t.end()
 })
 
+t.test('error from @ file entry should be catchable', t => {
+  t.test('async with file option', t => {
+    const file = path.resolve(dir, 'at-error-file.tar')
+    t.rejects(
+      c(
+        {
+          file: file,
+          cwd: __dirname,
+        },
+        ['@nonexistent.tar'],
+      ),
+    ).then(() => t.end())
+  })
+
+  t.test('async without file option', t => {
+    const stream = c(
+      {
+        cwd: __dirname,
+      },
+      ['@nonexistent.tar'],
+    )
+    stream.on('error', er => {
+      t.match(er, { code: 'ENOENT' })
+      t.end()
+    })
+    stream.resume()
+  })
+
+  t.end()
+})
+
 t.test('transform a filename', async t => {
   const cwd = t.testdir({
     'README.md': 'hello, world',
