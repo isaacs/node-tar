@@ -12,7 +12,7 @@ const platform = process.env.__FAKE_PLATFORM__ || process.platform
 const isWindows = platform === 'win32'
 
 /* c8 ignore start */
-const { O_CREAT, O_TRUNC, O_WRONLY } = fs.constants
+const { O_CREAT, O_NOFOLLOW, O_TRUNC, O_WRONLY } = fs.constants
 const UV_FS_O_FILEMAP =
   Number(process.env.__FAKE_FS_O_FILENAME__) ||
   fs.constants.UV_FS_O_FILEMAP ||
@@ -22,7 +22,11 @@ const UV_FS_O_FILEMAP =
 const fMapEnabled = isWindows && !!UV_FS_O_FILEMAP
 const fMapLimit = 512 * 1024
 const fMapFlag = UV_FS_O_FILEMAP | O_TRUNC | O_CREAT | O_WRONLY
+const noFollowFlag =
+  !isWindows && typeof O_NOFOLLOW === 'number' ?
+    O_NOFOLLOW | O_TRUNC | O_CREAT | O_WRONLY
+  : null
 export const getWriteFlag =
-  !fMapEnabled ?
-    () => 'w'
+  noFollowFlag !== null ? () => noFollowFlag
+  : !fMapEnabled ? () => 'w'
   : (size: number) => (size < fMapLimit ? fMapFlag : 'w')

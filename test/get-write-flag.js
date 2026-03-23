@@ -13,6 +13,13 @@ const __filename = fileURLToPath(import.meta.url)
 const hasFmap = !!fs.constants.UV_FS_O_FILEMAP
 const { platform } = process
 const UV_FS_O_FILEMAP = 0x20000000
+const unixFlag =
+  typeof fs.constants.O_NOFOLLOW === 'number' ?
+    fs.constants.O_NOFOLLOW |
+    fs.constants.O_TRUNC |
+    fs.constants.O_CREAT |
+    fs.constants.O_WRONLY
+  : 'w'
 
 switch (process.argv[2]) {
   case 'win32-fmap': {
@@ -32,8 +39,8 @@ switch (process.argv[2]) {
   }
 
   case 'unix': {
-    t.equal(getWriteFlag(1), 'w')
-    t.equal(getWriteFlag(512 * 1024 + 1), 'w')
+    t.equal(getWriteFlag(1), unixFlag)
+    t.equal(getWriteFlag(512 * 1024 + 1), unixFlag)
     break
   }
 
