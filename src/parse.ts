@@ -61,6 +61,10 @@ const SAW_VALID_ENTRY = Symbol('sawValidEntry')
 const SAW_NULL_BLOCK = Symbol('sawNullBlock')
 const SAW_EOF = Symbol('sawEOF')
 const CLOSESTREAM = Symbol('closeStream')
+const MAX_DECOMPRESSION_RATIO = 1000
+const COMPRESSEDBYTESREAD = Symbol('compressedBytesRead')
+const DECOMPRESSEDBYTESREAD = Symbol('decompressedBytesRead')
+const CHECKDECOMPRESSIONRATIO = Symbol('checkDecompressionRatio')
 
 const noop = () => true
 
@@ -73,6 +77,7 @@ export class Parser extends EE implements Warner {
   filter: Exclude<TarOptions['filter'], undefined>
   brotli?: TarOptions['brotli']
   zstd?: TarOptions['zstd']
+  maxDecompressionRatio: number
 
   writable: true = true
   readable: false = false;
@@ -93,7 +98,9 @@ export class Parser extends EE implements Warner {
   [SAW_EOF]: boolean = false;
   [WRITING]: boolean = false;
   [CONSUMING]: boolean = false;
-  [EMITTEDEND]: boolean = false
+  [EMITTEDEND]: boolean = false;
+  [COMPRESSEDBYTESREAD]: number = 0;
+  [DECOMPRESSEDBYTESREAD]: number = 0
 
   constructor(opt: TarOptions = {}) {
     super()
@@ -120,6 +127,10 @@ export class Parser extends EE implements Warner {
     }
 
     this.strict = !!opt.strict
+    this.maxDecompressionRatio =
+      typeof opt.maxDecompressionRatio === 'number' ?
+        opt.maxDecompressionRatio
+      : MAX_DECOMPRESSION_RATIO
     this.maxMetaEntrySize = opt.maxMetaEntrySize || maxMetaEntrySize
     this.filter = typeof opt.filter === 'function' ? opt.filter : noop
     // Unlike gzip, brotli doesn't have any magic bytes to identify it
@@ -374,14 +385,14 @@ export class Parser extends EE implements Warner {
 
       case 'NextFileHasLongPath':
       case 'OldGnuLongPath': {
-        const ex = this[EX] ?? Object.create(null)
+        const ex: Pax = this[EX] ?? Object.create(null)
         this[EX] = ex
         ex.path = this[META].replace(/\0.*/, '')
         break
       }
 
       case 'NextFileHasLongLinkpath': {
-        const ex = this[EX] || Object.create(null)
+        const ex: Pax = this[EX] || Object.create(null)
         this[EX] = ex
         ex.linkpath = this[META].replace(/\0.*/, '')
         break
@@ -395,10 +406,29 @@ export class Parser extends EE implements Warner {
   }
 
   abort(error: Error) {
+    if (this[ABORTED]) {
+      return
+    }
     this[ABORTED] = true
     this.emit('abort', error)
     // always throws, even in non-strict mode
     this.warn('TAR_ABORT', error, { recoverable: false })
+  }
+
+  [CHECKDECOMPRESSIONRATIO](chunk: Buffer) {
+    this[DECOMPRESSEDBYTESREAD] += chunk.length
+    const ratio = this[DECOMPRESSEDBYTESREAD] / this[COMPRESSEDBYTESREAD]
+    if (ratio > this.maxDecompressionRatio) {
+      this.abort(
+        new Error(
+          `max decompression ratio exceeded: ${ratio.toFixed(2)} > ${
+            this.maxDecompressionRatio
+          }`,
+        ),
+      )
+      return false
+    }
+    return true
   }
 
   write(
@@ -508,13 +538,22 @@ export class Parser extends EE implements Warner {
           this[UNZIP] === undefined ? new Unzip({})
           : isZstd ? new ZstdDecompress({})
           : new BrotliDecompress({})
-        this[UNZIP].on('data', chunk => this[CONSUMECHUNK](chunk))
-        this[UNZIP].on('error', er => this.abort(er as Error))
+        this[UNZIP].on('data', chunk => {
+          if (this[CHECKDECOMPRESSIONRATIO](chunk)) {
+            this[CONSUMECHUNK](chunk)
+          }
+        })
+        this[UNZIP].on('error', er => {
+          if (!this[ABORTED]) {
+            this.abort(er as Error)
+          }
+        })
         this[UNZIP].on('end', () => {
           this[ENDED] = true
           this[CONSUMECHUNK]()
         })
         this[WRITING] = true
+        this[COMPRESSEDBYTESREAD] += chunk.length
         const ret = !!this[UNZIP][ended ? 'end' : 'write'](chunk)
         this[WRITING] = false
         cb?.()
@@ -524,6 +563,7 @@ export class Parser extends EE implements Warner {
 
     this[WRITING] = true
     if (this[UNZIP]) {
+      this[COMPRESSEDBYTESREAD] += chunk.length
       this[UNZIP].write(chunk)
     } else {
       this[CONSUMECHUNK](chunk)
@@ -561,7 +601,7 @@ export class Parser extends EE implements Warner {
     ) {
       this[EMITTEDEND] = true
       const entry = this[WRITEENTRY]
-      if (entry && entry.blockRemain) {
+      if (entry?.blockRemain) {
         // truncated, likely a damaged file
         const have = this[BUFFER] ? this[BUFFER].length : 0
         this.warn(
@@ -673,7 +713,10 @@ export class Parser extends EE implements Warner {
     if (!this[ABORTED]) {
       if (this[UNZIP]) {
         /* c8 ignore start */
-        if (chunk) this[UNZIP].write(chunk)
+        if (chunk) {
+          this[COMPRESSEDBYTESREAD] += chunk.length
+          this[UNZIP].write(chunk)
+        }
         /* c8 ignore stop */
         this[UNZIP].end()
       } else {

@@ -153,6 +153,15 @@ export interface TarOptions {
    */
   onwarn?: (code: string, message: string, data: WarnData) => unknown
 
+  /**
+   * The maximum allowed ratio of decompressed bytes to compressed bytes when
+   * reading gzip, brotli, or zstd-compressed archives.
+   *
+   * This defaults to `1000` and aborts extraction or parsing when exceeded.
+   * Set to `Infinity` to disable the limit.
+   */
+  maxDecompressionRatio?: number
+
   //////////////////////////
   // extraction options
 

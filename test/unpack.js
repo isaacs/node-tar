@@ -7,6 +7,7 @@ import path from 'path'
 import { rimraf } from 'rimraf'
 import t from 'tap'
 import { fileURLToPath } from 'url'
+import zlib from 'zlib'
 import { Header } from '../dist/esm/header.js'
 import { extract } from '../dist/esm/extract.js'
 import { makeTar } from './fixtures/make-tar.js'
@@ -24,6 +25,22 @@ import { normalizeWindowsPath as normPath } from '../dist/esm/normalize-windows-
 
 import { ReadEntry } from '../dist/esm/read-entry.js'
 import { Pax } from '../dist/esm/pax.js'
+
+const makeCompressedBomb = () => {
+  const payload = Buffer.alloc(8 * 1024 * 1024)
+  return zlib.gzipSync(
+    makeTar([
+      {
+        path: 'bomb',
+        size: payload.length,
+        type: 'File',
+      },
+      payload,
+      '',
+      '',
+    ]),
+  )
+}
 
 // On Windows in particular, the "really deep folder path" file
 // often tends to cause problems, which don't indicate a failure
@@ -2793,6 +2810,52 @@ t.test('trying to unpack a non-zlib gzip file should fail', t => {
       .once('error', er => t.match(er, expect, 'async emits'))
       .end(data)
     t.throws(() => new UnpackSync(opts).end(data), expect, 'sync throws')
+  })
+
+  t.end()
+})
+
+t.test('max decompression ratio', t => {
+  const data = makeCompressedBomb()
+
+  t.test('aborts compressed bombs by default', t => {
+    t.plan(2)
+    const cwd = t.testdir({})
+    new Unpack({ cwd })
+      .once('error', er =>
+        t.match(er, {
+          tarCode: 'TAR_ABORT',
+          recoverable: false,
+          cwd: normPath(cwd),
+          message: /max decompression ratio exceeded/,
+        }),
+      )
+      .end(data)
+
+    t.throws(
+      () => new UnpackSync({ cwd }).end(data),
+      {
+        tarCode: 'TAR_ABORT',
+        recoverable: false,
+        cwd: normPath(cwd),
+        message: /max decompression ratio exceeded/,
+      },
+      'sync throws',
+    )
+  })
+
+  t.test('can be disabled explicitly', t => {
+    const cwd = t.testdir({})
+    const u = new Unpack({
+      cwd,
+      maxDecompressionRatio: Infinity,
+    })
+    u.on('error', er => t.fail(er.message))
+    u.on('close', () => {
+      t.equal(fs.statSync(path.resolve(cwd, 'bomb')).size, 8 * 1024 * 1024)
+      t.end()
+    })
+    u.end(data)
   })
 
   t.end()

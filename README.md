@@ -570,6 +570,9 @@ The following options are supported:
   defaults to 1024. Anything deeper than the limit will raise a
   warning and skip the entry. Set to `Infinity` to remove the
   limitation.
+- `maxDecompressionRatio` Defaults to 1000. The maximum ratio of
+  decommpressed bytes to compressed bytes, in a compressed
+  archive. Set to `Infinity` to allow explosive decompression.
 
 The following options are mostly internal, but can be modified in some
 advanced use cases, such as re-using caches between runs.
@@ -629,6 +632,9 @@ The following options are supported:
   complete until the entry data is consumed.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered. (See "Warnings and Errors")
+- `maxDecompressionRatio` Defaults to 1000. The maximum ratio of
+  decommpressed bytes to compressed bytes, in a compressed
+  archive. Set to `Infinity` to allow explosive decompression.
 
 ### tar.u(options, fileList, callback) [alias: tar.update]
 
@@ -904,6 +910,9 @@ Most unpack errors will cause a `warn` event to be emitted. If the
   defaults to 1024. Anything deeper than the limit will raise a
   warning and skip the entry. Set to `Infinity` to remove the
   limitation.
+- `maxDecompressionRatio` Defaults to 1000. The maximum ratio of
+  decommpressed bytes to compressed bytes, in a compressed
+  archive. Set to `Infinity` to allow explosive decompression.
 
 ### class UnpackSync
 

@@ -9,6 +9,7 @@ import type { Test } from 'tap'
 import t from 'tap'
 import { fileURLToPath } from 'url'
 import { promisify } from 'util'
+import zlib from 'zlib'
 import { extract as x } from '../dist/esm/extract.js'
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
 import { makeTar } from './fixtures/make-tar.js'
@@ -19,6 +20,22 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const extractdir = path.resolve(__dirname, 'fixtures/extract')
 const tars = path.resolve(__dirname, 'fixtures/tars')
+
+const makeCompressedBomb = () => {
+  const payload = Buffer.alloc(8 * 1024 * 1024)
+  return zlib.gzipSync(
+    makeTar([
+      {
+        path: 'bomb',
+        size: payload.length,
+        type: 'File',
+      },
+      payload,
+      '',
+      '',
+    ]),
+  )
+}
 
 const tnock = (t: Test, host: string, opts?: nock.Options) => {
   nock.disableNetConnect()
@@ -404,6 +421,45 @@ t.test('sync gzip error edge case test', async t => {
     '8',
     '9',
   ])
+
+  t.end()
+})
+
+t.test('max decompression ratio', async t => {
+  const file = path.resolve(extractdir, 'bomb.tgz')
+  const bomb = makeCompressedBomb()
+
+  await mkdirp(extractdir)
+  fs.writeFileSync(file, bomb)
+  t.teardown(() => rimraf(file))
+
+  t.test('file extraction aborts by default', async t => {
+    const cwd = t.testdir({})
+    t.throws(
+      () => x({ sync: true, file, cwd }),
+      {
+        tarCode: 'TAR_ABORT',
+        recoverable: false,
+        message: /max decompression ratio exceeded/,
+      },
+      'sync throws',
+    )
+    await t.rejects(x({ file, cwd }), {
+      tarCode: 'TAR_ABORT',
+      recoverable: false,
+      message: /max decompression ratio exceeded/,
+    })
+  })
+
+  t.test('file extraction can disable the limit explicitly', async t => {
+    const cwd = t.testdir({})
+    await x({
+      file,
+      cwd,
+      maxDecompressionRatio: Infinity,
+    })
+    t.equal(fs.statSync(path.resolve(cwd, 'bomb')).size, 8 * 1024 * 1024)
+  })
 
   t.end()
 })

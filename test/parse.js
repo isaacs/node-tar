@@ -1023,3 +1023,67 @@ t.test('tarmageddon', t => {
 
   t.end()
 })
+
+t.test('max decompression ratio', async t => {
+  const makeCompressedBomb = () => {
+    const payload = Buffer.alloc(8 * 1024 * 1024)
+    return zlib.gzipSync(
+      makeTar([
+        {
+          path: 'bomb',
+          size: payload.length,
+          type: 'File',
+        },
+        payload,
+        '',
+        '',
+      ]),
+    )
+  }
+  const bomb = makeCompressedBomb()
+
+  t.test('parsing aborts by default', async t => {
+    const p = new Parser({})
+    t.throws(
+      () => p.end(bomb),
+      {
+        tarCode: 'TAR_ABORT',
+        recoverable: false,
+        message: /max decompression ratio exceeded/,
+      },
+      'parsing aborts',
+    )
+    // no-op to abort again
+    p.abort(new Error('hello'))
+  })
+
+  t.test('aborting only happens one time', t => {
+    const p = new Parser({})
+    t.throws(() => p.abort(new Error('hello')), {
+      message: 'hello',
+      tarCode: 'TAR_ABORT',
+      recoverable: false,
+    })
+    // this is ignored
+    p.end(bomb)
+    t.end()
+  })
+
+  t.test('parsing can disable the limit explicitly', async () => {
+    let bytesRead = 0
+    await new Promise(res =>
+      new Parser({
+        maxDecompressionRatio: Infinity,
+        onReadEntry(e) {
+          e.on('data', c => (bytesRead += c.byteLength))
+        },
+      })
+        .on('end', res)
+        .end(bomb)
+        .resume(),
+    )
+    t.equal(bytesRead, 8 * 1024 * 1024)
+  })
+
+  t.end()
+})
