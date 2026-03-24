@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches: ["main"]
-  pull_request_target:
+  pull_request:
     paths:
       - 'src/**'
       - 'test/**'
@@ -49,4 +49,4 @@ jobs:
         run: npm install
 
       - name: Run Tests
-        run: npm test -- -c
+        run: npm test -- -c -t0
