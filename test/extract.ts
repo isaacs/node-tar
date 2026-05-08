@@ -17,8 +17,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const extractdir = path.resolve(__dirname, 'fixtures/extract')
 const tars = path.resolve(__dirname, 'fixtures/tars')
-//@ts-ignore
-import mutateFS from 'mutate-fs'
 
 const tnock = (t: Test, host: string, opts?: nock.Options) => {
   nock.disableNetConnect()
@@ -355,15 +353,22 @@ t.test('nonexistent', async t => {
   await t.rejects(x({ file: 'does not exist' }))
 })
 
-t.test('read fail', t => {
+t.test('read fail', async t => {
   const poop = new Error('poop')
-  t.teardown(mutateFS.fail('read', poop))
+  const { extract } = await t.mockImport<
+    typeof import('../src/extract.js')
+  >('../src/extract.js', {
+    fs: t.createMock(fs, {
+      readSync: () => {
+        throw poop
+      },
+    }),
+  })
 
   t.throws(
-    () => x({ maxReadSize: 10, sync: true, file: __filename }),
+    () => extract({ maxReadSize: 10, sync: true, file: __filename }),
     poop,
   )
-  t.end()
 })
 
 t.test('sync gzip error edge case test', async t => {

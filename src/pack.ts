@@ -33,7 +33,7 @@ export class PackJob {
 import { Minipass } from 'minipass'
 import * as zlib from 'minizlib'
 import { Yallist } from 'yallist'
-import { ReadEntry } from './read-entry.js'
+import type { ReadEntry } from './read-entry.js'
 import type { WarnEvent } from './warn-method.js'
 import { warnMethod, type WarnData, type Warner } from './warn-method.js'
 
@@ -227,10 +227,10 @@ export class Pack
       throw new Error('write after end')
     }
 
-    if (path instanceof ReadEntry) {
-      this[ADDTARENTRY](path)
-    } else {
+    if (typeof path === 'string') {
       this[ADDFSENTRY](path)
+    } else {
+      this[ADDTARENTRY](path)
     }
     return this.flowing
   }

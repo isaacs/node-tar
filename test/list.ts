@@ -1,7 +1,6 @@
 import type { Stats } from 'fs'
 import fs, { readFileSync } from 'fs'
-//@ts-ignore
-import mutateFS from 'mutate-fs'
+import fsp from 'fs/promises'
 import { dirname, resolve } from 'path'
 import type { Test } from 'tap'
 import t from 'tap'
@@ -13,6 +12,14 @@ import { makeTar } from './fixtures/make-tar.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+const poop = new Error('poop')
+const cbFail = (...args: any[]) =>
+  (args[args.length - 1] as Function)(poop)
+const syncFail = () => {
+  throw poop
+}
+const asyncFail = async () => syncFail()
 
 const lp = JSON.parse(
   readFileSync(__dirname + '/fixtures/parse/long-paths.json', 'utf8'),
@@ -181,9 +188,28 @@ t.test('bad args', t => {
   t.end()
 })
 
-t.test('stat fails', t => {
-  const poop = new Error('poop')
-  t.teardown(mutateFS.statFail(poop))
+t.test('stat fails', async t => {
+  const { list } = await t.mockImport<typeof import('../src/list.js')>(
+    '../src/list.js',
+    {
+      fs: t.createMock(fs, {
+        open: cbFail,
+        stat: cbFail,
+        lstat: cbFail,
+        fstat: cbFail,
+        openSync: syncFail,
+        statSync: syncFail,
+        lstatSync: syncFail,
+        fstatSync: syncFail,
+      }),
+      'fs/promises': t.createMock(fsp, {
+        open: asyncFail,
+        stat: asyncFail,
+        lstat: asyncFail,
+        fstat: asyncFail,
+      }),
+    },
+  )
   t.test('sync', t => {
     t.plan(1)
     t.throws(() => list({ file: __filename, sync: true }), poop)
@@ -200,9 +226,19 @@ t.test('stat fails', t => {
 })
 
 t.test('read fail', t => {
-  t.test('sync', t => {
-    const poop = new Error('poop')
-    t.teardown(mutateFS.fail('read', poop))
+  t.test('sync', async t => {
+    const { list } = await t.mockImport<typeof import('../src/list.js')>(
+      '../src/list.js',
+      {
+        fs: t.createMock(fs, {
+          read: cbFail,
+          readSync: syncFail,
+        }),
+        'fs/promises': t.createMock(fsp, {
+          read: asyncFail,
+        }),
+      },
+    )
     t.plan(1)
     t.throws(
       () =>
@@ -214,17 +250,39 @@ t.test('read fail', t => {
       poop,
     )
   })
-  t.test('cb', t => {
-    const poop = new Error('poop')
-    t.teardown(mutateFS.fail('read', poop))
+
+  t.test('cb', async t => {
+    const { list } = await t.mockImport<typeof import('../src/list.js')>(
+      '../src/list.js',
+      {
+        fs: t.createMock(fs, {
+          read: cbFail,
+          readSync: syncFail,
+        }),
+        'fs/promises': t.createMock(fsp, {
+          read: asyncFail,
+        }),
+      },
+    )
     t.plan(1)
-    list({ file: __filename }, er => t.equal(er, poop))
+    await list({ file: __filename }, er => t.equal(er, poop))
   })
-  t.test('promise', t => {
-    const poop = new Error('poop')
-    t.teardown(mutateFS.fail('read', poop))
+
+  t.test('promise', async t => {
+    const { list } = await t.mockImport<typeof import('../src/list.js')>(
+      '../src/list.js',
+      {
+        fs: t.createMock(fs, {
+          read: cbFail,
+          readSync: syncFail,
+        }),
+        'fs/promises': t.createMock(fsp, {
+          read: asyncFail,
+        }),
+      },
+    )
     t.plan(1)
-    list({ file: __filename }).catch(er => t.equal(er, poop))
+    await list({ file: __filename }).catch(er => t.equal(er, poop))
   })
   t.end()
 })
