@@ -51,6 +51,27 @@ export type EntryTypeName =
   | 'OldExtendedHeader'
   | 'Unsupported'
 
+/**
+ * types that are a normal file system entry, not metadata.
+ *
+ * These can be the subject of extended/globalExtended headers, long path
+ * names, long linkpath names, etc.
+ *
+ * Any other types are meta, and cannot be targetted by extended PAX headers.
+ */
+export const normalFsTypes = new Set<EntryTypeCode>([
+  '0',
+  '',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  'D',
+])
+
 // map types from key to human-friendly name
 export const name = new Map<EntryTypeCode, EntryTypeName>([
   ['0', 'File'],

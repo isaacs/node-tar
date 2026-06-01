@@ -1,5 +1,6 @@
 import t from 'tap'
 import { Header } from '../dist/esm/header.js'
+import { name } from '../dist/esm/types.js'
 
 t.test('ustar format', t => {
   const buf = Buffer.from(
@@ -676,4 +677,48 @@ t.test('tarmageddon, ensure that Header prioritizes Pax size', async t => {
   t.equal(h.size, 0, 'size is zero in raw ustar header')
   const hPax = new Header(h.block, 0, { size: 123 })
   t.equal(hPax.size, 123, 'if size is set in pax, takes priority')
+})
+
+t.test('do not apply ex/gex to meta entries', t => {
+  const normalEntryTypes = new Set([
+    'File',
+    'OldFile',
+    'Link',
+    'SymbolicLink',
+    'CharacterDevice',
+    'BlockDevice',
+    'Directory',
+    'FIFO',
+    'ContiguousFile',
+    'GNUDumpDir',
+  ])
+
+  for (const type of name.values()) {
+    const data = new Header({
+      path: 'x',
+      type,
+      size: 1,
+    })
+    data.encode()
+    const h = new Header(data.block, 0, {
+      size: 100,
+      dev: 5678,
+      ino: 9876,
+    })
+    if (normalEntryTypes.has(type)) {
+      if (h.type === 'Directory') {
+        t.equal(h.size, 0, 'Directories always size=0, no matter what')
+      } else {
+        t.equal(h.size, 100, `expect ${type} to respect extended header`)
+      }
+      t.equal(h.dev, 5678, `expect ${type} to respect extended header`)
+      t.equal(h.ino, 9876, `expect ${type} to respect extended header`)
+    } else {
+      t.equal(h.size, 1, `expect ${type} to ignore extended header`)
+      t.equal(h.dev, undefined, `expect ${type} to ignore extended header`)
+      t.equal(h.ino, undefined, `expect ${type} to ignore extended header`)
+    }
+  }
+
+  return t.end()
 })
