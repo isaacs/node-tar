@@ -173,7 +173,7 @@ const parseKVLine = (set: Record<string, unknown>, line: string) => {
 
   const k = r.replace(/^SCHILY\.(dev|ino|nlink)/, '$1')
 
-  const v = kv.join('=')
+  const v = kv.join('=').replace(/\0.*/, '')
   set[k] =
     /^([A-Z]+\.)?([mac]|birth|creation)time$/.test(k) ?
       new Date(Number(v) * 1000)
