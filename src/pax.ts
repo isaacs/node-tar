@@ -187,17 +187,20 @@ const parseKVLine = (
     case 'uname':
       set[k] = v
       break
+    case 'ctime':
     case 'atime':
     case 'mtime':
-    case 'ctime':
       set[k] = new Date(Number(v) * 1000)
+      break
+    case 'size':
+      const s = +v
+      if (s >= 0) set[k] = s
       break
     case 'gid':
     case 'uid':
     case 'dev':
     case 'ino':
     case 'nlink':
-    case 'size':
     case 'mode':
       set[k] = +v
       break

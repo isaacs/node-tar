@@ -308,3 +308,45 @@ t.test('string fields stay string', t => {
   )
   t.end()
 })
+
+t.test('no negative size', t => {
+  t.same(Pax.parse('14 size=-1000\n'), {
+    atime: undefined,
+    charset: undefined,
+    comment: undefined,
+    ctime: undefined,
+    gid: undefined,
+    gname: undefined,
+    linkpath: undefined,
+    mtime: undefined,
+    path: undefined,
+    size: undefined,
+    uid: undefined,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    mode: undefined,
+    nlink: undefined,
+    global: false,
+  })
+  t.same(Pax.parse('13 size=1000\n'), {
+    atime: undefined,
+    charset: undefined,
+    comment: undefined,
+    ctime: undefined,
+    gid: undefined,
+    gname: undefined,
+    linkpath: undefined,
+    mtime: undefined,
+    path: undefined,
+    size: 1000,
+    uid: undefined,
+    uname: undefined,
+    dev: undefined,
+    ino: undefined,
+    mode: undefined,
+    nlink: undefined,
+    global: false,
+  })
+  t.end()
+})
