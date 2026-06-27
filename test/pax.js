@@ -280,3 +280,31 @@ t.test('parse', t => {
 
   t.end()
 })
+
+t.test('string fields stay string', t => {
+  t.same(
+    Pax.parse(
+      '14 path=12345\n18 linkpath=54321\n13 WAT=12345\n15 ctime=12345\n',
+    ),
+    {
+      atime: undefined,
+      charset: undefined,
+      comment: undefined,
+      ctime: new Date('1970-01-01T03:25:45.000Z'),
+      gid: undefined,
+      gname: undefined,
+      linkpath: '54321',
+      mtime: undefined,
+      path: '12345',
+      size: undefined,
+      uid: undefined,
+      uname: undefined,
+      dev: undefined,
+      ino: undefined,
+      mode: undefined,
+      nlink: undefined,
+      global: false,
+    },
+  )
+  t.end()
+})

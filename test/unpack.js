@@ -1,6 +1,6 @@
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
 
-import fs from 'fs'
+import fs, { readFileSync } from 'fs'
 import { Minipass } from 'minipass'
 import * as z from 'minizlib'
 import path from 'path'
@@ -23,6 +23,7 @@ import mutateFS from 'mutate-fs'
 import { normalizeWindowsPath as normPath } from '../dist/esm/normalize-windows-path.js'
 
 import { ReadEntry } from '../dist/esm/read-entry.js'
+import { Pax } from '../dist/esm/pax.js'
 
 // On Windows in particular, the "really deep folder path" file
 // often tends to cause problems, which don't indicate a failure
@@ -3460,4 +3461,70 @@ t.test('no linking through a symlink', t => {
     })
   }
   t.end()
+})
+
+t.test('numeric pax/entry name discernment', t => {
+  const numericName = '12345'
+  const alphaName = 'abcde'
+  for (const strict of [true, false]) {
+    t.test('strict=' + strict, t => {
+      for (const paxName of [numericName, alphaName]) {
+        t.test('paxName=' + paxName, t => {
+          for (const entryName of [numericName, alphaName]) {
+            t.test('entryName=' + entryName, t => {
+              const paxHeader = new Pax(
+                {
+                  path: paxName,
+                  size: '12345\n'.length,
+                },
+                false,
+              )
+              const paxData = paxHeader.encode()
+              const data = makeTar([
+                paxData,
+                {
+                  type: 'File',
+                  path: entryName,
+                  mode: 0o755,
+                  ctime: new Date('2000-01-01T00:00:00.000Z'),
+                  mtime: new Date('2000-01-01T00:00:00.000Z'),
+                  size: '12345\n'.length,
+                },
+                '12345\n',
+                '',
+                '',
+              ])
+
+              t.test('sync', t => {
+                const dir = t.testdir({})
+                new UnpackSync({ strict, cwd: dir }).end(data)
+                t.equal(
+                  readFileSync(dir + '/' + paxName, 'utf8'),
+                  '12345\n',
+                )
+                t.end()
+              })
+
+              t.test('async', async t => {
+                const dir = t.testdir({})
+                await new Promise(r => {
+                  new Unpack({ strict, cwd: dir }).on('end', r).end(data)
+                })
+                t.equal(
+                  readFileSync(dir + '/' + paxName, 'utf8'),
+                  '12345\n',
+                )
+                t.end()
+              })
+              t.end()
+            })
+          }
+          t.end()
+        })
+      }
+
+      t.end()
+    })
+    t.end()
+  }
 })

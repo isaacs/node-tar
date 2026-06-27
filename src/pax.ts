@@ -154,7 +154,10 @@ const parseKV = (str: string) =>
     .split('\n')
     .reduce(parseKVLine, Object.create(null))
 
-const parseKVLine = (set: Record<string, unknown>, line: string) => {
+const parseKVLine = (
+  set: Record<string, string | number | Date>,
+  line: string,
+) => {
   const n = parseInt(line, 10)
 
   // XXX Values with \n in them will fail this.
@@ -174,10 +177,30 @@ const parseKVLine = (set: Record<string, unknown>, line: string) => {
   const k = r.replace(/^SCHILY\.(dev|ino|nlink)/, '$1')
 
   const v = kv.join('=').replace(/\0.*/, '')
-  set[k] =
-    /^([A-Z]+\.)?([mac]|birth|creation)time$/.test(k) ?
-      new Date(Number(v) * 1000)
-    : /^[0-9]+$/.test(v) ? +v
-    : v
+  switch (k) {
+    case 'path':
+    case 'linkpath':
+    case 'type':
+    case 'charset':
+    case 'comment':
+    case 'gname':
+    case 'uname':
+      set[k] = v
+      break
+    case 'atime':
+    case 'mtime':
+    case 'ctime':
+      set[k] = new Date(Number(v) * 1000)
+      break
+    case 'gid':
+    case 'uid':
+    case 'dev':
+    case 'ino':
+    case 'nlink':
+    case 'size':
+    case 'mode':
+      set[k] = +v
+      break
+  }
   return set
 }

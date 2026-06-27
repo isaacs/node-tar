@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs, { readFileSync } from 'fs'
 import http from 'http'
 import { mkdirp } from 'mkdirp'
 import nock from 'nock'
@@ -11,6 +11,8 @@ import { fileURLToPath } from 'url'
 import { promisify } from 'util'
 import { extract as x } from '../dist/esm/extract.js'
 import { Unpack, UnpackSync } from '../dist/esm/unpack.js'
+import { makeTar } from './fixtures/make-tar.js'
+import { Pax } from '../src/pax.js'
 const pipeline = promisify(PL)
 
 const __filename = fileURLToPath(import.meta.url)
@@ -555,4 +557,68 @@ t.test('verify long linkname is not a problem', async t => {
     await x({ file, C: t.testdir({}), strict: true })
     t.ok(fs.lstatSync(t.testdirName + '/test').isSymbolicLink())
   })
+})
+
+t.test('numeric pax/entry name discernment', t => {
+  const numericName = '12345'
+  const alphaName = 'abcde'
+  for (const strict of [true, false]) {
+    t.test('strict=' + strict, t => {
+      for (const paxName of [numericName, alphaName]) {
+        t.test('paxName=' + paxName, t => {
+          for (const entryName of [numericName, alphaName]) {
+            t.test('entryName=' + entryName, t => {
+              const paxHeader = new Pax(
+                {
+                  path: paxName,
+                  size: '12345\n'.length,
+                },
+                false,
+              )
+              const paxData = paxHeader.encode()
+              const data = makeTar([
+                paxData,
+                {
+                  type: 'File',
+                  path: entryName,
+                  mode: 0o755,
+                  ctime: new Date('2000-01-01T00:00:00.000Z'),
+                  mtime: new Date('2000-01-01T00:00:00.000Z'),
+                  size: '12345\n'.length,
+                },
+                '12345\n',
+                '',
+                '',
+              ])
+
+              t.test('sync', t => {
+                const dir = t.testdir({ tarFile: data })
+                x({ strict, sync: true, cwd: dir, file: dir + '/tarFile' })
+                t.equal(
+                  readFileSync(dir + '/' + paxName, 'utf8'),
+                  '12345\n',
+                )
+                t.end()
+              })
+
+              t.test('async', async t => {
+                const dir = t.testdir({ tarFile: data })
+                await x({ strict, cwd: dir, file: dir + '/tarFile' })
+                t.equal(
+                  readFileSync(dir + '/' + paxName, 'utf8'),
+                  '12345\n',
+                )
+                t.end()
+              })
+              t.end()
+            })
+          }
+          t.end()
+        })
+      }
+
+      t.end()
+    })
+    t.end()
+  }
 })

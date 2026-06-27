@@ -172,7 +172,7 @@ export class Unpack extends Parser {
     // default true for root
     this.preserveOwner =
       opt.preserveOwner === undefined && typeof opt.uid !== 'number' ?
-        !!(process.getuid && process.getuid() === 0)
+        !!(process.getuid?.() === 0)
       : !!opt.preserveOwner
 
     this.processUid =
@@ -451,7 +451,7 @@ export class Unpack extends Parser {
     mode: number,
     cb: (er?: null | MkdirError, made?: string) => void,
   ) {
-    mkdir(
+    void mkdir(
       normalizeWindowsPath(dir),
       {
         uid: this.uid,
