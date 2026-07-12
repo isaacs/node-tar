@@ -409,6 +409,16 @@ export class Parser extends EE implements Warner {
     if (this[ABORTED]) {
       return
     }
+    if (this[UNZIP]) {
+      // fully nerf the decompressor and close its underlying binding
+      const u = this[UNZIP]
+      /* c8 ignore start */
+      u.write = () => true
+      u.end = () => u
+      u.emit = () => false
+      /* c8 ignore stop */
+      u.destroy?.()
+    }
     this[ABORTED] = true
     this.emit('abort', error)
     // always throws, even in non-strict mode
