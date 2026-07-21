@@ -30,13 +30,21 @@ export const filesFilter = (opt: TarOptions, files: string[]) => {
   )
   const filter = opt.filter
 
-  const mapHas = (file: string, r: string = ''): boolean => {
+  // limit recursion to 100 levels
+  const MAX = 100
+  const mapHas = (file: string, r: string = '', depth = 0): boolean => {
+    /* c8 ignore start - excessive caution */
+    if (depth >= MAX) {
+      map.set(file, false)
+      return false
+    }
+    /* c8 ignore stop */
     const root = r || parse(file).root || '.'
     let ret: boolean
     if (file === root) ret = false
     else {
       const m = map.get(file)
-      ret = m !== undefined ? m : mapHas(dirname(file), root)
+      ret = m !== undefined ? m : mapHas(dirname(file), root, depth + 1)
     }
 
     map.set(file, ret)
