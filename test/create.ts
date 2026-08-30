@@ -363,3 +363,29 @@ t.test('transform a filename', async t => {
   ).concat()
   t.equal(data.subarray(0, 'bloorg.md'.length).toString(), 'bloorg.md')
 })
+
+// https://github.com/isaacs/node-tar/issues/460
+t.test('hardlinks across subdirs do not hang create({file})', async t => {
+  const cwd = t.testdir({})
+  for (let i = 0; i < 20; i++) {
+    const sub = path.join(cwd, `dir${String(i).padStart(3, '0')}`)
+    fs.mkdirSync(sub)
+    fs.writeFileSync(path.join(sub, 'file.txt'), `content-${i}`)
+  }
+  const src = path.join(cwd, 'dir000', 'hardlink-source.txt')
+  fs.writeFileSync(src, 'I am the link target')
+  for (let i = 1; i < 15; i++) {
+    fs.linkSync(
+      src,
+      path.join(cwd, `dir${String(i).padStart(3, '0')}`, 'hardlink.txt'),
+    )
+  }
+  const file = path.join(cwd, 'out.tar')
+  await Promise.race([
+    c({ file, cwd }, ['.']),
+    new Promise((_, rej) =>
+      setTimeout(() => rej(new Error('create hung')), 10000),
+    ),
+  ])
+  t.ok(fs.statSync(file).size > 1024, 'wrote archive bytes')
+})

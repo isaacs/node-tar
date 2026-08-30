@@ -330,6 +330,18 @@ export class Pack
     }
 
     this[PROCESSING] = true
+    // The head is the only job that is ever piped, and piping is the
+    // only thing that frees a job slot. Never gate it on the job
+    // limit, or a full read-ahead table deadlocks the whole pack
+    // (hardlinks parked behind a pending head, issue #460).
+    while (this[CURRENT]) {
+      const head = this[CURRENT]
+      this[PROCESSJOB](head)
+      if (!head.ignore) {
+        break
+      }
+      this[QUEUE].shift()
+    }
     for (
       let w = this[QUEUE].head;
       !!w && this[JOBS] < this.jobs;

@@ -1959,3 +1959,65 @@ t.test('avoid permanent link deferral', async t => {
     new Set(['pkgB/index.js', 'pkgB/foo.js', 'pkgB/dist/index.js']),
   )
 })
+
+// https://github.com/isaacs/node-tar/issues/460
+// Hardlinks in later subdirs fill the job table while the head is
+// still pending. PROCESS used to skip the head once JOBS hit the
+// limit, so the pack never piped and never ended.
+const hardlinkTree = dir => {
+  for (let i = 0; i < 20; i++) {
+    const sub = path.join(dir, `dir${String(i).padStart(3, '0')}`)
+    fs.mkdirSync(sub)
+    fs.writeFileSync(path.join(sub, 'file.txt'), `content-${i}`)
+  }
+  const src = path.join(dir, 'dir000', 'hardlink-source.txt')
+  fs.writeFileSync(src, 'I am the link target')
+  for (let i = 1; i < 15; i++) {
+    fs.linkSync(
+      src,
+      path.join(dir, `dir${String(i).padStart(3, '0')}`, 'hardlink.txt'),
+    )
+  }
+}
+
+t.test(
+  'hardlinks across subdirs do not deadlock the pack head',
+  async t => {
+    const dir = t.testdir({})
+    hardlinkTree(dir)
+    const p = new Pack({ cwd: dir })
+    const out = []
+    p.on('data', d => out.push(d))
+    const finished = new Promise((res, rej) => {
+      p.on('end', res)
+      p.on('error', rej)
+    })
+    p.add('.').end()
+    await Promise.race([
+      finished,
+      new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('pack hung')), 10000),
+      ),
+    ])
+    const data = Buffer.concat(out)
+    t.ok(data.length > 1024, 'wrote archive bytes')
+    const { files, links } = await new Promise(res => {
+      let files = 0
+      let links = 0
+      const parser = new Parser({
+        onReadEntry(entry) {
+          if (entry.type === 'File') {
+            files++
+          } else if (entry.type === 'Link') {
+            links++
+          }
+          entry.resume()
+        },
+      })
+      parser.on('end', () => res({ files, links }))
+      parser.end(data)
+    })
+    t.equal(files, 21, 'source file plus one file.txt per dir')
+    t.equal(links, 14, 'hardlinks packed as Link entries')
+  },
+)
