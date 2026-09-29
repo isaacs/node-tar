@@ -322,7 +322,13 @@ export class WriteEntry
       throw new Error('cannot create file entry without stat')
     }
     /* c8 ignore stop */
-    if (this.stat.nlink > 1) {
+    // Windows file indexes are 64 bits wide, but fs.Stats reports ino as a
+    // double, so any value above Number.MAX_SAFE_INTEGER may be shared by
+    // several distinct files. Such an ino cannot identify a file, and using
+    // it as a linkCache key archives unrelated files as hardlinks to one
+    // another, silently dropping their contents. When we cannot tell files
+    // apart, treat the file as unlinked rather than guess.
+    if (this.stat.nlink > 1 && Number.isSafeInteger(this.stat.ino)) {
       const linkKey = `${this.stat.dev}:${this.stat.ino}` as LinkCacheKey
       const linkpath = this.linkCache.get(linkKey)
       if (linkpath?.indexOf(this.cwd) === 0) {

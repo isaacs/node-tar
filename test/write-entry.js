@@ -350,6 +350,36 @@ t.test('hardlinks far away', t => {
   })
 })
 
+// fs.Stats reports a 64-bit Windows file index as a double, so distinct
+// files can share this ino.
+const unsafeIno = 9570149211882252
+
+t.test('unsafe ino is not used to identify hardlinks', t => {
+  t.teardown(
+    mutateFS.statMutate((_er, st) => {
+      if (st) {
+        st.dev = 204880295
+        st.ino = unsafeIno
+        st.nlink = 2
+      }
+    }),
+  )
+
+  const linkCache = new Map()
+  new WriteEntrySync('one-byte.txt', { cwd: files, linkCache })
+  const ws = new WriteEntrySync('512-bytes.txt', { cwd: files, linkCache })
+
+  t.equal(ws.type, 'File', 'unrelated file is not archived as a hardlink')
+  t.equal(ws.linkpath, undefined)
+  t.equal(ws.stat.size, 512, 'contents are still packed')
+  t.equal(
+    linkCache.size,
+    0,
+    'an ino that cannot identify a file is not cached',
+  )
+  t.end()
+})
+
 t.test('really deep path', t => {
   const f =
     'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
