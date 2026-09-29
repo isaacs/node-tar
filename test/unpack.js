@@ -2952,6 +2952,95 @@ t.test('using strip option when top level file exists', t => {
   })
 })
 
+t.test('strip does not chown the extraction directory', t => {
+  // GNU tar --strip-components does not apply directory metadata to cwd
+  // when the leftover path is empty. https://github.com/isaacs/node-tar/issues/294
+  const data = makeTar([
+    {
+      path: 'dir',
+      type: 'Directory',
+      uid: 501,
+      gid: 20,
+      mode: 0o755,
+      mtime: new Date('2020-01-02'),
+    },
+    {
+      path: 'dir/keep.txt',
+      type: 'File',
+      size: 2,
+      uid: 501,
+      gid: 20,
+      mtime: new Date('2020-01-02'),
+    },
+    'ok',
+    '',
+    '',
+  ])
+
+  const utimes = fs.utimes
+  const utimesSync = fs.utimesSync
+  const chown = fs.chown
+  const chownSync = fs.chownSync
+  const mutated = []
+  const track = p => {
+    mutated.push(normPath(String(p)))
+  }
+  fs.utimes = (p, atime, mtime, cb) => {
+    track(p)
+    utimes(p, atime, mtime, cb)
+  }
+  fs.utimesSync = (p, atime, mtime) => {
+    track(p)
+    utimesSync(p, atime, mtime)
+  }
+  fs.chown = (p, uid, gid, cb) => {
+    track(p)
+    chown(p, uid, gid, cb)
+  }
+  fs.chownSync = (p, uid, gid) => {
+    track(p)
+    chownSync(p, uid, gid)
+  }
+  t.teardown(() => {
+    fs.utimes = utimes
+    fs.utimesSync = utimesSync
+    fs.chown = chown
+    fs.chownSync = chownSync
+  })
+
+  const check = (t, cwd) => {
+    t.equal(fs.readFileSync(cwd + '/keep.txt', 'utf8'), 'ok')
+    const cwdReal = normPath(fs.realpathSync(cwd))
+    t.notOk(
+      mutated.some(p => {
+        try {
+          return normPath(fs.realpathSync(p)) === cwdReal
+        } catch {
+          return normPath(p) === cwdReal
+        }
+      }),
+      'must not chown or utimes extraction cwd',
+    )
+    t.end()
+  }
+
+  t.plan(2)
+  t.test('async', t => {
+    const cwd = t.testdir({})
+    mutated.length = 0
+    new Unpack({ cwd, strip: 1, uid: 123456, gid: 123456 })
+      .on('end', () => check(t, cwd))
+      .end(data)
+  })
+
+  t.test('sync', t => {
+    const cwd = t.testdir({})
+    mutated.length = 0
+    new UnpackSync({ cwd, strip: 1, uid: 123456, gid: 123456 }).end(data)
+    check(t, cwd)
+  })
+})
+
 t.test('handle EPERMs when creating symlinks', t => {
   // https://github.com/npm/node-tar/issues/265
   const msg =

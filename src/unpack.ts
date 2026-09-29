@@ -337,6 +337,14 @@ export class Unpack extends Parser {
       }
       parts.splice(0, this.strip)
       entry.path = parts.join('/')
+      // GNU tar --strip-components does not chown/chmod the extraction
+      // directory when stripping leaves an empty path.
+      if (
+        (entry.path === '' || entry.path === '.') &&
+        (entry.type === 'Directory' || entry.type === 'GNUDumpDir')
+      ) {
+        return false
+      }
     }
 
     if (isFinite(this.maxDepth) && parts.length > this.maxDepth) {
