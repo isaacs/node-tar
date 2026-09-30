@@ -1959,3 +1959,93 @@ t.test('avoid permanent link deferral', async t => {
     new Set(['pkgB/index.js', 'pkgB/foo.js', 'pkgB/dist/index.js']),
   )
 })
+
+// https://github.com/isaacs/node-tar/issues/295
+// Unsupported types (sockets) end WriteEntry with no header as soon as
+// they are constructed. If that happens while they are still read-ahead
+// jobs, JOBDONE must remove *that* job — not always shift() the head —
+// or the file being packed is dropped and the pack never ends.
+t.test(
+  'JOBDONE removes finished read-ahead unsupported entries (#295)',
+  { timeout: 8000 },
+  async t => {
+    const cwd = t.testdir({
+      'aaa.txt': 'hello\n',
+    })
+
+    const fileStat = fs.lstatSync(path.join(cwd, 'aaa.txt'))
+    const dirStat = fs.lstatSync(cwd)
+    const socketStat = {
+      ...fileStat,
+      mode: 0o140666,
+      size: 0,
+      nlink: 1,
+      isFile: () => false,
+      isDirectory: () => false,
+      isSymbolicLink: () => false,
+      isSocket: () => true,
+      isFIFO: () => false,
+      isBlockDevice: () => false,
+      isCharacterDevice: () => false,
+    }
+
+    const { Pack: SlowPack } = await t.mockImport('../src/pack.js', {
+      fs: t.createMock(fs, {
+        readdir: (p, cb) => {
+          if (path.resolve(p) === path.resolve(cwd)) {
+            return cb(null, ['aaa.txt', 'b.sock', 'c.sock'])
+          }
+          return fs.readdir(p, cb)
+        },
+        // Delay the regular file so both sockets become read-ahead jobs
+        // while aaa.txt is still the queue head.
+        lstat: (p, cb) => {
+          const resolved = path.resolve(p)
+          if (resolved === path.resolve(cwd, 'aaa.txt')) {
+            setTimeout(() => cb(null, fileStat), 50)
+          } else if (
+            resolved === path.resolve(cwd, 'b.sock') ||
+            resolved === path.resolve(cwd, 'c.sock')
+          ) {
+            cb(null, socketStat)
+          } else if (resolved === path.resolve(cwd)) {
+            cb(null, dirStat)
+          } else {
+            fs.lstat(p, cb)
+          }
+        },
+      }),
+    })
+
+    const out = []
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Pack hung on unsupported read-ahead entries')),
+        4000,
+      )
+      new SlowPack({ cwd })
+        .end('.')
+        .on('data', c => out.push(c))
+        .on('end', () => {
+          clearTimeout(timer)
+          resolve()
+        })
+        .on('error', reject)
+    })
+
+    const data = Buffer.concat(out)
+    const names = []
+    for (let i = 0; i + 512 <= data.length; ) {
+      const block = data.subarray(i, i + 512)
+      if (block.every(b => b === 0)) {
+        break
+      }
+      const h = new Header(block)
+      if (h.path) {
+        names.push(h.path)
+      }
+      i += 512 + 512 * Math.ceil((h.size || 0) / 512)
+    }
+    t.strictSame(names.sort(), ['./', './aaa.txt'])
+  },
+)

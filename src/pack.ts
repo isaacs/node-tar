@@ -360,7 +360,22 @@ export class Pack
   }
 
   [JOBDONE](job: PackJob) {
-    this[QUEUE].shift()
+    // The completed job is usually the queue head (the only entry that is
+    // piped). Unsupported types (sockets, FIFOs, devices) end with no
+    // header as soon as WriteEntry is constructed, which can happen while
+    // they are still read-ahead jobs. Always remove *this* job — shifting
+    // the head unconditionally drops the file being packed and stalls
+    // create() when two such entries follow a regular file (#295).
+    if (this[QUEUE].head?.value === job) {
+      this[QUEUE].shift()
+    } else {
+      for (let n = this[QUEUE].head; n; n = n.next) {
+        if (n.value === job) {
+          this[QUEUE].removeNode(n)
+          break
+        }
+      }
+    }
     this[JOBS] -= 1
     const { stat } = job
     if (stat && stat.isFile() && stat.nlink > 1) {
