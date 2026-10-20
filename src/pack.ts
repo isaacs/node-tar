@@ -337,10 +337,13 @@ export class Pack
     while (this[CURRENT]) {
       const head = this[CURRENT]
       this[PROCESSJOB](head)
-      if (!head.ignore) {
+      if (head.ignore) {
+        this[QUEUE].shift()
+      } else if (this[CURRENT] === head) {
+        // Piping the head can end it synchronously: [JOBDONE] then shifts
+        // the queue, and its own [PROCESS] call is dropped by PROCESSING.
         break
       }
-      this[QUEUE].shift()
     }
     for (
       let w = this[QUEUE].head;
