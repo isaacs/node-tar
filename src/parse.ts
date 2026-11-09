@@ -24,6 +24,7 @@ import { Header } from './header.js'
 import type { TarOptions } from './options.js'
 import { Pax } from './pax.js'
 import { ReadEntry } from './read-entry.js'
+import { normalFsTypes } from './types.js'
 import { warnMethod, type WarnData, type Warner } from './warn-method.js'
 
 const maxMetaEntrySize = 1024 * 1024
@@ -202,13 +203,20 @@ export class Parser extends EE implements Warner {
         this.warn('TAR_ENTRY_INVALID', 'path is required', { header })
       } else {
         const type = header.type
-        if (/^(Symbolic)?Link$/.test(type) && !header.linkpath) {
+        // The linkpath field only means something on a filesystem entry.
+        // libarchive copies an entry's link target into the GNU long-name
+        // (L) and long-link (K) headers it writes ahead of that entry, so
+        // a meta header carrying a linkpath is not a reason to drop it.
+        const fsEntry =
+          header.typeKey !== 'Unsupported' &&
+          normalFsTypes.has(header.typeKey)
+        if (fsEntry && /^(Symbolic)?Link$/.test(type) && !header.linkpath) {
           this.warn('TAR_ENTRY_INVALID', 'linkpath required', {
             header,
           })
         } else if (
+          fsEntry &&
           !/^(Symbolic)?Link$/.test(type) &&
-          !/^(Global)?ExtendedHeader$/.test(type) &&
           header.linkpath
         ) {
           this.warn('TAR_ENTRY_INVALID', 'linkpath forbidden', {

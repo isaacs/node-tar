@@ -695,6 +695,77 @@ t.test('consume while consuming', t => {
   t.end()
 })
 
+t.test('gnu long name headers that carry a linkpath', t => {
+  // libarchive (bsdtar --format gnutar) fills in the linkpath field of
+  // the ././@LongLink headers it writes before a symlink or hard link.
+  // The field means nothing on a meta entry, so the long name must
+  // still be applied to the entry that follows.
+  const longPath = 'p'.repeat(120)
+  const longTarget = 't'.repeat(120)
+  const data = makeTar([
+    {
+      path: '././@LongLink',
+      type: 'NextFileHasLongPath',
+      size: longPath.length + 1,
+      linkpath: 'target',
+    },
+    longPath + '\0',
+    {
+      path: longPath.slice(0, 100),
+      type: 'SymbolicLink',
+      linkpath: 'target',
+    },
+    {
+      path: '././@LongLink',
+      type: 'NextFileHasLongLinkpath',
+      size: longTarget.length + 1,
+      linkpath: longTarget.slice(0, 100),
+    },
+    longTarget + '\0',
+    {
+      path: 'link',
+      type: 'SymbolicLink',
+      linkpath: longTarget.slice(0, 100),
+    },
+    {
+      path: '././@LongLink',
+      type: 'NextFileHasLongPath',
+      size: longPath.length + 6,
+      linkpath: 'target',
+    },
+    'hard-' + longPath + '\0',
+    {
+      path: ('hard-' + longPath).slice(0, 100),
+      type: 'Link',
+      linkpath: 'target',
+    },
+    '',
+    '',
+  ])
+
+  const warnings = []
+  const entries = []
+  const p = new Parser({
+    onwarn: (_c, message) => warnings.push(message),
+  })
+  p.on('entry', entry => {
+    if (!entry.meta) {
+      entries.push([entry.type, entry.path, entry.linkpath])
+    }
+    entry.resume()
+  })
+  p.on('end', () => {
+    t.same(warnings, [])
+    t.same(entries, [
+      ['SymbolicLink', longPath, 'target'],
+      ['SymbolicLink', 'link', longTarget],
+      ['Link', 'hard-' + longPath, 'target'],
+    ])
+    t.end()
+  })
+  p.end(data)
+})
+
 t.test('truncated input', t => {
   const data = makeTar([
     {
