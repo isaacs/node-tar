@@ -432,6 +432,29 @@ t.test('throwers', t => {
   t.end()
 })
 
+t.test('far-future dates with milliseconds', t => {
+  // macOS reports 9223372036854.775 ms for a timestamp it clamped to the
+  // int64 nanosecond limit. The seconds do not fit the 12-byte octal
+  // field, and the base-256 encoder refuses non-integers, so encoding
+  // used to throw.
+  const h = new Header({
+    path: 'x',
+    type: 'File',
+    size: 0,
+    mtime: new Date(9223372036854.775),
+  })
+  h.encode()
+  const h2 = new Header(h.block)
+  t.equal(h2.mtime.getTime(), 9223372036000)
+  t.equal(new Header({
+    path: 'x',
+    type: 'File',
+    size: 0,
+    mtime: new Date(-1500),
+  }).encode() && 1, 1, 'negative fractional dates encode too')
+  t.end()
+})
+
 t.test('null block', t => {
   const h = new Header(Buffer.alloc(512))
   t.match(h, {

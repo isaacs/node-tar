@@ -414,9 +414,11 @@ const padOctal = (str: string, size: number) =>
     str
   : new Array(size - str.length - 1).join('0') + str + ' ') + '\0'
 
+// tar stores whole seconds; drop the milliseconds here so that a date
+// too large for the octal field is still a safe integer for base-256.
 const encDate = (buf: Buffer, off: number, size: 8 | 12, date?: Date) =>
   date === undefined ? false : (
-    encNumber(buf, off, size, date.getTime() / 1000)
+    encNumber(buf, off, size, Math.floor(date.getTime() / 1000))
   )
 
 // enough to fill the longest string we've got
