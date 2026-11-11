@@ -169,3 +169,54 @@ t.test('on windows, everything collides with everything', t => {
   t.equal(r.reserve(['some/path'], f1), true)
   t.equal(r.reserve(['other/path'], f2), false)
 })
+
+t.test('a linkpath that is a parent of the entry path runs immediately', t => {
+  // symlink 'a/b' -> 'a': the unpacker reserves ['a/b', 'a'], and 'a' is
+  // both a direct path and a parent dir of the same reservation. The dir
+  // queue for 'a' must not start with the fn, or check() never passes.
+  const r = new PathReservations()
+  let ran = false
+  const ranFn = done => {
+    t.equal(ran, false, 'only run once')
+    ran = true
+    done()
+  }
+  t.ok(r.reserve(['a/b', 'a'], ranFn), 'runs right away')
+  t.ok(ran, 'handler was called')
+  t.end()
+})
+
+t.test('same, with the linkpath listed first', t => {
+  const r = new PathReservations()
+  let ran = false
+  t.ok(
+    r.reserve(['a', 'a/b'], done => {
+      t.equal(ran, false, 'only run once')
+      ran = true
+      done()
+    }),
+    'runs right away',
+  )
+  t.ok(ran, 'handler was called')
+  t.end()
+})
+
+t.test('a direct reservation still waits behind a dir holder', t => {
+  const r = new PathReservations()
+  let didDir = false
+  let didLink = false
+  const dir = done => {
+    t.equal(didLink, false, 'dir runs before the link')
+    didDir = true
+    setTimeout(done)
+  }
+  const link = done => {
+    t.equal(didDir, true, 'link runs after the dir holder clears')
+    t.equal(didLink, false, 'only run link once')
+    didLink = true
+    done()
+    t.end()
+  }
+  t.ok(r.reserve(['a/c'], dir), 'dir holder starts right away')
+  t.notOk(r.reserve(['a/b', 'a'], link), 'link waits for the dir holder')
+})

@@ -61,6 +61,12 @@ export class PathReservations {
     const dirs = new Set<string>(
       paths.map(path => getDirs(path)).reduce((a, b) => a.concat(b)),
     )
+    // A direct reservation on a path already covers the path itself. Do not
+    // also enqueue a dir reservation for a path this same fn reserves
+    // directly (e.g. a symlink 'a/b' whose linkpath is 'a'): the queue would
+    // start with the fn instead of a Set, so check() would never pass and
+    // the reservation would never be released.
+    for (const p of paths) dirs.delete(p)
     this.#reservations.set(fn, { dirs, paths })
     for (const p of paths) {
       const q = this.#queues.get(p)
