@@ -1,6 +1,7 @@
 // turn tar(1) style args like `C` into the more verbose things like `cwd`
 
 import { type GzipOptions, type ZlibOptions } from 'minizlib'
+import { type Minipass } from 'minipass'
 import { type Stats } from 'node:fs'
 import { type ReadEntry } from './read-entry.js'
 import { type WarnData } from './warn-method.js'
@@ -248,7 +249,7 @@ export interface TarOptions {
    */
   transform?: (
     entry: ReadEntry,
-  ) => ReadEntry | null | undefined | false | 0 | ''
+  ) => Minipass<Buffer, Buffer> | null | undefined | false | 0 | ''
 
   /**
    * Call `chmod()` to ensure that extracted files match the entry's mode
