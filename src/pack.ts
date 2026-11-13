@@ -40,6 +40,7 @@ import { warnMethod, type WarnData, type Warner } from './warn-method.js'
 const EOF = Buffer.alloc(1024)
 const ONSTAT = Symbol('onStat')
 const ENDED = Symbol('ended')
+const FINALIZED = Symbol('finalized')
 const QUEUE = Symbol('queue')
 const PENDINGLINKS = Symbol('pendingLinks')
 const CURRENT = Symbol('current')
@@ -103,7 +104,8 @@ export class Pack
   [PENDINGLINKS] = new Map<LinkCacheKey, PackJob[]>();
   [JOBS]: number = 0;
   [PROCESSING]: boolean = false;
-  [ENDED]: boolean = false
+  [ENDED]: boolean = false;
+  [FINALIZED]: boolean = false
 
   constructor(opt: TarOptions = {}) {
     super()
@@ -325,7 +327,7 @@ export class Pack
   }
 
   [PROCESS]() {
-    if (this[PROCESSING]) {
+    if (this[PROCESSING] || this[FINALIZED]) {
       return
     }
 
@@ -346,6 +348,7 @@ export class Pack
     this[PROCESSING] = false
 
     if (this[ENDED] && this[QUEUE].length === 0 && this[JOBS] === 0) {
+      this[FINALIZED] = true
       if (this.zip) {
         this.zip.end(EOF)
       } else {

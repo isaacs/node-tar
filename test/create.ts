@@ -6,8 +6,8 @@ import { rimraf } from 'rimraf'
 import type { Test } from 'tap'
 import t from 'tap'
 import { c, list, Pack, PackSync } from '../dist/esm/index.js'
-import { spawn } from 'child_process'
-import { fileURLToPath } from 'url'
+import { spawn, spawnSync } from 'child_process'
+import { fileURLToPath, pathToFileURL } from 'url'
 
 const isWindows = process.platform === 'win32'
 const __filename = fileURLToPath(import.meta.url)
@@ -363,3 +363,89 @@ t.test('transform a filename', async t => {
   ).concat()
   t.equal(data.subarray(0, 'bloorg.md'.length).toString(), 'bloorg.md')
 })
+
+// https://github.com/isaacs/node-tar/issues/474
+t.test(
+  'async hardlinked files finish without an uncaught exception',
+  async t => {
+    for (const gzip of [false, true]) {
+      for (const shape of ['empty', 'pair']) {
+        await t.test(
+          shape + (gzip ? ' gzip' : ' uncompressed'),
+          async t => {
+            const cwd = t.testdir({
+              empty: '',
+              'package.json': '{}\n',
+              'index.js': 'module.exports = 1\n',
+            })
+            fs.linkSync(
+              path.join(cwd, 'empty'),
+              path.join(cwd, 'outside-link'),
+            )
+            fs.linkSync(
+              path.join(cwd, 'index.js'),
+              path.join(cwd, 'duplicate'),
+            )
+            const files =
+              shape === 'empty' ?
+                ['empty']
+              : ['package.json', 'index.js', 'duplicate']
+            const file = path.join(cwd, 'archive.tar')
+            const moduleURL = pathToFileURL(
+              path.resolve(__dirname, '../dist/esm/index.js'),
+            ).href
+            // The second end throws from an fs callback, outside create's
+            // promise. Use a child so a resolved promise cannot hide the crash.
+            const script = [
+              'import { create } from ' + JSON.stringify(moduleURL),
+              'await create(' +
+                JSON.stringify({ cwd, file, gzip }) +
+                ', ' +
+                JSON.stringify(files) +
+                ')',
+            ].join('\n')
+            const result = spawnSync(
+              process.execPath,
+              ['--input-type=module', '--eval', script],
+              { encoding: 'utf8', timeout: 10000 },
+            )
+            t.equal(result.status, 0, result.stderr)
+            t.equal(result.signal, null)
+            if (result.status !== 0) return
+
+            const entries: {
+              path: string
+              type: string
+              linkpath: string
+            }[] = []
+            await list({
+              file,
+              strict: true,
+              onReadEntry: entry => {
+                entries.push({
+                  path: entry.path,
+                  type: entry.type,
+                  linkpath: entry.linkpath || '',
+                })
+              },
+            })
+            t.same(
+              entries,
+              shape === 'empty' ?
+                [{ path: 'empty', type: 'File', linkpath: '' }]
+              : [
+                  { path: 'package.json', type: 'File', linkpath: '' },
+                  { path: 'index.js', type: 'File', linkpath: '' },
+                  {
+                    path: 'duplicate',
+                    type: 'Link',
+                    linkpath: 'index.js',
+                  },
+                ],
+            )
+          },
+        )
+      }
+    }
+  },
+)
