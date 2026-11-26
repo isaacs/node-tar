@@ -5,7 +5,7 @@
   "version": "7.5.24",
   "repository": {
     "type": "git",
-    "url": "https://github.com/isaacs/node-tar.git"
+    "url": "git+https://github.com/isaacs/node-tar.git"
   },
   "scripts": {
     "genparse": "node scripts/generate-parse-fixtures.js",
