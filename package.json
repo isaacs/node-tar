@@ -20,7 +20,8 @@
     "typedoc": "typedoc --tsconfig .tshy/esm.json ./src/*.ts",
     "lint": "oxlint --fix src test",
     "postsnap": "npm run lint",
-    "postlint": "npm run format"
+    "postlint": "npm run format",
+    "bench": "npm run prepare && node scripts/benchmark/index.js"
   },
   "dependencies": {
     "@isaacs/fs-minipass": "^4.0.0",
