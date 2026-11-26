@@ -293,5 +293,8 @@
   "type": "module",
   "main": "./dist/commonjs/index.min.js",
   "types": "./dist/commonjs/index.d.ts",
-  "module": "./dist/esm/index.min.js"
+  "module": "./dist/esm/index.min.js",
+  "allowScripts": {
+    "esbuild@0.28.0": true
+  }
 }
