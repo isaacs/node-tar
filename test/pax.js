@@ -350,3 +350,23 @@ t.test('no negative size', t => {
   })
   t.end()
 })
+
+t.test('no non-finite or unsafe size', t => {
+  for (const v of [
+    'Infinity',
+    '1e400',
+    '9'.repeat(400),
+    '9007199254740993',
+    'NaN',
+    '1.5',
+  ]) {
+    const rec = `size=${v}\n`
+    let len = rec.length + 2
+    while (String(len).length + 1 + rec.length !== len) {
+      len = String(len).length + 1 + rec.length
+    }
+    t.equal(Pax.parse(`${len} ${rec}`).size, undefined, v)
+  }
+  t.equal(Pax.parse('13 size=1000\n').size, 1000)
+  t.end()
+})

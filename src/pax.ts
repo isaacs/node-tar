@@ -2,6 +2,8 @@ import { basename } from 'node:path'
 import type { HeaderData } from './header.js'
 import { Header } from './header.js'
 
+const SIMPLE_NUMBER = /^(?:0|[1-9]\d*)$/
+
 export class Pax implements HeaderData {
   atime?: Date
   mtime?: Date
@@ -193,8 +195,12 @@ const parseKVLine = (
       set[k] = new Date(Number(v) * 1000)
       break
     case 'size':
+      // value must be a string of digits with no negative sign
+      if (!SIMPLE_NUMBER.test(v.trim())) break
       const s = +v
-      if (s >= 0) set[k] = s
+      // must be a finite, non-negative integer, like the binary header path
+      if (!Number.isSafeInteger(s)) break
+      set[k] = s
       break
     case 'gid':
     case 'uid':
