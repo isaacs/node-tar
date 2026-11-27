@@ -326,7 +326,8 @@ export class Parser<E extends EntryData = EntryData> {
         this.#chunk = undefined
         this.#queue.length = 0
         this.#blockLen = 0
-        // An archive with no entries is valid.
+        // The input is not shorter than one block. An archive with no
+        // valid entry still gets the warning of `#finish`.
         this.#state = HEADER
       }
       this.#sawNull = true
