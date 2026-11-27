@@ -407,6 +407,69 @@ describe('hard links do not stop the pack', () => {
   )
 })
 
+// The async pack of version 7 ended its output two times when the
+// last path had no body: an empty file, or a hard link.
+// https://github.com/isaacs/node-tar/issues/474
+describe('a last path with no body ends the archive one time', () => {
+  // The archive is complete, and has the end blocks one time.
+  const entriesOf = (data: Buffer, gzip: boolean, size: number) => {
+    const tar = gzip ? zlib.gunzipSync(data) : data
+    assert.equal(tar.length, size)
+    return read(tar).map(f => [
+      f.entry.type,
+      f.entry.path,
+      f.entry.linkpath ?? f.body,
+    ])
+  }
+
+  for (const gzip of [false, true]) {
+    const name = gzip ? 'gzip' : 'no compression'
+    each(
+      `an empty file with a link outside of the archive, ${name}`,
+      async way => {
+        const cwd = testdir({ empty: '' })
+        nodeFs.linkSync(`${cwd}/empty`, `${cwd}/other-link`)
+        const data = await way.run({ cwd, gzip, codecs: zlibCodecs() }, [
+          'empty',
+        ])
+        assert.deepEqual(entriesOf(data, gzip, 512 + 1024), [
+          ['File', 'empty', ''],
+        ])
+      },
+    )
+
+    // A directory lists its names in sorted order, so these names
+    // put the two links of one file last. The `readdir` gives them
+    // in a different order.
+    each(
+      `a directory that ends with two links of a file, ${name}`,
+      async way => {
+        const cwd = testdir({
+          'a.json': '{}\n',
+          'y-index.js': 'module.exports = 1\n',
+        })
+        nodeFs.linkSync(`${cwd}/y-index.js`, `${cwd}/z-duplicate`)
+        const names = ['z-duplicate', 'a.json', 'y-index.js']
+        const over: Over = {
+          async: { readdir: async () => names },
+          sync: { readdirSync: () => names },
+        }
+        const data = await way.run(
+          { cwd, gzip, codecs: zlibCodecs() },
+          ['.'],
+          over,
+        )
+        assert.deepEqual(entriesOf(data, gzip, 512 * 6 + 1024), [
+          ['Directory', './', ''],
+          ['File', './a.json', '{}\n'],
+          ['File', './y-index.js', 'module.exports = 1\n'],
+          ['Link', './z-duplicate', 'y-index.js'],
+        ])
+      },
+    )
+  }
+})
+
 describe('the archive file', () => {
   const mode = process.platform === 'win32' ? 0o666 : 0o740
   for (const way of ways.filter(w => w.toFile)) {
