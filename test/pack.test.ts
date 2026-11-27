@@ -2654,3 +2654,58 @@ describe('a slow consumer gets all the data', () => {
     assert.equal(data.length, 21504)
   })
 })
+
+test('no hard link to a path beside the cwd', () => {
+  // The name of the folder 'bc' starts with the name of the cwd 'b'.
+  const dir = testdir({ b: {}, bc: { x: 'content' } })
+  nodeFs.linkSync(resolve(dir, 'bc/x'), resolve(dir, 'b/y'))
+  const pack = new PackSync({
+    cwd: resolve(dir, 'b'),
+    fs: nodeFs,
+    preservePaths: true,
+  })
+  pack.add(resolve(dir, 'bc/x')).add('y').end()
+  const found = [...entriesSync([...pack])].map(e => [
+    e.type,
+    e.path,
+    e.linkpath,
+  ])
+  // The second path is in the cwd, so it is the target of later links.
+  assert.deepEqual(found, [
+    ['File', resolve(dir, 'bc/x'), undefined],
+    ['File', 'y', undefined],
+  ])
+})
+
+test('a hard link with a cwd that is a root', () => {
+  // Two empty files that are one file, in a file system of memory.
+  const stat = {
+    ...nodeFs.lstatSync(import.meta.filename),
+    isFile: () => true,
+    isDirectory: () => false,
+    isSymbolicLink: () => false,
+    dev: 1,
+    ino: 2,
+    nlink: 2,
+    size: 0,
+  }
+  const seen: string[] = []
+  const fs = {
+    lstatSync: (path: string) => {
+      seen.push(path)
+      return stat
+    },
+  } as unknown as PackOptionsSync['fs']
+  const pack = new PackSync({ cwd: '/', fs })
+  pack.add('x').add('y').end()
+  const found = [...entriesSync([...pack])].map(e => [
+    e.type,
+    e.path,
+    e.linkpath,
+  ])
+  assert.deepEqual(seen, ['/x', '/y'])
+  assert.deepEqual(found, [
+    ['File', 'x', undefined],
+    ['Link', 'y', 'x'],
+  ])
+})

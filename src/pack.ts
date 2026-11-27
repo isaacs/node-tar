@@ -242,7 +242,9 @@ export abstract class PackBase<
       const key = idOf(stat)
       const target = this.#links.get(key)
       const cwd = this.cwd as string
-      if (target?.startsWith(cwd)) {
+      // A link is only made to a path in the cwd. A directory beside
+      // the cwd can have a name that starts with the name of the cwd.
+      if (target?.startsWith(cwd.endsWith('/') ? cwd : cwd + '/')) {
         job.linkpath = relative(cwd, target)
         return 'Link'
       }
