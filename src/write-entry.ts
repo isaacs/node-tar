@@ -102,6 +102,15 @@ export class WriteEntry {
     this.gid = data.gid
     this.uname = data.uname
     this.gname = data.gname
+    if (
+      data.size === undefined &&
+      body !== undefined &&
+      !(body instanceof Uint8Array) &&
+      !(body instanceof Blob)
+    ) {
+      // The header comes before the content, and it has the size.
+      throw new TypeError('a stream body needs the size option')
+    }
     this.size =
       data.size ??
       (body instanceof Uint8Array ? body.length

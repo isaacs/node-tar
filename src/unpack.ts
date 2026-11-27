@@ -171,12 +171,12 @@ export class UnpackBase<
 
   /**
    * Report a problem to `onwarn`, or throw it if `strict` is set. A
-   * damaged archive is always an error here, because the extraction
-   * cannot be complete.
+   * damaged archive is an error here, because the extraction cannot
+   * be complete, unless the parser says that it can continue.
    */
   warn(code: string, message: string | Error, data: WarnData = {}): void {
     if (code === 'TAR_BAD_ARCHIVE' || code === 'TAR_ABORT') {
-      data.recoverable = false
+      data.recoverable ??= false
     }
     data.cwd = this.cwd
     warn(this.opt, code, message, data)
@@ -550,6 +550,8 @@ export class Unpack extends UnpackBase<ReadEntry, ExtractOptions> {
           continue
         }
         if (onEntry) await onEntry(entry)
+        // The caller took the content, so there is nothing to write.
+        if (entry.bodyUsed) continue
         if (!this.check(entry)) continue
 
         // A file whose content is all in memory is written while the
@@ -866,6 +868,7 @@ export class UnpackSync extends UnpackBase<
     try {
       for (const entry of reader) {
         onEntry?.(entry)
+        if (entry.bodyUsed) continue
         if (!this.check(entry)) continue
         try {
           this.#extract(entry, reader)

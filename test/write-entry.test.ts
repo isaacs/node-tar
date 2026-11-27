@@ -55,11 +55,15 @@ describe('constructor', () => {
     assert.equal(fromBlob.size, 5)
   })
 
-  test('the size of the data wins, and a stream body gives no size', () => {
+  test('the size of the data wins, and a stream body needs a size', () => {
     assert.equal(new WriteEntry({ path: 'x', size: 9 }, 'abc').size, 9)
     const stream = new Blob(['abc']).stream()
-    const entry = new WriteEntry({ path: 'x' }, stream)
-    assert.equal(entry.size, 0)
+    assert.throws(() => new WriteEntry({ path: 'x' }, stream), {
+      name: 'TypeError',
+      message: 'a stream body needs the size option',
+    })
+    const entry = new WriteEntry({ path: 'x', size: 3 }, stream)
+    assert.equal(entry.size, 3)
     assert.equal(entry.body, stream)
   })
 

@@ -187,11 +187,22 @@ export function create(
   opt: CreateOptions,
   files: PackInput[],
 ): Promise<void> | ReadableStream<Uint8Array> {
-  check(opt, files)
-  const pack = packFiles(opt, files)
-  return opt.file ?
-      createFile(pack, opt.fs as CreateFS, opt.file, opt.mode || 0o666)
-    : toStream(pack)
+  if (!opt.file) {
+    check(opt, files)
+    return toStream(packFiles(opt, files))
+  }
+  // The file form returns a promise, so a bad argument rejects it.
+  try {
+    check(opt, files)
+    return createFile(
+      packFiles(opt, files),
+      opt.fs as CreateFS,
+      opt.file,
+      opt.mode || 0o666,
+    )
+  } catch (er) {
+    return Promise.reject(er)
+  }
 }
 
 /**

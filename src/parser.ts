@@ -297,8 +297,10 @@ export class Parser<E extends EntryData = EntryData> {
     this.#sawNull = false
     if (lone) {
       // Other tar programs stop reading at a lone null block.
+      // The entry is still read, so the warning is recoverable.
       this.warn('TAR_BAD_ARCHIVE', 'entry after a lone null block', {
         header,
+        recoverable: true,
       })
     }
     if (!header.cksumValid) {

@@ -4,8 +4,17 @@ import type { PackInput, PackInputSync } from './pack.js'
 import type { EntryData } from './read-entry.js'
 import { replace, replaceSync } from './replace.js'
 
-// Add a filter that refuses a path that is older than the entry of
-// the same path in the archive.
+// Add a filter that refuses a path that is not newer than the entry
+// of the same path in the archive.
+
+// A ustar header has the time in whole seconds. A file is not newer
+// than such an entry if only the part below one second differs.
+const isNewer = (file: Date, archived: Date) => {
+  const a = archived.getTime()
+  const f = file.getTime()
+  return (a % 1000 === 0 ? f - (f % 1000) : f) > a
+}
+
 const newer = <
   E extends EntryData,
   O extends ReplaceOptions | ReplaceOptionsSync,
@@ -19,15 +28,15 @@ const newer = <
     mtimeCache,
     filter: (path: string, entry: CreateStats | E) => {
       if (filter && !filter(path, entry)) return false
-      const mtime = entry.mtime ?? 0
-      return !((mtimeCache.get(path) ?? mtime) > mtime)
+      const archived = mtimeCache.get(path)
+      return !archived || !entry.mtime || isNewer(entry.mtime, archived)
     },
   }
 }
 
 /**
- * The same as `replace`, but a file is added only if it is not older
- * than the last entry of the archive that has its path.
+ * The same as `replace`, but a file is added only if it is newer than
+ * the last entry of the archive that has its path.
  */
 export const update = (
   opt: ReplaceOptions,

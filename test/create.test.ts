@@ -139,13 +139,14 @@ describe('arguments', () => {
     )
   })
 
-  test('a file needs fs', () => {
+  test('a file needs fs', async () => {
     const expect = {
       name: 'TypeError',
       message: 'the file option needs the fs option',
     }
     const entry = new WriteEntry({ path: 'a' })
-    assert.throws(() => create({ file: 'x.tar' }, [entry]), expect)
+    // The file form of create returns a promise, so it rejects.
+    await assert.rejects(create({ file: 'x.tar' }, [entry]), expect)
     assert.throws(() => createSync({ file: 'x.tar' }, [entry]), expect)
   })
 

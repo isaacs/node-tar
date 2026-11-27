@@ -675,6 +675,39 @@ describe('update', () => {
     assert.equal(mtimeCache.size, 4)
   })
 
+  // 2001-09-09T01:46:40Z
+  const at = 1_000_000_000_000
+  const entry = ent(
+    { path: 'f.txt', type: 'File', mtime: new Date(at) },
+    'x',
+  )
+  const ustar = cat(entry, EOA)
+  const withPax = cat(pax([['mtime', '1000000000.25']]), entry, EOA)
+  const times: [string, Uint8Array, number, boolean][] = [
+    ['later in the second of a ustar time', ustar, at + 999, false],
+    ['the second after a ustar time', ustar, at + 1000, true],
+    ['the same PAX time', withPax, at + 250, false],
+    ['one millisecond after a PAX time', withPax, at + 251, true],
+  ]
+  for (const [name, archive, time, added] of times) {
+    each(`a file ${name} is ${added ? '' : 'not '}added`, async mode => {
+      const cwd = testdir({
+        'a.tar': Buffer.from(archive),
+        'f.txt': 'new',
+      })
+      const file = resolve(cwd, 'a.tar')
+      await mode.update(
+        { file, cwd },
+        ['f.txt'],
+        withMtimes({ 'f.txt': new Date(time) }),
+      )
+      assert.deepEqual(
+        pathsOf(file),
+        added ? ['f.txt', 'f.txt'] : ['f.txt'],
+      )
+    })
+  }
+
   each('a file that the archive does not have is added', async mode => {
     const { cwd, file } = updateFixture()
     await mode.update(

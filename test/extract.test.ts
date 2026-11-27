@@ -432,3 +432,72 @@ describe('numeric pax/entry name discernment', () => {
     }
   }
 })
+
+for (const mode of ['async', 'sync'] as const) {
+  test(`${mode}: an entry that onEntry reads is not extracted`, async () => {
+    const cwd = testdir({})
+    const data = makeTar([
+      { path: 'taken.txt', type: 'File', size: 5 },
+      'taken',
+      { path: 'kept.txt', type: 'File', size: 4 },
+      'kept',
+      '',
+      '',
+    ])
+    const texts: string[] = []
+    const opt = { cwd, input: data }
+    if (mode === 'sync') {
+      extractSync({
+        ...opt,
+        fs: nodeFs,
+        onEntry: entry => {
+          if (entry.path === 'taken.txt') texts.push(entry.text())
+        },
+      })
+    } else {
+      await extract({
+        ...opt,
+        fs: nodeFsPromises,
+        onEntry: async entry => {
+          if (entry.path === 'taken.txt') texts.push(await entry.text())
+        },
+      })
+    }
+    assert.deepEqual(texts, ['taken'])
+    assert.deepEqual(nodeFs.readdirSync(cwd), ['kept.txt'])
+    assert.equal(nodeFs.readFileSync(cwd + '/kept.txt', 'utf8'), 'kept')
+  })
+
+  test(`${mode}: an entry after a lone null block is extracted`, async () => {
+    const cwd = testdir({})
+    const data = makeTar([
+      { path: 'a.txt', type: 'File', size: 1 },
+      'a',
+      new Uint8Array(512),
+      { path: 'b.txt', type: 'File', size: 1 },
+      'b',
+      new Uint8Array(1024),
+    ])
+    const run = async (strict: boolean) => {
+      const warnings: [string, string][] = []
+      const opt = {
+        cwd,
+        input: data,
+        strict,
+        onwarn: (code: string, message: string) => {
+          warnings.push([code, message])
+        },
+      }
+      if (mode === 'sync') extractSync({ ...opt, fs: nodeFs })
+      else await extract({ ...opt, fs: nodeFsPromises })
+      return warnings
+    }
+    assert.deepEqual(await run(false), [
+      ['TAR_BAD_ARCHIVE', 'entry after a lone null block'],
+    ])
+    assert.deepEqual(nodeFs.readdirSync(cwd).sort(), ['a.txt', 'b.txt'])
+    await assert.rejects(run(true), {
+      message: 'TAR_BAD_ARCHIVE: entry after a lone null block',
+    })
+  })
+}
