@@ -519,6 +519,30 @@ describe('a runtime with no zstd', { skip: noMock }, () => {
 })
 
 describe('Windows', () => {
+  test('a process that is not on Windows has the platform posix', async () => {
+    stub(process, 'platform', 'linux')
+    const posix = await mockImport(
+      () => import('../src/server/index.js'),
+      [[() => import('../src/server/codecs.js'), {}]],
+    )
+    // An entry from memory needs no file. The `\\` is a character of
+    // its name.
+    const pathOf = (opt: { platform?: 'win32' | 'posix' }) =>
+      [
+        ...posix.entriesSync(
+          Buffer.concat([
+            ...posix.createSync(opt, [
+              new posix.WriteEntry({ path: 'a\\b' }),
+            ]),
+          ]),
+          { platform: 'posix' },
+        ),
+      ].map(e => e.path)
+    assert.deepEqual(pathOf({}), ['a\\b'])
+    // The option of the caller wins.
+    assert.deepEqual(pathOf({ platform: 'win32' }), ['a/b'])
+  })
+
   test('the platform of the process is the default', async () => {
     stub(process, 'platform', 'win32')
     const win = await mockImport(

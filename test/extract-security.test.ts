@@ -43,9 +43,10 @@ const brief = (warnings: [string, string, unknown][]) =>
 
 // A file system in memory that has only the directory `root`. The
 // value of a directory in `nodes` is null. The value of a file is
-// its content.
+// its content. `calls` has each unlink and each rename.
 const memFs = (root: string) => {
   const nodes = new Map<string, string | null>([[root, null]])
+  const calls: string[][] = []
   const fds: string[] = []
   const error = (code: string) => Object.assign(new Error(code), { code })
   const lstat = (path: string) => {
@@ -74,6 +75,15 @@ const memFs = (root: string) => {
     nodes.set(path, nodes.get(path) + new TextDecoder().decode(data))
     return data.length
   }
+  const unlink = (path: string) => {
+    calls.push(['unlink', path])
+    nodes.delete(path)
+  }
+  const rename = (from: string, to: string) => {
+    calls.push(['rename', from, to])
+    nodes.set(to, nodes.get(from) as string | null)
+    nodes.delete(from)
+  }
   const no = () => {}
   const noAsync = async () => {}
   const fs: ExtractFS = {
@@ -95,8 +105,8 @@ const memFs = (root: string) => {
     utimes: noAsync,
     lutimes: noAsync,
     rmdir: noAsync,
-    unlink: noAsync,
-    rename: noAsync,
+    unlink: async path => unlink(path),
+    rename: async (from, to) => rename(from, to),
     link: noAsync,
     symlink: noAsync,
   }
@@ -115,12 +125,12 @@ const memFs = (root: string) => {
     utimesSync: no,
     lutimesSync: no,
     rmdirSync: no,
-    unlinkSync: no,
-    renameSync: no,
+    unlinkSync: unlink,
+    renameSync: rename,
     linkSync: no,
     symlinkSync: no,
   }
-  return { fs, fsSync, nodes }
+  return { fs, fsSync, nodes, calls }
 }
 
 // A symlink in the archive must not resolve outside of the extraction
@@ -667,6 +677,27 @@ describe('hardening', () => {
           [root + 'd/f']: 'data',
           [root + 'top']: 'top',
         })
+      })
+
+      test(`${mode}: ${platform} removes a file with the unlink option`, async () => {
+        const { fs, fsSync, nodes, calls } = memFs(root)
+        nodes.set(root + 'f', 'old')
+        const input = cat(ent({ path: 'f', type: 'File' }, 'new'), EOA)
+        const opt = { cwd, platform, unlink: true, input }
+        if (mode === 'sync') extractSync({ ...opt, fs: fsSync })
+        else await extract({ ...opt, fs })
+        assert.equal(nodes.get(root + 'f'), 'new')
+        // Only 'win32' gives the file a new name first.
+        const name = /^c:\/f\.DELETE\.[0-9a-f]{32}$/
+        assert.match<unknown>(
+          calls,
+          platform === 'posix' ?
+            [['unlink', '/f']]
+          : [
+              ['rename', 'c:/f', name],
+              ['unlink', name],
+            ],
+        )
       })
     }
   }
