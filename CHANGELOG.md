@@ -48,6 +48,10 @@ A new API. See "Migration from version 7" in the README.
 - A `uid` or `gid` option of `extract()` that is not an unsigned
   32-bit integer is a `TypeError`. Before, it was ignored, and the
   owner in the archive was used.
+- `create()` gives a `TAR_ENTRY_UNSUPPORTED` warning for a path
+  that is not a file, a directory, or a symbolic link, such as a
+  socket, a FIFO, or a device. Before, it skipped the path with no
+  warning. With `strict`, it is an error.
 - The readers detect the compression format. The `brotli` and `zstd`
   options are only for `create()`.
 - Remove the subpath exports (`tar/create`, `tar/extract`,

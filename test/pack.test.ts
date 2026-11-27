@@ -1,5 +1,7 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
+import { createServer } from 'node:net'
+import { relative } from 'node:path'
 import zlib from 'node:zlib'
 import {
   any,
@@ -306,19 +308,95 @@ describe('one path', () => {
     })
   })
 
+  // GNU tar skips a socket with a warning. Version 7 did not end.
+  // https://github.com/isaacs/node-tar/issues/295
   each(
     'a type that is not a file, a directory, or a link is skipped',
     async mode => {
+      // The stat of a FIFO, a socket, or a device.
+      const special = statOver((stat, path) => {
+        if (path.endsWith('one-byte.txt')) stat.isFile = () => false
+      })
+      const { calls, over } = tracked(special)
+      const { warnings, onwarn } = warner()
       const data = await mode.run(
-        { cwd: files },
-        ['one-byte.txt'],
-        statOver(stat => {
-          stat.isFile = () => false
-        }),
+        { cwd: files, onwarn },
+        ['one-byte.txt', '512-bytes.txt'],
+        over,
       )
-      assert.equal(data.length, 1024)
-      assert.match(data.toString(), /^\0+$/)
+      assert.deepEqual(paths(data), ['512-bytes.txt'])
+      assert.match<unknown>(warnings, [
+        [
+          'TAR_ENTRY_UNSUPPORTED',
+          'unsupported file type',
+          {
+            path: 'one-byte.txt',
+            absolute: resolve(files, 'one-byte.txt'),
+            tarCode: 'TAR_ENTRY_UNSUPPORTED',
+          },
+        ],
+      ])
+      assert.equal(warnings.length, 1)
+      // The object is not opened.
+      assert.deepEqual(
+        calls.filter(call => call.startsWith('open')),
+        [`open ${resolve(files, '512-bytes.txt')}`],
+      )
+
+      await assert.rejects(
+        mode.run({ cwd: files, strict: true }, ['one-byte.txt'], special),
+        {
+          message: 'TAR_ENTRY_UNSUPPORTED: unsupported file type',
+          tarCode: 'TAR_ENTRY_UNSUPPORTED',
+          path: 'one-byte.txt',
+        },
+      )
+
+      // No warning for a path that the filter refuses.
+      const quiet = warner()
+      const filtered = await mode.run(
+        {
+          cwd: files,
+          onwarn: quiet.onwarn,
+          filter: path => path !== 'one-byte.txt',
+        },
+        ['one-byte.txt'],
+        special,
+      )
+      assert.equal(filtered.length, 1024)
+      assert.deepEqual(quiet.warnings, [])
     },
+  )
+
+  each(
+    'a socket in a directory is skipped',
+    async mode => {
+      const cwd = testdir({ d: { 'a.txt': 'a', 'z.txt': 'z' } })
+      // The path of a socket has a short length limit.
+      const socket = relative(process.cwd(), `${cwd}/d/sock`)
+      const server = createServer()
+      await new Promise<void>((res, rej) => {
+        server.on('error', rej)
+        server.listen(socket, res)
+      })
+      try {
+        assert.equal(nodeFs.lstatSync(socket).isSocket(), true)
+        const { warnings, onwarn } = warner()
+        const data = await mode.run({ cwd, onwarn }, ['d'])
+        assert.deepEqual(paths(data), ['d/', 'd/a.txt', 'd/z.txt'])
+        assert.deepEqual(
+          warnings.map(([code, message, { path }]) => [
+            code,
+            message,
+            path,
+          ]),
+          [['TAR_ENTRY_UNSUPPORTED', 'unsupported file type', 'd/sock']],
+        )
+      } finally {
+        await new Promise(res => server.close(res))
+      }
+    },
+    isWindows && 'Windows has no socket file',
   )
 
   each(

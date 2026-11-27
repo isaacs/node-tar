@@ -749,8 +749,10 @@ Options:
 
 The archive has these entry types: files, directories, symbolic links,
 and hard links. A file with more than one link is a hard link entry
-the second time that the pack finds it. Other objects, such as sockets
-and devices, are skipped.
+the second time that the pack finds it. Each other object, such as a
+socket, a FIFO, or a device, is skipped with a `TAR_ENTRY_UNSUPPORTED`
+warning. The object is not opened. A path that the `filter` refuses
+gives no warning.
 
 ```js
 import { create } from 'tar'
@@ -1314,6 +1316,8 @@ await list({
   itself.
 - `TAR_ENTRY_UNSUPPORTED` The type of the entry is not supported, and
   the entry is skipped. `extract()` reports devices and FIFOs.
+  `create()` reports each path that is not a file, a directory, or a
+  symbolic link, such as a socket. `data.path` is the path.
 - `TAR_BAD_ARCHIVE` The archive is damaged: the body of the last entry
   is cut off, no header is valid, or an entry comes after one block of
   zeros. An archive with no entries also gets this warning. This is a

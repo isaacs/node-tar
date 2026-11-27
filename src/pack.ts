@@ -273,7 +273,14 @@ export abstract class PackBase<
       return 'Directory'
     }
     if (stat.isSymbolicLink()) return 'SymbolicLink'
-    if (!stat.isFile()) return
+    if (!stat.isFile()) {
+      // A socket, a FIFO, or a device.
+      warn(this.opt, 'TAR_ENTRY_UNSUPPORTED', 'unsupported file type', {
+        path: job.path,
+        absolute: job.absolute,
+      })
+      return
+    }
     if (stat.nlink > 1) {
       const key = idOf(stat)
       const target = this.#links.get(key)
