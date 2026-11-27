@@ -149,6 +149,8 @@ A new API. See "Migration from version 7" in the README.
   a hard link to itself when its path is added two times.
 - `extract()` keeps an existing directory for a `GNUDumpDir` entry,
   as it does for a `Directory` entry.
+- With two GNU long name headers before one entry, the readers use
+  the last one, as GNU tar does.
 
 ## 7.5
 
