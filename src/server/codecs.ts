@@ -140,7 +140,7 @@ export const zlibStream = (
         }
         // As with a `TransformStream`, the write waits until the
         // reader wants output. Then a pipe from the source does not
-        // start a write to a stream that the reader cancelled.
+        // start a write to a stream that the reader canceled.
         if (!wanted && !done) await new Promise<void>(res => (wake = res))
       },
       close: async () => {

@@ -57,7 +57,7 @@ export type EntryTypeName =
  * These can be the subject of extended/globalExtended headers, long
  * path names, long linkpath names, etc.
  *
- * Any other types are meta, and cannot be targetted by extended PAX
+ * Any other types are meta, and cannot be targeted by extended PAX
  * headers.
  */
 export const normalFsTypes = new Set<EntryTypeCode>([

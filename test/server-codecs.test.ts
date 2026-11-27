@@ -637,7 +637,7 @@ describe('the end of a zlib stream', () => {
     assert.equal(await assert.rejects(writer.closed, Error), reason)
   })
 
-  test("an 'end' event after the reader cancelled", async () => {
+  test("an 'end' event after the reader canceled", async () => {
     // Deno emits 'end' after destroy() for a stream that has all its
     // output.
     const stream = zlib.createGunzip()
