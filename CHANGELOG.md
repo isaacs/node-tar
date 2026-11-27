@@ -33,9 +33,11 @@ A new API. See "Migration from version 7" in the README.
 - `transform` returns a `TransformStream`. In `extractSync()`, it
   returns a function that changes a chunk.
 - In strict mode, extraction stops at the first error.
-- An entry that comes after a lone null block gives a
-  `TAR_BAD_ARCHIVE` warning, and is still read and extracted. In
-  strict mode it is an error.
+- The first null block is the end of the archive, as it is for
+  bsdtar. Data after it is dropped with no warning, also when no
+  second null block comes after it. Version 7 read the entries after
+  a single null block, so it read archives that were joined end to
+  end. Split such a file into its archives before you read it.
 - `update()` adds a file only if it is newer than the entry of the
   same path. It does not add a file that has the same time as the
   entry, or a time that differs only by a part of a second.

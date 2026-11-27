@@ -1371,7 +1371,9 @@ Order and resources:
   [`maxDecompressionRatio`](#maxdecompressionratio).
 - A PAX header or a GNU long name entry of more than
   `maxMetaEntrySize` bytes (default 1 MiB) is skipped.
-- Data after the end of the archive is dropped.
+- The first null block is the end of the archive, as it is for
+  bsdtar. Data after it is dropped, with no warning. An entry after
+  a single null block is not read.
 - The option objects are copied to an object with no prototype. A
   changed `Object.prototype` cannot set an option.
 

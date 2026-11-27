@@ -164,16 +164,11 @@ export class UnpackBase<
 
   /**
    * Report a problem to `onwarn`, or throw it if `strict` is set. A
-   * damaged archive is an error here, because the extraction cannot
-   * be complete, unless the parser says that it can continue.
+   * damaged archive is always an error here, because the extraction
+   * cannot be complete.
    */
   warn(code: string, message: string | Error, data: WarnData = {}): void {
-    // Only a value that the parser set makes a damaged archive
-    // recoverable, not a value of a changed `Object.prototype`.
-    if (
-      (code === 'TAR_BAD_ARCHIVE' || code === 'TAR_ABORT') &&
-      !Object.hasOwn(data, 'recoverable')
-    ) {
+    if (code === 'TAR_BAD_ARCHIVE' || code === 'TAR_ABORT') {
       data.recoverable = false
     }
     data.cwd = this.cwd

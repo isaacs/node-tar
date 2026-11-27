@@ -25,6 +25,8 @@ import {
 import { SKIP, type Skip } from './read-file.js'
 import { tarError } from './warn.js'
 
+const noop = () => {}
+
 // A source of input chunks: an iterator, or the reader of a stream.
 type Source = Partial<Skip> & {
   next():
@@ -233,21 +235,33 @@ export class TarReader
     }
     let compressed = 0
     let decompressed = 0
-    const reader = new ReadableStream<Uint8Array>({
-      pull: async controller => {
-        const res =
-          head ? { value: head, done: false } : await input.next()
-        head = undefined
-        if (res.done) return controller.close()
-        compressed += res.value.length
-        controller.enqueue(res.value)
-      },
-      cancel: async () => {
-        await input.return?.()
-      },
-    })
-      .pipeThrough(codec.decompress())
-      .getReader()
+    const { readable, writable } = codec.decompress()
+    const writer = writable.getWriter()
+    const reader = readable.getReader()
+    let stopped = false
+    // Give the input to the codec, as fast as the codec takes it. This
+    // loop holds each promise of the writer, so that a write that
+    // fails after the consumer stops is not an unhandled rejection.
+    const feed = async () => {
+      try {
+        for (;;) {
+          await writer.ready
+          if (stopped) return
+          const res =
+            head ? { value: head, done: false } : await input.next()
+          head = undefined
+          if (stopped) return
+          if (res.done) return await writer.close()
+          compressed += res.value.length
+          await writer.write(res.value)
+        }
+      } catch (er) {
+        // An error of the input goes to the reader of the output. An
+        // error of the codec is there already.
+        if (!stopped) await writer.abort(er).catch(noop)
+      }
+    }
+    void feed()
     const max = maxRatio(opt)
     return {
       next: async () => {
@@ -261,7 +275,13 @@ export class TarReader
         }
         return res
       },
-      return: () => reader.cancel(),
+      return: async () => {
+        stopped = true
+        await reader.cancel().catch(noop)
+        await writer.abort().catch(noop)
+        await input.return?.()
+        return { value: undefined, done: true }
+      },
     }
   }
 

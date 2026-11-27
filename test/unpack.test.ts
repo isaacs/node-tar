@@ -1934,6 +1934,29 @@ describe('content that arrives in more than one chunk', () => {
     assert.equal(er, poop)
     assert.equal(calls[calls.length - 1]?.[0], 'close')
   })
+
+  test('an input that fails when it is released', async () => {
+    const cwd = testdir({})
+    let i = 0
+    const input: AsyncIterable<Uint8Array> = {
+      [Symbol.asyncIterator]: () => ({
+        next: async () =>
+          i < chunks.length ?
+            { value: chunks[i++] as Uint8Array, done: false }
+          : { value: undefined, done: true },
+        return: async () => {
+          throw poop
+        },
+      }),
+    }
+    const { fs } = hookFs()
+    const er = await assert.rejects(extract({ cwd, fs, input }), {
+      message: 'poop',
+    })
+    assert.equal(er, poop)
+    // The entries are extracted before the input is released.
+    assert.equal(read(cwd + '/d/y'), 'y')
+  })
 })
 
 describe('futimes/fchown failures', () => {

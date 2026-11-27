@@ -467,40 +467,39 @@ describe('end of the archive', () => {
   })
 })
 
-describe('an entry after a lone null block', () => {
-  const data = cat(
-    file('index.js', 'first\n'),
-    new Uint8Array(512),
-    file('index.js', 'second\n'),
-    EOA,
-  )
-  test('is read, with a warning', () => {
-    const { found, warnings } = parse([data])
-    assert.match(found, [
-      { entry: { path: 'index.js', size: 6 }, body: 'first\n' },
-      { entry: { path: 'index.js', size: 7 }, body: 'second\n' },
-    ])
+describe('a null block is the end of the archive', () => {
+  // bsdtar stops at the first null block. An entry after it is not
+  // in the archive, with or without a second null block.
+  const first = file('index.js', 'first\n')
+  const hidden = file('index.js', 'second\n')
+  const one = new Uint8Array(512)
+  const cases: [string, Uint8Array][] = [
+    ['an entry after one null block', cat(first, one, hidden, EOA)],
+    ['an entry after two null blocks', cat(first, EOA, hidden, EOA)],
+    ['one null block at the end of the input', cat(first, one)],
+    [
+      'a block that is not a header after it',
+      cat(first, one, hidden.fill(0x7a, 0, 8)),
+    ],
+  ]
+  for (const [name, data] of cases) {
+    for (const strict of [false, true]) {
+      test(`${name}${strict ? ', strict' : ''}`, () => {
+        const { found, warnings } = parse([data], { strict })
+        assert.match(found, [
+          { entry: { path: 'index.js', size: 6 }, body: 'first\n' },
+        ])
+        assert.deepEqual(warnings, [])
+      })
+    }
+  }
+
+  test('a null block before each entry is not an archive', () => {
+    const { warnings, paths } = parse([cat(one, file('f'), EOA)])
     assert.deepEqual(warnings, [
-      ['TAR_BAD_ARCHIVE', 'entry after a lone null block'],
+      ['TAR_BAD_ARCHIVE', 'Unrecognized archive format'],
     ])
-  })
-  test('is an error in strict mode', () => {
-    assert.throws(() => parse([data], { strict: true }), {
-      message: 'TAR_BAD_ARCHIVE: entry after a lone null block',
-      tarCode: 'TAR_BAD_ARCHIVE',
-    })
-  })
-  test('an invalid block after a null block has its own warning', () => {
-    const bad = file('bad')
-    bad[0] = 0x7a
-    const { warnings, paths } = parse([
-      cat(new Uint8Array(512), bad, new Uint8Array(512), file('f'), EOA),
-    ])
-    assert.deepEqual(warnings, [
-      ['TAR_ENTRY_INVALID', 'checksum failure'],
-      ['TAR_BAD_ARCHIVE', 'entry after a lone null block'],
-    ])
-    assert.deepEqual(paths, ['f'])
+    assert.deepEqual(paths, [])
   })
 })
 

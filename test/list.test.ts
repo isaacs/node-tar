@@ -199,13 +199,7 @@ describe('file', () => {
       fs: mock,
       maxReadSize: 1024,
     })
-    assert.deepEqual(calls, [
-      'open r',
-      'stat',
-      'read 1024 0',
-      'read 1024 1024',
-      'close',
-    ])
+    assert.deepEqual(calls, ['open r', 'stat', 'read 1024 0', 'close'])
     const sync = mockFsSync()
     listSync({
       file: resolve(dir, 'a.tar'),

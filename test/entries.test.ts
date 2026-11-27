@@ -457,9 +457,9 @@ describe('backpressure', () => {
     assert.equal(await two.text(), 'y')
     assert.equal(state.pulls, 7)
     assert.equal(state.returned, 0)
-    // The end marker is 2 chunks.
+    // The first chunk of the end marker is the end.
     assert.equal((await it.next()).done, true)
-    assert.equal(state.pulls, 9)
+    assert.equal(state.pulls, 8)
     assert.equal(state.returned, 1)
   })
 
@@ -491,7 +491,7 @@ describe('backpressure', () => {
     const more = cat(data, file('after'), new Uint8Array(4096))
     const { source, state } = countedSource(chunked(more, 512))
     assert.equal((await readAll(source)).length, 2)
-    assert.deepEqual(state, { pulls: 9, returned: 1 })
+    assert.deepEqual(state, { pulls: 8, returned: 1 })
   })
 
   test('an error of the input', async () => {

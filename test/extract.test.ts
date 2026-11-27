@@ -250,7 +250,8 @@ describe('no file list', () => {
   const { size } = nodeFs.statSync(file)
   for (const [name, maxReadSize, reads] of [
     ['one read', undefined, 1],
-    ['read in itty bits', 1000, Math.ceil(size / 1000)],
+    // The reading stops at the first null block of the end marker.
+    ['read in itty bits', 1000, Math.ceil((size - 512) / 1000)],
   ] as const) {
     test(`sync file, ${name}`, () => {
       const cwd = testdir({})
@@ -587,7 +588,7 @@ for (const mode of ['async', 'sync'] as const) {
     assert.equal(nodeFs.readFileSync(cwd + '/kept.txt', 'utf8'), 'kept')
   })
 
-  test(`${mode}: an entry after a lone null block is extracted`, async () => {
+  test(`${mode}: an entry after a null block is not extracted`, async () => {
     const cwd = testdir({})
     const data = makeTar([
       { path: 'a.txt', type: 'File', size: 1 },
@@ -597,26 +598,19 @@ for (const mode of ['async', 'sync'] as const) {
       'b',
       new Uint8Array(1024),
     ])
-    const run = async (strict: boolean) => {
-      const warnings: [string, string][] = []
-      const opt = {
-        cwd,
-        input: data,
-        strict,
-        onwarn: (code: string, message: string) => {
-          warnings.push([code, message])
-        },
-      }
-      if (mode === 'sync') extractSync({ ...opt, fs: nodeFs })
-      else await extract({ ...opt, fs: nodeFsPromises })
-      return warnings
+    // The first null block is the end of the archive, as for bsdtar.
+    const warnings: [string, string][] = []
+    const opt = {
+      cwd,
+      input: data,
+      strict: true,
+      onwarn: (code: string, message: string) => {
+        warnings.push([code, message])
+      },
     }
-    assert.deepEqual(await run(false), [
-      ['TAR_BAD_ARCHIVE', 'entry after a lone null block'],
-    ])
-    assert.deepEqual(nodeFs.readdirSync(cwd).sort(), ['a.txt', 'b.txt'])
-    await assert.rejects(run(true), {
-      message: 'TAR_BAD_ARCHIVE: entry after a lone null block',
-    })
+    if (mode === 'sync') extractSync({ ...opt, fs: nodeFs })
+    else await extract({ ...opt, fs: nodeFsPromises })
+    assert.deepEqual(warnings, [])
+    assert.deepEqual(nodeFs.readdirSync(cwd), ['a.txt'])
   })
 }

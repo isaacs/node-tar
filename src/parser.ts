@@ -101,7 +101,6 @@ export class Parser<E extends EntryData = EntryData> {
   #longLinkpath?: string
   #gex?: Pax
   #ended: boolean = false
-  #sawNull: boolean = false
   #sawValid?: boolean
   #entryEnd: boolean = false
   // 0: reading, 1: the end is found, 2: the end event is returned
@@ -322,30 +321,20 @@ export class Parser<E extends EntryData = EntryData> {
     }
 
     if (header.nullBlock) {
-      if (this.#sawNull) {
-        // The end of the archive. Drop all the data after it.
-        this.#ended = true
-        this.#chunk = undefined
-        this.#queue.length = 0
-        this.#blockLen = 0
-        // The input is not shorter than one block. An archive with no
-        // valid entry still gets the warning of `#finish`.
-        this.#state = HEADER
-      }
-      this.#sawNull = true
+      // A null block is the end of the archive, as it is for bsdtar.
+      // A second null block normally comes after it. All the data
+      // after the first one is dropped, so an entry there is not
+      // read.
+      this.#ended = true
+      this.#chunk = undefined
+      this.#queue.length = 0
+      this.#blockLen = 0
+      // The input is not shorter than one block. An archive with no
+      // valid entry still gets the warning of `#finish`.
+      this.#state = HEADER
       return
     }
 
-    const lone = this.#sawNull && header.cksumValid
-    this.#sawNull = false
-    if (lone) {
-      // Other tar programs stop reading at a lone null block.
-      // The entry is still read, so the warning is recoverable.
-      this.warn('TAR_BAD_ARCHIVE', 'entry after a lone null block', {
-        header,
-        recoverable: true,
-      })
-    }
     if (!header.cksumValid) {
       this.warn('TAR_ENTRY_INVALID', 'checksum failure', { header })
       return
