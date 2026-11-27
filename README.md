@@ -649,6 +649,46 @@ await create(
 )
 ```
 
+### Remove an entry from an archive
+
+There is no command that removes an entry in place. Write a new
+archive from the old one with a `filter`, and then put the new file
+in the place of the old file. The operand `@old.tar` adds the entries
+of that archive.
+
+```js
+import { rename } from 'node:fs/promises'
+import { create } from 'tar'
+
+// Remove each entry for which `remove(path, entry)` returns true.
+const removeEntries = async (file, remove) => {
+  const tmp = file + '.tmp'
+  await create(
+    { file: tmp, filter: (path, entry) => !remove(path, entry) },
+    ['@' + file],
+  )
+  await rename(tmp, file)
+}
+
+await removeEntries('archive.tar', path => path === 'README.md')
+// A directory, and all that is in it.
+await removeEntries(
+  'archive.tar',
+  path => path === 'src/lib' || path.startsWith('src/lib/'),
+)
+```
+
+Notes:
+
+- The entries that stay have the same content, the same order, and
+  the same fields. The headers are written again, so their bytes can
+  differ: for example, a GNU long name header becomes a PAX header
+  with the same path.
+- The reader finds the compression of the old archive. The new
+  archive is not compressed unless you set an option such as
+  `gzip: true`.
+- The disk must have space for the two files until the `rename()`.
+
 ## Commands
 
 Each command is `command(options, files)`. The aliases `c`, `x`, `t`,

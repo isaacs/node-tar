@@ -19,7 +19,17 @@ import * as core from '../src/index.js'
 import * as tar from '../src/server/index.js'
 import { files } from './create-helpers.js'
 import { collect } from './create-helpers.js'
-import { isDeno, isWindows } from './helpers.js'
+import {
+  cat,
+  ent,
+  EOA,
+  file,
+  hdr,
+  isDeno,
+  isWindows,
+  longPath,
+  pax,
+} from './helpers.js'
 
 // Options that fit `create` and `createSync`.
 type Options = Pick<
@@ -342,6 +352,105 @@ test('the fs option takes node:fs and its promises object', async () => {
   tar.createSync({ file, cwd, fs: nodeFs }, ['src'])
   tar.extractSync({ file, cwd: resolve(cwd, 'out'), fs: nodeFs })
   assert.equal(text(cwd, 'out/src/a.txt'), 'alpha')
+})
+
+// The README recipe "Remove an entry from an archive".
+// https://github.com/isaacs/node-tar/issues/192
+describe('remove an entry from an archive', () => {
+  type Remove = (path: string, entry: unknown) => boolean
+  const recipes = {
+    async: async (file: string, remove: Remove) => {
+      const tmp = file + '.tmp'
+      await tar.create(
+        { file: tmp, filter: (path, entry) => !remove(path, entry) },
+        ['@' + file],
+      )
+      await nodeFsPromises.rename(tmp, file)
+    },
+    sync: async (file: string, remove: Remove) => {
+      const tmp = file + '.tmp'
+      tar.createSync(
+        { file: tmp, filter: (path, entry) => !remove(path, entry) },
+        ['@' + file],
+      )
+      nodeFs.renameSync(tmp, file)
+    },
+  }
+
+  const long = 'long/' + 'n'.repeat(120) + '/Ω.txt'
+  const gnu = 'gnu/' + 'g'.repeat(150)
+  const target = 'target/' + 't'.repeat(130)
+  const binary = Buffer.from(
+    Array.from({ length: 70_000 }, (_, i) => (i * 7) % 256),
+  )
+  const mtime = new Date('2020-02-02T02:02:02.250Z')
+  const old = () =>
+    cat(
+      file('keep.txt', 'keep'),
+      pax([
+        ['path', long],
+        ['mtime', String(mtime.getTime() / 1000)],
+      ]),
+      ent({ path: 'short', type: 'File', mode: 0o600 }, 'pax body'),
+      longPath(gnu),
+      file('x', 'gnu body'),
+      file('remove.txt', 'remove me'),
+      file('dir/remove.txt', 'this one stays'),
+      pax([['linkpath', target]]),
+      hdr({ path: 'link', type: 'SymbolicLink', linkpath: 'x' }),
+      file('binary', binary),
+      EOA,
+    )
+  const content = (data: Uint8Array) => {
+    const found = []
+    for (const entry of tar.entriesSync(data)) {
+      found.push({
+        path: entry.path,
+        type: entry.type,
+        mode: entry.mode,
+        mtime: entry.mtime,
+        linkpath: entry.linkpath,
+        body: Buffer.from(entry.bytes()),
+      })
+    }
+    return found
+  }
+
+  for (const [name, recipe] of Object.entries(recipes)) {
+    test(name, async () => {
+      const dir = testdir({ 'old.tar': Buffer.from(old()) })
+      const file = resolve(dir, 'old.tar')
+      const before = content(nodeFs.readFileSync(file))
+      assert.equal(before.length, 7)
+      assert.match(before[1], { path: long, mtime, mode: 0o600 })
+      assert.match(before[5], { path: 'link', linkpath: target })
+
+      await recipe(file, path => path === 'remove.txt')
+      const after = content(nodeFs.readFileSync(file))
+      // Each other entry is there, in the same order, with the same
+      // fields and the same bytes of content.
+      assert.deepEqual(
+        after,
+        before.filter(entry => entry.path !== 'remove.txt'),
+      )
+      assert.deepEqual(
+        after.map(entry => entry.path),
+        ['keep.txt', long, gnu, 'dir/remove.txt', 'link', 'binary'],
+      )
+      assert.equal(after[5]?.body.equals(binary), true)
+      assert.deepEqual(nodeFs.readdirSync(dir), ['old.tar'])
+
+      // A directory, and all that is in it.
+      await recipe(
+        file,
+        path => path === 'long' || path.startsWith('long/'),
+      )
+      assert.deepEqual(
+        content(nodeFs.readFileSync(file)).map(entry => entry.path),
+        ['keep.txt', gnu, 'dir/remove.txt', 'link', 'binary'],
+      )
+    })
+  }
 })
 
 // https://github.com/isaacs/node-tar/issues/462
