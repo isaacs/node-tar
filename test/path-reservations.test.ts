@@ -159,6 +159,47 @@ test('a task that fails frees its paths', async () => {
   assert.deepEqual(log, ['after start', 'after end'])
 })
 
+// A symbolic link `a/b` with the target `a` reserves the two paths.
+for (const paths of [
+  ['a/b', 'a'],
+  ['a', 'a/b'],
+]) {
+  test(`a task with the paths ${paths.join(' and ')} starts at once`, async () => {
+    const { log, task } = tasks()
+    const r = new PathReservations()
+    const done = r.reserve(paths, task('link'))
+    assert.deepEqual(log, ['link start'])
+    await done
+    // The paths are free again.
+    await r.reserve(['a'], task('a'))
+    await r.reserve(['a/b'], task('b'))
+    assert.deepEqual(log, [
+      'link start',
+      'link end',
+      'a start',
+      'a end',
+      'b start',
+      'b end',
+    ])
+  })
+}
+
+test('a path and its parent wait for a user of the parent', async () => {
+  const { log, task } = tasks()
+  const r = new PathReservations()
+  await Promise.all([
+    // Uses `a` as a directory.
+    r.reserve(['a/c'], task('dir user')),
+    r.reserve(['a/b', 'a'], task('link')),
+  ])
+  assert.deepEqual(log, [
+    'dir user start',
+    'dir user end',
+    'link start',
+    'link end',
+  ])
+})
+
 test('a reservation is released when its work is done', async () => {
   // Bun has its own function to collect garbage, and no V8 flags.
   const { Bun } = globalThis as { Bun?: { gc(force: boolean): void } }

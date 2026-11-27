@@ -19,6 +19,7 @@ import {
   linkTarget,
   longLink,
   longPath,
+  pax,
   resolve,
   rootOf,
   runExtract,
@@ -848,6 +849,38 @@ describe('resource limits', () => {
           ent({ path: 'after.txt', type: 'File' }, 'ok'),
         ])
         assert.equal(read(cwd, 'after.txt'), 'ok')
+      })
+    }
+
+    // https://github.com/isaacs/node-tar/issues/469
+    test(`a symlink to its parent directory, with strip, ${mode}`, async () => {
+      const { cwd, warnings } = await unpack(
+        mode,
+        [
+          hdr({ path: 'x/a/b', type: 'SymbolicLink', linkpath: 'a' }),
+          ent({ path: 'x/after.txt', type: 'File' }, 'ok'),
+        ],
+        { strip: 1 },
+      )
+      assert.deepEqual(warnings, [])
+      assert.equal(read(cwd, 'after.txt'), 'ok')
+    })
+
+    for (const strip of [0, 1]) {
+      test(`a global linkpath that is the parent of a file, strip ${strip}, ${mode}`, async () => {
+        const { cwd, warnings } = await unpack(
+          mode,
+          [
+            pax([['linkpath', 'a']], true),
+            ent({ path: 'a/b', type: 'File' }, 'b'),
+            ent({ path: 'a/after.txt', type: 'File' }, 'ok'),
+          ],
+          { strip },
+        )
+        assert.deepEqual(warnings, [])
+        const dir = strip ? cwd : resolve(cwd, 'a')
+        assert.equal(read(dir, 'b'), 'b')
+        assert.equal(read(dir, 'after.txt'), 'ok')
       })
     }
 
