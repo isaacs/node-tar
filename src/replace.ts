@@ -1,4 +1,5 @@
 import { gzip, type Codec } from './codec.js'
+import { dealias, type WithAliases } from './dealias.js'
 import {
   packFiles,
   packFilesSync,
@@ -135,9 +136,10 @@ export class AppendScan {
  * of a path that is in it two times.
  */
 export const replace = async (
-  opt: ReplaceOptions,
+  options: WithAliases<ReplaceOptions>,
   files: PackInput[],
 ): Promise<void> => {
+  const opt = dealias<ReplaceOptions>(options)
   check(opt, files)
   const { fs, file } = opt
   const pack = packFiles(opt, files)
@@ -165,9 +167,10 @@ export const replace = async (
 
 /** The sync form of `replace`. */
 export const replaceSync = (
-  opt: ReplaceOptionsSync,
+  options: WithAliases<ReplaceOptionsSync>,
   files: PackInputSync[],
 ): void => {
+  const opt = dealias<ReplaceOptionsSync>(options)
   check(opt, files)
   const { fs, file } = opt
   const pack = packFilesSync(opt, files)

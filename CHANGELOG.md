@@ -17,13 +17,15 @@ A new API. See "Migration from version 7" in the README.
   `list()` and `extract()` read the `input` option, or a `file`.
 - Remove the `sync` option. Use `createSync`, `extractSync`,
   `listSync`, `replaceSync`, and `updateSync` from `tar/node`.
-- Remove `onReadEntry` and `onentry`. Use `onEntry`, which is
-  awaited.
-- Remove the option aliases (`C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`,
-  `L`, `h`, `strip-components`, `keep-newer`, `keep-existing`,
-  `no-mtime`, and their camelCase forms).
-- Remove the options `noChmod`, `noResume`, `ondone`, `dirCache`,
-  `linkCache`, `readdirCache`, and `statCache`.
+- Rename `onReadEntry` to `onEntry`, which is awaited. `onReadEntry`
+  and `onentry` are aliases of it.
+- The option aliases (`C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`, `L`,
+  `h`, `strip-components`, `keep-newer`, `keep-existing`, `no-mtime`,
+  their camelCase forms, and `noChmod`) work in the commands only.
+  `entries()`, `Pack`, `Unpack`, and `Parser` take only the names of
+  the options.
+- Remove the options `noResume`, `ondone`, `dirCache`, `linkCache`,
+  `readdirCache`, and `statCache`.
 - `ReadEntry` and `WriteEntry` are not streams. A `ReadEntry` has
   the shape of a `Response`: `body`, `bytes()`, `arrayBuffer()`,
   `text()`, and `blob()`. A `WriteEntry` is metadata and a `body`.
@@ -65,6 +67,8 @@ A new API. See "Migration from version 7" in the README.
 - Add the `Codec` type and the `codecs` option, to add a compression
   format. The core has gzip. `tar/node` has gzip, brotli, and zstd
   from `node:zlib`.
+- Add the `compress` option of `create()`. It takes a `Codec`, or
+  `[codec, options]`, and writes the archive with that codec.
 - The options `platform`, `processUid`, `processGid`, `processUname`,
   and `processUmask` give the facts of the process to the core.
 - Nothing is read before the consumer asks for it: the readers read
@@ -75,6 +79,8 @@ A new API. See "Migration from version 7" in the README.
   they find the place to append, and refuse an archive in any known
   compressed format.
 - Export `CwdError` and `SymlinkError`.
+- `extract()` works with a `cwd` that is a root of the file system,
+  such as `/` or `c:\`.
 
 ### Security fixes
 

@@ -1,4 +1,5 @@
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
+import { dealias, type WithAliases } from './dealias.js'
 import { TarReader, TarReaderSync } from './entries.js'
 import type { ListOptions, ListOptionsSync } from './options.js'
 import { dirname } from './path.js'
@@ -34,19 +35,16 @@ const noInput = () => new TypeError('list needs input, or file and fs')
  * directories that it lists.
  */
 export const list = async (
-  opt: ListOptions,
+  options: WithAliases<ListOptions>,
   files?: string[],
 ): Promise<void> => {
+  const opt = dealias<ListOptions>(options)
   const { input, file, fs, onEntry } = opt
   const source =
     input ?? (file && fs ? readFile(fs, file, opt.maxReadSize) : undefined)
   if (!source) throw noInput()
-  const reader = new TarReader(
-    source,
-    files?.length ?
-      { ...opt, filter: filesFilter(files, opt.filter) }
-    : opt,
-  )
+  if (files?.length) opt.filter = filesFilter(files, opt.filter)
+  const reader = new TarReader(source, opt)
   try {
     for (;;) {
       const entry = reader.poll()
@@ -60,17 +58,17 @@ export const list = async (
 }
 
 /** The sync form of `list`. */
-export const listSync = (opt: ListOptionsSync, files?: string[]): void => {
+export const listSync = (
+  options: WithAliases<ListOptionsSync>,
+  files?: string[],
+): void => {
+  const opt = dealias<ListOptionsSync>(options)
   const { input, file, fs, onEntry } = opt
   const source =
     input ??
     (file && fs ? readFileSync(fs, file, opt.maxReadSize) : undefined)
   if (!source) throw noInput()
-  const reader = new TarReaderSync(
-    source,
-    files?.length ?
-      { ...opt, filter: filesFilter(files, opt.filter) }
-    : opt,
-  )
+  if (files?.length) opt.filter = filesFilter(files, opt.filter)
+  const reader = new TarReaderSync(source, opt)
   for (const entry of reader) onEntry?.(entry)
 }

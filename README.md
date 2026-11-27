@@ -578,6 +578,35 @@ These options are common to each command:
 - `file` The path of the archive file.
 - `fs`, `platform` See [Entry points](#entry-points).
 
+### Option aliases
+
+Each command takes the option aliases of version 7. An option that is
+set wins over its aliases. `entries()` and the classes take only the
+names of the options.
+
+| Option          | Aliases                                                         |
+| --------------- | --------------------------------------------------------------- |
+| `cwd`           | `C`                                                             |
+| `file`          | `f`                                                             |
+| `gzip`          | `z`                                                             |
+| `preservePaths` | `P`                                                             |
+| `unlink`        | `U`                                                             |
+| `strip`         | `strip-components`, `stripComponents`                           |
+| `newer`         | `keep-newer`, `keepNewer`, `keep-newer-files`, `keepNewerFiles` |
+| `keep`          | `k`, `keep-existing`, `keepExisting`                            |
+| `noMtime`       | `m`, `no-mtime`                                                 |
+| `preserveOwner` | `p`                                                             |
+| `follow`        | `L`, `h`                                                        |
+| `onEntry`       | `onentry`, `onReadEntry`                                        |
+| `chmod`         | `noChmod: false` is `chmod: true`, if `chmod` is not set        |
+
+```js
+import { c, t } from 'tar/node'
+
+await c({ f: 'alias.tgz', z: true, C: '.' }, ['src'])
+await t({ f: 'alias.tgz', onentry: entry => console.log(entry.path) })
+```
+
 ### `create(options, files)`
 
 Make an archive of `files`. A directory is added with all that is in
@@ -608,6 +637,8 @@ Options:
   options of `zlib.createBrotliCompress()`.
 - `zstd` Compress with zstd. `tar/node` only. An object is the options
   of `zlib.createZstdCompress()`.
+- `compress` Compress with a `Codec` of your own: `codec`, or
+  `[codec, options]`. See [Compression](#compression).
 - `codecs` More compression formats. See [Compression](#compression).
 - `filter` A function `(path, stat)`. If it returns false, the path is
   not added. For a directory, the paths in it are also not added. For
@@ -813,7 +844,7 @@ Options:
 - `mtimeCache` A `Map`. The command sets the path and the `mtime` of
   each entry that the archive has.
 - All the options of `create()`, but not `gzip`, `brotli`, `zstd`, or
-  the name of another codec.
+  `compress`.
 
 ### `update(options, files)`
 
@@ -854,7 +885,8 @@ The readers find the format of the input. You set no option to read a
 compressed archive.
 
 To write a compressed archive, set `gzip`, `brotli`, or `zstd` in the
-options of `create()`. You can set only one.
+options of `create()`. To write with a codec of your own, set
+`compress`. You can set only one of the four.
 
 | Format | `tar`                                                                            | `tar/node`                                             |
 | ------ | -------------------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -960,10 +992,22 @@ type CodecStream = {
 
 A `TransformStream` is a `CodecStream`.
 
-To compress with a codec, set the option that has the name of the
-codec. If the value is an object, `compress()` gets it as its options.
-The TypeScript option types have only `gzip`, `brotli`, and `zstd`.
-For another name, TypeScript reports an unknown property.
+To compress with a codec, give it in the `compress` option of
+`create()`. The codec does not need to be in `codecs`. To give options
+to the `compress()` function of the codec, set `compress` to
+`[codec, options]`. With `portable`, a codec that has the name `gzip`
+also gets `portable: true` in its options.
+
+```js
+import { create, gzip } from 'tar/node'
+
+// The built-in gzip of the core, not the gzip of `node:zlib`.
+await create({ file: 'core.tgz', compress: gzip }, ['src'])
+```
+
+The options `gzip`, `brotli`, and `zstd` select the first codec of
+`codecs` that has that name, then the built-in codec. An option with
+the name of another codec selects nothing.
 
 `decompressSync()` must throw before it makes more than
 `limit.maxOutputLength` bytes. That number is `Infinity` when the
@@ -1035,9 +1079,9 @@ const bz2 = {
   compressSync: (data, options) => bzip2.compress(data, options),
 }
 
-// The `bzip2` option selects the codec with that name. Its value is
-// the options of the `compress` functions of node-bzip2.
-await create({ file: 'src.tar.bz2', codecs: [bz2], bzip2: { level: 9 } }, [
+// The second item is the options of the `compress` functions of
+// node-bzip2.
+await create({ file: 'src.tar.bz2', compress: [bz2, { level: 9 }] }, [
   'src',
 ])
 
@@ -1413,12 +1457,13 @@ the same options.
 | `sync: true`                                                                                                                                                                                                                                         | `createSync`, `extractSync`, `listSync`, `replaceSync`, `updateSync` from `tar/node`.                                                                                                    |
 | `tar.c({}, files)` returns a Node.js stream                                                                                                                                                                                                          | `create({}, files)` returns a web `ReadableStream`. `createSync()` returns an iterator of chunks.                                                                                        |
 | `stream.pipe(tar.x({ cwd }))`, `stream.pipe(tar.t())`                                                                                                                                                                                                | `extract({ input: stream, cwd })`, `list({ input: stream })`. The input is a web stream, an iterable of chunks, a `Blob`, or bytes. A Node.js `Readable` is an async iterable of chunks. |
-| `onReadEntry`, `onentry`                                                                                                                                                                                                                             | `onEntry`. A promise is awaited.                                                                                                                                                         |
+| `onReadEntry`, `onentry`                                                                                                                                                                                                                             | `onEntry`. The old names are aliases of it. A promise is awaited.                                                                                                                        |
 | `entry.on('data', ...)`, `entry.resume()`                                                                                                                                                                                                            | `entry.body`, `bytes()`, `arrayBuffer()`, `text()`, `blob()`. You do not have to read or drain a body.                                                                                   |
 | `new Parser()` and `'entry'` events                                                                                                                                                                                                                  | `for await (const entry of entries(input))`                                                                                                                                              |
 | `Buffer`                                                                                                                                                                                                                                             | `Uint8Array`. `Header#block` and the result of `Pax#encode()` are a `Uint8Array`.                                                                                                        |
-| Option aliases: `C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`, `L`, `h`, `strip-components`, `stripComponents`, `keep-newer`, `keepNewer`, `keep-newer-files`, `keepNewerFiles`, `keep-existing`, `keepExisting`, `no-mtime`                                | Only `cwd`, `file`, `gzip`, `preservePaths`, `unlink`, `keep`, `noMtime`, `preserveOwner`, `follow`, `strip`, `newer`.                                                                   |
-| `noChmod`, `noResume`, `ondone`, `dirCache`, `linkCache`, `readdirCache`, `statCache`                                                                                                                                                                | Removed.                                                                                                                                                                                 |
+| Option aliases: `C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`, `L`, `h`, `strip-components`, `stripComponents`, `keep-newer`, `keepNewer`, `keep-newer-files`, `keepNewerFiles`, `keep-existing`, `keepExisting`, `no-mtime`                                | The same aliases, in the commands. See [Option aliases](#option-aliases).                                                                                                                |
+| `noChmod`                                                                                                                                                                                                                                            | `chmod`. `noChmod: false` is `chmod: true`, if `chmod` is not set.                                                                                                                       |
+| `noResume`, `ondone`, `dirCache`, `linkCache`, `readdirCache`, `statCache`                                                                                                                                                                           | Removed.                                                                                                                                                                                 |
 | `transform` returns a Node.js stream                                                                                                                                                                                                                 | `transform` returns a `TransformStream`. In `extractSync()`, it returns a function that gets a chunk and returns a chunk.                                                                |
 | In strict mode, an `Unpack` stream emitted `'error'` and then extracted the entries after it                                                                                                                                                         | In strict mode, the extraction stops at the first error.                                                                                                                                 |
 | `Pack`, `Unpack`, and `Parser` are Node.js streams                                                                                                                                                                                                   | `Pack` is an async iterator of chunks. `Unpack` has an `extract(input)` method. `Parser` has `push()` and `next()`.                                                                      |

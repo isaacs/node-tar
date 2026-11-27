@@ -12,13 +12,18 @@ import type { BrotliOptions, ZlibOptions, ZstdOptions } from 'node:zlib'
 import type { Codec } from '../codec.js'
 import * as core from '../index.js'
 import { createSync as coreCreateSync } from '../create.js'
+import {
+  dealias,
+  type FileOption,
+  type NoFileOption,
+  type WithAliases,
+} from '../dealias.js'
 import { entriesSync as coreEntriesSync } from '../entries.js'
 import { extractSync as coreExtractSync } from '../extract.js'
 import { listSync as coreListSync } from '../list.js'
 import type { PackInput, PackInputSync } from '../pack.js'
 import type { ReadEntry, ReadEntrySync } from '../read-entry.js'
 import { replaceSync as coreReplaceSync } from '../replace.js'
-import { ownOptions } from '../unpack.js'
 import { updateSync as coreUpdateSync } from '../update.js'
 import { zlibCodecs } from './codecs.js'
 
@@ -93,10 +98,15 @@ type Defaults = {
   codecs?: Codec[]
 }
 
-// A copy of the options, with a default for each option that is not
-// set. `T` is the option type of the core command.
-const fill = <T>(options: Defaults, fs: unknown, paths: boolean): T => {
-  const opt = ownOptions(options)
+// A copy of the options, with the name of the option in place of
+// each alias, and a default for each option that is not set. `T` is
+// the option type of the core command.
+const fill = <T>(
+  options: WithAliases<Defaults>,
+  fs: unknown,
+  paths: boolean,
+): T => {
+  const opt = dealias<Defaults>(options)
   opt.fs ??= fs
   opt.platform ??= platform
   opt.codecs = [...(opt.codecs ?? []), ...codecs]
@@ -135,12 +145,16 @@ export const entriesSync = (
  * set, only with the entries that it lists, and the entries in the
  * directories that it lists.
  */
-export const list = (opt: ListOptions, files?: string[]): Promise<void> =>
-  core.list(fill(opt, fs, false), files)
+export const list = (
+  opt: WithAliases<ListOptions>,
+  files?: string[],
+): Promise<void> => core.list(fill(opt, fs, false), files)
 
 /** The sync form of `list`. */
-export const listSync = (opt: ListOptionsSync, files?: string[]): void =>
-  coreListSync(fill(opt, fsSync, false), files)
+export const listSync = (
+  opt: WithAliases<ListOptionsSync>,
+  files?: string[],
+): void => coreListSync(fill(opt, fsSync, false), files)
 
 /**
  * Extract the entries of an archive into the directory `opt.cwd`.
@@ -148,13 +162,13 @@ export const listSync = (opt: ListOptionsSync, files?: string[]): void =>
  * in the directories that it lists.
  */
 export const extract = (
-  opt: ExtractOptions,
+  opt: WithAliases<ExtractOptions>,
   files?: string[],
 ): Promise<void> => core.extract(fill(opt, fs, true), files)
 
 /** The sync form of `extract`. */
 export const extractSync = (
-  opt: ExtractOptionsSync,
+  opt: WithAliases<ExtractOptionsSync>,
   files?: string[],
 ): void => coreExtractSync(fill(opt, fsSync, true), files)
 
@@ -164,19 +178,19 @@ export const extractSync = (
  * of the bytes of the archive.
  */
 export function create(
-  opt: CreateOptions & { file: string },
+  opt: WithAliases<CreateOptions> & FileOption,
   files: PackInput[],
 ): Promise<void>
 export function create(
-  opt: CreateOptions & { file?: undefined },
+  opt: WithAliases<CreateOptions> & NoFileOption,
   files: PackInput[],
 ): ReadableStream<Uint8Array>
 export function create(
-  opt: CreateOptions,
+  opt: WithAliases<CreateOptions>,
   files: PackInput[],
 ): Promise<void> | ReadableStream<Uint8Array>
 export function create(
-  opt: CreateOptions,
+  opt: WithAliases<CreateOptions>,
   files: PackInput[],
 ): Promise<void> | ReadableStream<Uint8Array> {
   return core.create(fill(opt, fs, true), files)
@@ -187,19 +201,19 @@ export function create(
  * iterator of the bytes of the archive.
  */
 export function createSync(
-  opt: CreateOptionsSync & { file: string },
+  opt: WithAliases<CreateOptionsSync> & FileOption,
   files: PackInputSync[],
 ): void
 export function createSync(
-  opt: CreateOptionsSync & { file?: undefined },
+  opt: WithAliases<CreateOptionsSync> & NoFileOption,
   files: PackInputSync[],
 ): IterableIterator<Uint8Array, undefined>
 export function createSync(
-  opt: CreateOptionsSync,
+  opt: WithAliases<CreateOptionsSync>,
   files: PackInputSync[],
 ): void | IterableIterator<Uint8Array, undefined>
 export function createSync(
-  opt: CreateOptionsSync,
+  opt: WithAliases<CreateOptionsSync>,
   files: PackInputSync[],
 ): void | IterableIterator<Uint8Array, undefined> {
   return coreCreateSync(fill(opt, fsSync, true), files)
@@ -207,13 +221,13 @@ export function createSync(
 
 /** Add the files to the end of an archive file that is not compressed. */
 export const replace = (
-  opt: ReplaceOptions,
+  opt: WithAliases<ReplaceOptions>,
   files: PackInput[],
 ): Promise<void> => core.replace(fill(opt, fs, true), files)
 
 /** The sync form of `replace`. */
 export const replaceSync = (
-  opt: ReplaceOptionsSync,
+  opt: WithAliases<ReplaceOptionsSync>,
   files: PackInputSync[],
 ): void => coreReplaceSync(fill(opt, fsSync, true), files)
 
@@ -222,13 +236,13 @@ export const replaceSync = (
  * than the last entry of the archive that has its path.
  */
 export const update = (
-  opt: ReplaceOptions,
+  opt: WithAliases<ReplaceOptions>,
   files: PackInput[],
 ): Promise<void> => core.update(fill(opt, fs, true), files)
 
 /** The sync form of `update`. */
 export const updateSync = (
-  opt: ReplaceOptionsSync,
+  opt: WithAliases<ReplaceOptionsSync>,
   files: PackInputSync[],
 ): void => coreUpdateSync(fill(opt, fsSync, true), files)
 

@@ -1,3 +1,9 @@
+import {
+  dealias,
+  type FileOption,
+  type NoFileOption,
+  type WithAliases,
+} from './dealias.js'
 import { TarReader, TarReaderSync } from './entries.js'
 import type { CreateFileHandle, CreateFS, CreateFSSync } from './fs.js'
 import type { CreateOptions, CreateOptionsSync } from './options.js'
@@ -172,21 +178,22 @@ export const packFilesSync = (
  * of the archive. Files are read only when the stream is read.
  */
 export function create(
-  opt: CreateOptions & { file: string },
+  opt: WithAliases<CreateOptions> & FileOption,
   files: PackInput[],
 ): Promise<void>
 export function create(
-  opt: CreateOptions & { file?: undefined },
+  opt: WithAliases<CreateOptions> & NoFileOption,
   files: PackInput[],
 ): ReadableStream<Uint8Array>
 export function create(
-  opt: CreateOptions,
+  opt: WithAliases<CreateOptions>,
   files: PackInput[],
 ): Promise<void> | ReadableStream<Uint8Array>
 export function create(
-  opt: CreateOptions,
+  options: WithAliases<CreateOptions>,
   files: PackInput[],
 ): Promise<void> | ReadableStream<Uint8Array> {
+  const opt = dealias<CreateOptions>(options)
   if (!opt.file) {
     check(opt, files)
     return toStream(packFiles(opt, files))
@@ -211,21 +218,22 @@ export function create(
  * iterator is read.
  */
 export function createSync(
-  opt: CreateOptionsSync & { file: string },
+  opt: WithAliases<CreateOptionsSync> & FileOption,
   files: PackInputSync[],
 ): void
 export function createSync(
-  opt: CreateOptionsSync & { file?: undefined },
+  opt: WithAliases<CreateOptionsSync> & NoFileOption,
   files: PackInputSync[],
 ): IterableIterator<Uint8Array, undefined>
 export function createSync(
-  opt: CreateOptionsSync,
+  opt: WithAliases<CreateOptionsSync>,
   files: PackInputSync[],
 ): void | IterableIterator<Uint8Array, undefined>
 export function createSync(
-  opt: CreateOptionsSync,
+  options: WithAliases<CreateOptionsSync>,
   files: PackInputSync[],
 ): void | IterableIterator<Uint8Array, undefined> {
+  const opt = dealias<CreateOptionsSync>(options)
   check(opt, files)
   const { file } = opt
   const fs = opt.fs as CreateFSSync

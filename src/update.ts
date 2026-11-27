@@ -1,3 +1,4 @@
+import type { WithAliases } from './dealias.js'
 import type { CreateStats } from './fs.js'
 import type { ReplaceOptions, ReplaceOptionsSync } from './options.js'
 import type { PackInput, PackInputSync } from './pack.js'
@@ -17,7 +18,7 @@ const isNewer = (file: Date, archived: Date) => {
 
 const newer = <
   E extends EntryData,
-  O extends ReplaceOptions | ReplaceOptionsSync,
+  O extends { mtimeCache?: Map<string, Date> },
 >(
   opt: O & { filter?: (path: string, entry: CreateStats | E) => boolean },
 ): O => {
@@ -39,12 +40,12 @@ const newer = <
  * the last entry of the archive that has its path.
  */
 export const update = (
-  opt: ReplaceOptions,
+  opt: WithAliases<ReplaceOptions>,
   files: PackInput[],
 ): Promise<void> => replace(newer(opt), files)
 
 /** The sync form of `update`. */
 export const updateSync = (
-  opt: ReplaceOptionsSync,
+  opt: WithAliases<ReplaceOptionsSync>,
   files: PackInputSync[],
 ): void => replaceSync(newer(opt), files)
