@@ -49,13 +49,25 @@ export const fileMode = isWindows ? 0o666 : 0o644
 export const dirMode = isWindows ? 0o777 : 0o755
 
 // Git does not keep hard links. Make the link again if it is gone,
-// and set the modes that the tests expect.
+// and set the modes that the tests expect. Each test file is its own
+// process, and several of them do this at the same time. The rename
+// puts the link in place in one step, so that no process sees the
+// folder without the file.
 {
   const one = nodeFs.statSync(files + '/hardlink-1')
-  const two = nodeFs.statSync(files + '/hardlink-2')
-  if (one.dev !== two.dev || one.ino !== two.ino) {
-    nodeFs.rmSync(files + '/hardlink-2', { force: true })
-    nodeFs.linkSync(files + '/hardlink-1', files + '/hardlink-2')
+  const two = nodeFs.statSync(files + '/hardlink-2', {
+    throwIfNoEntry: false,
+  })
+  if (!two || one.dev !== two.dev || one.ino !== two.ino) {
+    // The link is made outside of the fixture folder, in the folder
+    // of the test runner, which is on the same file system.
+    const tmp = resolve(fixtures, `../../.ubq/hardlink-${process.pid}.tmp`)
+    nodeFs.rmSync(tmp, { force: true })
+    nodeFs.linkSync(files + '/hardlink-1', tmp)
+    nodeFs.renameSync(tmp, files + '/hardlink-2')
+    // A rename of one link of a file to a different link of it does
+    // nothing, and leaves the first name.
+    nodeFs.rmSync(tmp, { force: true })
   }
   chmodrSync(files, 0o644)
 }
