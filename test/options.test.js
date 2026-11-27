@@ -11,9 +11,12 @@ import {
   isNoFile,
 } from '../src/options.js'
 
+// The result of dealias has no prototype.
+const bare = fields => Object.assign(Object.create(null), fields)
+
 test('dealias and the option type guards', () => {
-  assert.deepEqual(dealias(), {})
-  assert.deepEqual(dealias(false), {})
+  assert.deepEqual(dealias(), bare({}))
+  assert.deepEqual(dealias(false), bare({}))
 
   assert.deepEqual(
     dealias({
@@ -25,7 +28,7 @@ test('dealias and the option type guards', () => {
       'strip-components': 99,
       foo: 'bar',
     }),
-    {
+    bare({
       cwd: 'dir',
       file: 'file',
       gzip: 'zip',
@@ -33,7 +36,7 @@ test('dealias and the option type guards', () => {
       unlink: 'unlink',
       strip: 99,
       foo: 'bar',
-    },
+    }),
   )
 
   assert.deepEqual(
@@ -46,7 +49,7 @@ test('dealias and the option type guards', () => {
       stripComponents: 99,
       foo: 'bar',
     }),
-    {
+    bare({
       cwd: 'dir',
       file: 'file',
       gzip: 'zip',
@@ -54,11 +57,11 @@ test('dealias and the option type guards', () => {
       unlink: 'unlink',
       strip: 99,
       foo: 'bar',
-    },
+    }),
   )
 
-  assert.deepEqual(dealias({ noChmod: false }), { chmod: true })
-  assert.deepEqual(dealias({ noChmod: true }), {})
+  assert.deepEqual(dealias({ noChmod: false }), bare({ chmod: true }))
+  assert.deepEqual(dealias({ noChmod: true }), bare({}))
 
   assert.equal(isSyncFile(dealias({ sync: true, f: 'x' })), true)
   assert.equal(isSyncFile(dealias({ file: 'x' })), false)

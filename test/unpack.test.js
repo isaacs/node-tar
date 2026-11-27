@@ -1034,9 +1034,7 @@ describe('fail write', () => {
       cleanup(mutateFS.fail('write', poop))
       const warnings = await runWarnings(mode, { cwd }, data)
       assert.deepEqual(warnings[0], ['TAR_ENTRY_ERROR', 'poop', poop])
-      // UnpackSync closes the fd a second time when the entry ends,
-      // and gives a second warning for the EBADF error.
-      assert.equal(warnings.length, mode === 'sync' ? 2 : 1)
+      assert.equal(warnings.length, 1)
       for (const [, message, er] of warnings) {
         assert.equal(message, er.message)
       }
@@ -2528,7 +2526,7 @@ test('sync unpack ignores an error of utimes on a directory', () => {
     '',
     '',
   ])
-  const utimes = spyOn(fs, 'utimesSync', () => {
+  const utimes = spyOn(fs, 'lutimesSync', () => {
     throw new Error('nope')
   })
   const cwd = testdir({})

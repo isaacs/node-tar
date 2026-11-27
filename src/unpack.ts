@@ -615,7 +615,7 @@ export class Unpack extends Parser {
 
       if (entry.mtime && !this.noMtime) {
         actions++
-        fs.utimes(
+        fs.lutimes(
           String(entry.absolute),
           entry.atime || new Date(),
           entry.mtime,
@@ -625,7 +625,7 @@ export class Unpack extends Parser {
 
       if (this[DOCHOWN](entry)) {
         actions++
-        fs.chown(
+        fs.lchown(
           String(entry.absolute),
           Number(this[UID](entry)),
           Number(this[GID](entry)),
@@ -958,13 +958,14 @@ export class UnpackSync extends Unpack {
       }
       // not a dir entry, have to remove it
       const [er] = callSync(() => fs.rmdirSync(String(entry.absolute)))
-      this[MAKEFS](er, entry)
+      return this[MAKEFS](er, entry)
     }
 
     // not a dir, and not reusable.
     // don't remove if it's the cwd, since we want that error.
     const [er] =
       entry.absolute === this.cwd ?
+        // ubq: not measured: CHECKPATH rejects a file entry at the cwd
         []
       : callSync(() => unlinkFileSync(String(entry.absolute)))
     this[MAKEFS](er, entry)
@@ -974,7 +975,11 @@ export class UnpackSync extends Unpack {
     const mode =
       typeof entry.mode === 'number' ? entry.mode & 0o7777 : this.fmode
 
+    // After the file descriptor is closed, the system can give the
+    // same number to a different file.
+    let closed = false
     const oner = (er?: null | Error | undefined) => {
+      closed = true
       let closeError
       try {
         fs.closeSync(fd)
@@ -1004,6 +1009,7 @@ export class UnpackSync extends Unpack {
     }
 
     tx.on('data', (chunk: Buffer) => {
+      if (closed) return
       try {
         fs.writeSync(fd, chunk, 0, chunk.length)
       } catch (er) {
@@ -1012,6 +1018,7 @@ export class UnpackSync extends Unpack {
     })
 
     tx.on('end', () => {
+      if (closed) return
       let er = null
       // try both, falling futimes back to utimes
       // if either fails, handle the first error
@@ -1059,7 +1066,7 @@ export class UnpackSync extends Unpack {
     }
     if (entry.mtime && !this.noMtime) {
       try {
-        fs.utimesSync(
+        fs.lutimesSync(
           String(entry.absolute),
           entry.atime || new Date(),
           entry.mtime,
@@ -1068,7 +1075,7 @@ export class UnpackSync extends Unpack {
     }
     if (this[DOCHOWN](entry)) {
       try {
-        fs.chownSync(
+        fs.lchownSync(
           String(entry.absolute),
           Number(this[UID](entry)),
           Number(this[GID](entry)),

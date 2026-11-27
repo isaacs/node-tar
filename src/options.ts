@@ -715,8 +715,10 @@ const dealiasKey = (k: keyof TarOptionsWithAliases): keyof TarOptions => {
 }
 
 export const dealias = (opt: TarOptionsWithAliases = {}): TarOptions => {
-  if (!opt) return {}
-  const result: Record<string, unknown> = {}
+  // The result has no prototype, so that an option that is not set
+  // does not get a value from Object.prototype.
+  const result: Record<string, unknown> = Object.create(null)
+  if (!opt) return result as TarOptions
   for (const [key, v] of Object.entries(opt) as [
     keyof TarOptionsWithAliases,
     unknown,
