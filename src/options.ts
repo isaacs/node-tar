@@ -370,8 +370,8 @@ export type ReplaceOptions = CreateOptions & {
   fs: ReplaceFS
   /**
    * Gets the path and the `mtime` of each entry that the archive
-   * has. `update` adds a path only if it is not older than the
-   * `mtime` here.
+   * has. `update` adds a path only if it is newer than the `mtime`
+   * here.
    */
   mtimeCache?: Map<string, Date>
 }
@@ -383,7 +383,7 @@ export type ReplaceOptionsSync = CreateOptionsSync & {
   fs: ReplaceFSSync
   /**
    * Gets the path and the `mtime` of each entry that the archive
-   * has. `updateSync` adds a path only if it is not older than the
+   * has. `updateSync` adds a path only if it is newer than the
    * `mtime` here.
    */
   mtimeCache?: Map<string, Date>

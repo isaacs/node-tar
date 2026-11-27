@@ -36,8 +36,9 @@ A new API. See "Migration from version 7" in the README.
 - An entry that comes after a lone null block gives a
   `TAR_BAD_ARCHIVE` warning, and is still read and extracted. In
   strict mode it is an error.
-- `update()` does not add a file again when its time differs from
-  the entry only by a part of a second.
+- `update()` adds a file only if it is newer than the entry of the
+  same path. It does not add a file that has the same time as the
+  entry, or a time that differs only by a part of a second.
 - A `jobs` or `maxReadSize` option that is not 0, a positive
   integer, or `Infinity` is a `TypeError`. 0 gives the default.
 - The readers detect the compression format. The `brotli` and `zstd`

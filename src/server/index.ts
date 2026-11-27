@@ -233,8 +233,8 @@ export const replaceSync = (
 ): void => coreReplaceSync(fill(opt, fsSync, true), files)
 
 /**
- * The same as `replace`, but a file is added only if it is not older
- * than the last entry of the archive that has its path.
+ * The same as `replace`, but a file is added only if it is newer than
+ * the last entry of the archive that has its path.
  */
 export const update = (
   opt: WithAliases<ReplaceOptions>,

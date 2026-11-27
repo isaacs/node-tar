@@ -116,8 +116,8 @@ for await (const entry of entries(await readFile('archive.tgz'))) {
 ### Add files to an archive
 
 `replace()` adds entries to the end of an archive that is not
-compressed. `update()` does the same, but it does not add a file that
-is older than the entry of the same path in the archive.
+compressed. `update()` does the same, but it adds a file only if it
+is newer than the entry of the same path in the archive.
 
 ```js
 import { replace, update } from 'tar'
