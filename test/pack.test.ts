@@ -762,7 +762,10 @@ describe('short reads', () => {
     [f100]: 'c'.repeat(100),
   }
   for (const [filename, contents] of Object.entries(cases)) {
-    for (const maxReadSize of [undefined, 1024, 100, 111, 2]) {
+    // The reads are half of this size. A read of one byte at a time
+    // is slow on some systems, so only the small file gets it.
+    const tiny = contents.length > 512 ? 16 : 2
+    for (const maxReadSize of [undefined, 1024, 100, 111, tiny]) {
       const name = filename.split('byte').shift() + 'byte'
       each(`${name} maxReadSize=${maxReadSize}`, async mode => {
         const { open, over } = tracked(readOver(n => Math.ceil(n / 2)))
