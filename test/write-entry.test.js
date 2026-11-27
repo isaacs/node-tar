@@ -4,6 +4,7 @@ import {
   cleanup,
   describe,
   env,
+  spyOn,
   stub,
   test,
   testdir,
@@ -1118,4 +1119,40 @@ test('myuid set by getuid() if available, otherwise 0', () => {
   stub(process, 'getuid', () => 123456789)
   const hasUid = new WriteEntry(filename)
   assert.equal(hasUid.myuid, 123456789, 'set to process.getuid()')
+})
+
+test('close the file when an error comes before the open ends', async () => {
+  const { open, close } = fs
+  const poop = new Error('poop')
+  const closed = []
+  const done = new Promise(resolve => {
+    spyOn(fs, 'close', (fd, cb) => {
+      closed.push(fd)
+      close(fd, er => {
+        cb(er)
+        resolve()
+      })
+    })
+  })
+  let opened
+  spyOn(fs, 'open', (file, flags, cb) =>
+    open(file, flags, (er, fd) => {
+      if (file === ws.absolute && opened === undefined) {
+        opened = fd
+        ws.emit('error', poop)
+      }
+      cb(er, fd)
+    }),
+  )
+  const ws = new WriteEntry('one-byte.txt', { cwd: files })
+  const errors = []
+  const out = []
+  ws.on('error', er => errors.push(er))
+  ws.on('data', c => out.push(c))
+  await done
+  assert.equal(typeof opened, 'number')
+  assert.deepEqual(closed, [opened])
+  assert.deepEqual(errors, [poop])
+  // Only the header. No part of the file body is read.
+  assert.equal(Buffer.concat(out).length, 512)
 })
