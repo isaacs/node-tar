@@ -91,14 +91,16 @@ export class Header implements HeaderData {
       throw new Error('need 512 bytes for header')
     }
 
-    // Decode the typeflag (independent of any pending PAX/GNU extended header)
-    // up front so we can tell whether THIS block is itself an intermediary
-    // extension header (PAX `x`/`g`, GNU long-name `L`, GNU long-link `K`).
-    // Per POSIX pax, a PAX extended header describes the *next file entry*, not
-    // the extension headers that may sit between it and that file. Applying the
-    // pending PAX overrides (notably `size`) to an intervening `L`/`K`/`x`/`g`
-    // header desynchronizes the stream relative to other tar implementations
-    // and enables tar interpretation-conflict / file-smuggling attacks.
+    // Decode the typeflag (independent of any pending PAX/GNU extended
+    // header) up front so we can tell whether THIS block is itself an
+    // intermediary extension header (PAX `x`/`g`, GNU long-name `L`,
+    // GNU long-link `K`). Per POSIX pax, a PAX extended header
+    // describes the *next file entry*, not the extension headers that
+    // may sit between it and that file. Applying the pending PAX
+    // overrides (notably `size`) to an intervening `L`/`K`/`x`/`g`
+    // header desynchronizes the stream relative to other tar
+    // implementations and enables tar interpretation-conflict /
+    // file-smuggling attacks.
     const t = decString(buf, off + 156, 1)
     const isNormalFS = types.normalFsTypes.has(t as EntryTypeCode)
     const exForFields = isNormalFS ? ex : undefined

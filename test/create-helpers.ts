@@ -64,7 +64,10 @@ export const dirMode = isWindows ? 0o777 : 0o755
 export const pin = <T extends CreateStats>(stat: T): T =>
   Object.assign(stat, { atime, ctime, mtime })
 
-/** `node:fs/promises`, with the times of each `lstat` and `stat` pinned. */
+/**
+ * `node:fs/promises`, with the times of each `lstat` and `stat`
+ * pinned.
+ */
 export const fs: CreateFS = {
   ...nodeFsPromises,
   lstat: async path => pin(await nodeFsPromises.lstat(path)),

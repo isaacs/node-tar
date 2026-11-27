@@ -3,8 +3,8 @@
 
 export const encode = (num: number, buf: Uint8Array) => {
   if (!Number.isSafeInteger(num)) {
-    // The number is so large that javascript cannot represent it with integer
-    // precision.
+    // The number is so large that javascript cannot represent it with
+    // integer precision.
     throw Error(
       'cannot encode number outside of javascript safe integer range',
     )
@@ -54,8 +54,8 @@ export const parse = (buf: Uint8Array) => {
   }
 
   if (!Number.isSafeInteger(value)) {
-    // The number is so large that javascript cannot represent it with integer
-    // precision.
+    // The number is so large that javascript cannot represent it with
+    // integer precision.
     throw Error('parsed number outside of javascript safe integer range')
   }
 

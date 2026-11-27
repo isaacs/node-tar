@@ -54,10 +54,11 @@ export type EntryTypeName =
 /**
  * types that are a normal file system entry, not metadata.
  *
- * These can be the subject of extended/globalExtended headers, long path
- * names, long linkpath names, etc.
+ * These can be the subject of extended/globalExtended headers, long
+ * path names, long linkpath names, etc.
  *
- * Any other types are meta, and cannot be targetted by extended PAX headers.
+ * Any other types are meta, and cannot be targetted by extended PAX
+ * headers.
  */
 export const normalFsTypes = new Set<EntryTypeCode>([
   '0',

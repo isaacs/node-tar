@@ -254,7 +254,10 @@ export const countedSource = (chunks: Uint8Array[]) => {
 const XOR_MAGIC = [0x58, 0x4f, 0x52, 0x21]
 const xor = (data: Uint8Array) => data.map(b => b ^ 0x5a)
 
-/** Compress for the `xorCodec`: a magic number, then each byte XOR 0x5a. */
+/**
+ * Compress for the `xorCodec`: a magic number, then each byte XOR
+ * 0x5a.
+ */
 export const xorCompress = (data: Uint8Array) =>
   cat(new Uint8Array(XOR_MAGIC), xor(data))
 

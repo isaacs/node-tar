@@ -89,7 +89,10 @@ export type ListOptions = ReadOptions & {
    * with 0, 16 MiB. A positive integer, or `Infinity`.
    */
   maxReadSize?: number
-  /** Called with each entry. A promise is awaited before the next entry. */
+  /**
+   * Called with each entry. A promise is awaited before the next
+   * entry.
+   */
   onEntry?: (entry: ReadEntry) => unknown
 }
 
