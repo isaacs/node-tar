@@ -146,7 +146,6 @@ export class Header implements HeaderData {
     if (
       buf.subarray(off + 257, off + 265).toString() === 'ustar\u000000'
     ) {
-      /* c8 ignore start */
       this.uname =
         exForFields?.uname ??
         gexForFields?.uname ??
@@ -165,7 +164,6 @@ export class Header implements HeaderData {
         gexForFields?.devmin ??
         decNumber(buf, off + 337, 8) ??
         0
-      /* c8 ignore stop */
       if (buf[off + 475] !== 0) {
         // definitely a prefix, definitely >130 chars.
         const prefix = decString(buf, off + 345, 155)
@@ -175,10 +173,8 @@ export class Header implements HeaderData {
         if (prefix) {
           this.path = prefix + '/' + this.path
         }
-        /* c8 ignore start */
         this.atime = ex?.atime ?? gex?.atime ?? decDate(buf, off + 476, 12)
         this.ctime = ex?.ctime ?? gex?.ctime ?? decDate(buf, off + 488, 12)
-        /* c8 ignore stop */
       }
     }
 

@@ -9,10 +9,8 @@
   },
   "scripts": {
     "genparse": "node scripts/generate-parse-fixtures.js",
-    "snap": "tap",
-    "test": "tap",
-    "pretest": "npm run prepare",
-    "presnap": "npm run prepare",
+    "snap": "ubq --update",
+    "test": "ubq",
     "prepare": "tshy && bash scripts/build.sh",
     "preversion": "npm test",
     "postversion": "git push origin --follow-tags",
@@ -21,7 +19,9 @@
     "lint": "oxlint --fix src test",
     "postsnap": "npm run lint",
     "postlint": "npm run format",
-    "bench": "npm run prepare && node scripts/benchmark/index.js"
+    "bench": "npm run prepare && node scripts/benchmark/index.js",
+    "pretest": "npm run prepare",
+    "presnap": "npm run prepare"
   },
   "dependencies": {
     "@isaacs/fs-minipass": "^4.0.0",
@@ -33,16 +33,12 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "chmodr": "^2.0.2",
-    "end-of-stream": "^1.4.3",
     "esbuild": "^0.28.0",
-    "events-to-array": "^2.0.3",
     "mutate-fs": "^2.1.1",
     "nock": "^13.5.4",
     "oxlint": "^1.67.0",
     "oxlint-tsgolint": "^0.23.0",
     "prettier": "^3.8.3",
-    "rimraf": "^6.1.2",
-    "tap": "^21.7.4",
     "tshy": "^4.1.2",
     "typedoc": "^0.28.19",
     "ubqtest": "^0.0.30"
@@ -298,5 +294,8 @@
   "module": "./dist/esm/index.min.js",
   "allowScripts": {
     "esbuild@0.28.0": true
+  },
+  "ubq": {
+    "coverage": "full"
   }
 }

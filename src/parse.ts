@@ -329,12 +329,12 @@ export class Parser extends EE implements Warner {
   [CONSUMEBODY](chunk: Buffer, position: number) {
     // write up to but no  more than writeEntry.blockRemain
     const entry = this[WRITEENTRY]
-    /* c8 ignore start */
     if (!entry) {
+      // ubq: not measured: a body state always has an entry
       throw new Error('attempt to consume body without entry??')
     }
+    // ubq: not measured: blockRemain is always a number
     const br = entry.blockRemain ?? 0
-    /* c8 ignore stop */
     const c =
       br >= chunk.length && position === 0 ?
         chunk
@@ -398,10 +398,9 @@ export class Parser extends EE implements Warner {
         break
       }
 
-      /* c8 ignore start */
+      // ubq: not measured: each meta entry type has a case above
       default:
         throw new Error('unknown meta: ' + entry.type)
-      /* c8 ignore stop */
     }
   }
 
@@ -412,11 +411,10 @@ export class Parser extends EE implements Warner {
     if (this[UNZIP]) {
       // fully nerf the decompressor and close its underlying binding
       const u = this[UNZIP]
-      /* c8 ignore start */
       u.write = () => true
+      // ubq: not measured: nothing ends the unzip stream after abort
       u.end = () => u
       u.emit = () => false
-      /* c8 ignore stop */
       u.destroy?.()
     }
     this[ABORTED] = true
@@ -462,12 +460,10 @@ export class Parser extends EE implements Warner {
     if (typeof chunk === 'string') {
       chunk = Buffer.from(
         chunk,
-        /* c8 ignore next */
         typeof encoding === 'string' ? encoding : 'utf8',
       )
     }
     if (this[ABORTED]) {
-      /* c8 ignore next */
       cb?.()
       return false
     }
@@ -483,7 +479,6 @@ export class Parser extends EE implements Warner {
       }
       if (chunk.length < ZIP_HEADER_LEN) {
         this[BUFFER] = chunk
-        /* c8 ignore next */
         cb?.()
         return true
       }
@@ -522,7 +517,6 @@ export class Parser extends EE implements Warner {
             this.brotli = true
           } else {
             this[BUFFER] = chunk
-            /* c8 ignore next */
             cb?.()
             return true
           }
@@ -591,7 +585,6 @@ export class Parser extends EE implements Warner {
       this[READENTRY]?.once('drain', () => this.emit('drain'))
     }
 
-    /* c8 ignore next */
     cb?.()
     return ret
   }
@@ -684,10 +677,9 @@ export class Parser extends EE implements Warner {
           position += this[CONSUMEMETA](chunk, position)
           break
 
-        /* c8 ignore start */
+        // ubq: not measured: each State value has a case above
         default:
           throw new Error('invalid state: ' + this[STATE])
-        /* c8 ignore stop */
       }
     }
 
@@ -722,12 +714,10 @@ export class Parser extends EE implements Warner {
     if (cb) this.once('finish', cb)
     if (!this[ABORTED]) {
       if (this[UNZIP]) {
-        /* c8 ignore start */
         if (chunk) {
           this[COMPRESSEDBYTESREAD] += chunk.length
           this[UNZIP].write(chunk)
         }
-        /* c8 ignore stop */
         this[UNZIP].end()
       } else {
         this[ENDED] = true

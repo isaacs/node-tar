@@ -7,12 +7,11 @@
 /.github
 /dist
 /.env
-/tap-snapshots
-/.nyc_output
+/ubq-snapshots
 /coverage
 /benchmark
-/.tap
 /test/fixture
 /test/fixtures
 /.tshy
 /docs
+.ubq

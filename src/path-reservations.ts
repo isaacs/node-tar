@@ -93,11 +93,9 @@ export class PathReservations {
     dirs: (Handler | Set<Handler>)[][]
   } {
     const res = this.#reservations.get(fn)
-    /* c8 ignore start */
     if (!res) {
       throw new Error('function does not have any path reservations')
     }
-    /* c8 ignore stop */
     return {
       paths: res.paths.map((path: string) =>
         this.#queues.get(path),
@@ -134,21 +132,19 @@ export class PathReservations {
       return false
     }
     const res = this.#reservations.get(fn)
-    /* c8 ignore start */
     if (!res) {
+      // ubq: not measured: a running fn always has a reservation
       throw new Error('invalid reservation')
     }
-    /* c8 ignore stop */
     const { paths, dirs } = res
 
     const next = new Set<Handler>()
     for (const path of paths) {
       const q = this.#queues.get(path)
-      /* c8 ignore start */
       if (!q || q?.[0] !== fn) {
+        // ubq: not measured: a running fn is first in each path queue
         continue
       }
-      /* c8 ignore stop */
       const q0 = q[1]
       if (!q0) {
         this.#queues.delete(path)
@@ -167,7 +163,7 @@ export class PathReservations {
     for (const dir of dirs) {
       const q = this.#queues.get(dir)
       const q0 = q?.[0]
-      /* c8 ignore next - type safety only */
+      // ubq: not measured: type safety only, a dir queue starts with a Set
       if (!q || !(q0 instanceof Set)) continue
       if (q0.size === 1 && q.length === 1) {
         this.#queues.delete(dir)

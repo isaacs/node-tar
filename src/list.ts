@@ -33,12 +33,10 @@ export const filesFilter = (opt: TarOptions, files: string[]) => {
   // limit recursion to 100 levels
   const MAX = 100
   const mapHas = (file: string, r: string = '', depth = 0): boolean => {
-    /* c8 ignore start - excessive caution */
     if (depth >= MAX) {
       map.set(file, false)
       return false
     }
-    /* c8 ignore stop */
     const root = r || parse(file).root || '.'
     let ret: boolean
     if (file === root) ret = false
@@ -85,7 +83,6 @@ const listFileSync = (opt: TarOptionsSyncFile) => {
     if (typeof fd === 'number') {
       try {
         fs.closeSync(fd)
-        /* c8 ignore next */
       } catch {}
     }
   }

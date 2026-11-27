@@ -155,7 +155,6 @@ const replaceAsync = (
         return cb(null, position)
       }
 
-      /* c8 ignore next */
       const entryBlockSize = 512 * Math.ceil((h.size ?? 0) / 512)
       if (position + entryBlockSize + 512 > size) {
         return cb(null, position)
@@ -248,14 +247,12 @@ const addFilesAsync = async (p: Pack, files: string[]): Promise<void> => {
 export const replace = makeCommand(
   replaceSync,
   replaceAsync,
-  /* c8 ignore start */
   (): never => {
     throw new TypeError('file is required')
   },
   (): never => {
     throw new TypeError('file is required')
   },
-  /* c8 ignore stop */
   (opt, entries) => {
     if (!isFile(opt)) {
       throw new TypeError('file is required')

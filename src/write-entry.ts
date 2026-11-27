@@ -208,11 +208,10 @@ export class WriteEntry
   }
 
   [HEADER]() {
-    /* c8 ignore start */
     if (!this.stat) {
+      // ubq: not measured: ONLSTAT sets stat before this method runs
       throw new Error('cannot write header before stat')
     }
-    /* c8 ignore stop */
 
     if (this.type === 'Directory' && this.portable) {
       this.noMtime = true
@@ -233,7 +232,7 @@ export class WriteEntry
       gid: this.portable ? undefined : this.stat.gid,
       size: this.stat.size,
       mtime: this.noMtime ? undefined : this.mtime || this.stat.mtime,
-      /* c8 ignore next */
+      // ubq: not measured: PROCESS writes no header for this type
       type: this.type === 'Unsupported' ? undefined : this.type,
       uname:
         this.portable ? undefined
@@ -266,20 +265,18 @@ export class WriteEntry
       )
     }
     const block = this.header?.block
-    /* c8 ignore start */
     if (!block) {
+      // ubq: not measured: encode() always sets header.block
       throw new Error('failed to encode header')
     }
-    /* c8 ignore stop */
     super.write(block)
   }
 
   [DIRECTORY]() {
-    /* c8 ignore start */
     if (!this.stat) {
+      // ubq: not measured: ONLSTAT sets stat before this method runs
       throw new Error('cannot create directory entry without stat')
     }
-    /* c8 ignore stop */
     if (this.path.slice(-1) !== '/') {
       this.path += '/'
     }
@@ -304,11 +301,10 @@ export class WriteEntry
   }
 
   [HARDLINK](linkpath: string) {
-    /* c8 ignore start */
     if (!this.stat) {
+      // ubq: not measured: ONLSTAT sets stat before this method runs
       throw new Error('cannot create link entry without stat')
     }
-    /* c8 ignore stop */
     this.type = 'Link'
     this.linkpath = normalizeWindowsPath(path.relative(this.cwd, linkpath))
     this.stat.size = 0
@@ -317,11 +313,10 @@ export class WriteEntry
   }
 
   [FILE]() {
-    /* c8 ignore start */
     if (!this.stat) {
+      // ubq: not measured: ONLSTAT sets stat before this method runs
       throw new Error('cannot create file entry without stat')
     }
-    /* c8 ignore stop */
     if (this.stat.nlink > 1) {
       const linkKey = `${this.stat.dev}:${this.stat.ino}` as LinkCacheKey
       const linkpath = this.linkCache.get(linkKey)
@@ -353,11 +348,10 @@ export class WriteEntry
     if (this.#hadError) {
       return this[CLOSE]()
     }
-    /* c8 ignore start */
     if (!this.stat) {
+      // ubq: not measured: ONLSTAT sets stat before this method runs
       throw new Error('should stat before calling onopenfile')
     }
-    /* c8 ignore start */
 
     this.blockLen = 512 * Math.ceil(this.stat.size / 512)
     this.blockRemain = this.blockLen
@@ -373,6 +367,7 @@ export class WriteEntry
   [READ]() {
     const { fd, buf, offset, length, pos } = this
     if (fd === undefined || buf === undefined) {
+      // ubq: not measured: ONOPENFILE sets fd and buf before READ
       throw new Error('cannot read file without first opening')
     }
     fs.read(fd, buf, offset, length, pos, (er, bytesRead) => {
@@ -385,11 +380,9 @@ export class WriteEntry
     })
   }
 
-  /* c8 ignore start */
   [CLOSE](
     cb: (er?: null | Error | NodeJS.ErrnoException) => unknown = () => {},
   ) {
-    /* c8 ignore stop */
     if (this.fd !== undefined) fs.close(this.fd, cb)
   }
 
@@ -415,11 +408,10 @@ export class WriteEntry
       return this[CLOSE](() => this.emit('error', er))
     }
 
-    /* c8 ignore start */
     if (!this.buf) {
+      // ubq: not measured: ONOPENFILE sets buf before a read
       throw new Error('should have created buffer prior to reading')
     }
-    /* c8 ignore stop */
 
     // null out the rest of the buffer, if we could fit the block padding
     // at the end of this loop, we've incremented bytesRead and this.remain
@@ -467,7 +459,7 @@ export class WriteEntry
     encoding?: BufferEncoding | (() => unknown) | null,
     cb?: () => unknown,
   ): boolean {
-    /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
+    // these argument forms comply with NodeJS.WritableStream
     if (typeof encoding === 'function') {
       cb = encoding
       encoding = undefined
@@ -478,7 +470,6 @@ export class WriteEntry
         typeof encoding === 'string' ? encoding : 'utf8',
       )
     }
-    /* c8 ignore stop */
 
     if (this.blockRemain < chunk.length) {
       const er = Object.assign(
@@ -504,11 +495,10 @@ export class WriteEntry
       return this[CLOSE](er => (er ? this.emit('error', er) : this.end()))
     }
 
-    /* c8 ignore start */
     if (!this.buf) {
+      // ubq: not measured: ONOPENFILE sets buf before a read
       throw new Error('buffer lost somehow in ONDRAIN')
     }
-    /* c8 ignore stop */
 
     if (this.offset >= this.length) {
       // if we only have a smaller bit left to read, alloc a smaller buffer
@@ -542,11 +532,10 @@ export class WriteEntrySync extends WriteEntry implements Warner {
     let threw = true
     try {
       const { fd, buf, offset, length, pos } = this
-      /* c8 ignore start */
       if (fd === undefined || buf === undefined) {
+        // ubq: not measured: ONOPENFILE sets fd and buf before READ
         throw new Error('fd and buf must be set in READ method')
       }
-      /* c8 ignore stop */
       const bytesRead = fs.readSync(fd, buf, offset, length, pos)
       this[ONREAD](bytesRead)
       threw = false
@@ -565,11 +554,10 @@ export class WriteEntrySync extends WriteEntry implements Warner {
     cb()
   }
 
-  /* c8 ignore start */
   [CLOSE](
+    // ubq: not measured: each sync call of CLOSE passes cb
     cb: (er?: null | Error | NodeJS.ErrnoException) => unknown = () => {},
   ) {
-    /* c8 ignore stop */
     if (this.fd !== undefined) fs.closeSync(this.fd)
     cb()
   }
@@ -623,11 +611,9 @@ export class WriteEntryTar
 
     this.readEntry = readEntry
     const { type } = readEntry
-    /* c8 ignore start */
     if (type === 'Unsupported') {
       throw new Error('writing entry that should be ignored')
     }
-    /* c8 ignore stop */
     this.type = type
     if (this.type === 'Directory' && this.portable) {
       this.noMtime = true
@@ -721,9 +707,8 @@ export class WriteEntryTar
     }
 
     const b = this.header?.block
-    /* c8 ignore start */
+    // ubq: not measured: encode() always sets header.block
     if (!b) throw new Error('failed to encode header')
-    /* c8 ignore stop */
     super.write(b)
     readEntry.pipe(this)
   }
@@ -747,7 +732,7 @@ export class WriteEntryTar
     encoding?: BufferEncoding | (() => unknown) | null,
     cb?: () => unknown,
   ): boolean {
-    /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
+    // these argument forms comply with NodeJS.WritableStream
     if (typeof encoding === 'function') {
       cb = encoding
       encoding = undefined
@@ -758,7 +743,6 @@ export class WriteEntryTar
         typeof encoding === 'string' ? encoding : 'utf8',
       )
     }
-    /* c8 ignore stop */
     const writeLen = chunk.length
     if (writeLen > this.blockRemain) {
       throw new Error('writing more to entry than is appropriate')
@@ -782,7 +766,7 @@ export class WriteEntryTar
     if (this.blockRemain) {
       super.write(Buffer.alloc(this.blockRemain))
     }
-    /* c8 ignore start - just junk to comply with NodeJS.WritableStream */
+    // these argument forms comply with NodeJS.WritableStream
     if (typeof chunk === 'function') {
       cb = chunk
       encoding = undefined
@@ -798,7 +782,6 @@ export class WriteEntryTar
     if (cb) this.once('finish', cb)
     if (chunk) super.end(chunk, cb)
     else super.end(cb)
-    /* c8 ignore stop */
     return this
   }
 }

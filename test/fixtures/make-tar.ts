@@ -1,4 +1,4 @@
-import { Header, HeaderData } from '../../dist/esm/header.js'
+import { Header, type HeaderData } from '../../src/header.js'
 export type Chunks = (Buffer | string | HeaderData)[]
 
 export const makeTar = (chunks: Chunks) => {

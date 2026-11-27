@@ -205,11 +205,9 @@ export const makeCommand = <AsyncClass, SyncClass extends { sync: true }>(
           throw new TypeError('callback only supported with file option')
         }
         return asyncNoFile(opt, entries)
-        /* c8 ignore start */
       }
+      // ubq: not measured: the checks cover each mix of sync and file
       throw new Error('impossible options??')
-
-      /* c8 ignore stop */
     },
     {
       syncFile,

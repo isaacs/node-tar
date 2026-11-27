@@ -155,7 +155,7 @@ export class Pack
         }
         this.zip = new zlib.ZstdCompress(opt.zstd)
       }
-      /* c8 ignore next */
+      // ubq: not measured: each of gzip, brotli, and zstd sets zip
       if (!this.zip) throw new Error('impossible')
       const zip = this.zip
       zip.on('data', chunk => super.write(chunk as unknown as string))
@@ -202,7 +202,6 @@ export class Pack
     encoding?: Minipass.Encoding | (() => void),
     cb?: () => void,
   ) {
-    /* c8 ignore start */
     if (typeof path === 'function') {
       cb = path
       path = undefined
@@ -211,13 +210,11 @@ export class Pack
       cb = encoding
       encoding = undefined
     }
-    /* c8 ignore stop */
     if (path) {
       this.add(path)
     }
     this[ENDED] = true
     this[PROCESS]()
-    /* c8 ignore next */
     if (cb) cb()
     return this
   }
@@ -488,9 +485,8 @@ export class Pack
 
     const source = job.entry
     const zip = this.zip
-    /* c8 ignore start */
+    // ubq: not measured: PIPE gets only a job that has an entry
     if (!source) throw new Error('cannot pipe without source')
-    /* c8 ignore stop */
 
     if (zip) {
       source.on('data', chunk => {
@@ -551,9 +547,8 @@ export class PackSync extends Pack {
       })
     }
 
-    /* c8 ignore start */
+    // ubq: not measured: PIPE gets only a job that has an entry
     if (!source) throw new Error('Cannot pipe without source')
-    /* c8 ignore stop */
 
     if (zip) {
       source.on('data', chunk => {

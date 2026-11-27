@@ -11,13 +11,11 @@ import fs from 'fs'
 const platform = process.env.__FAKE_PLATFORM__ || process.platform
 const isWindows = platform === 'win32'
 
-/* c8 ignore start */
 const { O_CREAT, O_NOFOLLOW, O_TRUNC, O_WRONLY } = fs.constants
 const UV_FS_O_FILEMAP =
   Number(process.env.__FAKE_FS_O_FILENAME__) ||
   fs.constants.UV_FS_O_FILEMAP ||
   0
-/* c8 ignore stop */
 
 const fMapEnabled = isWindows && !!UV_FS_O_FILEMAP
 const fMapLimit = 512 * 1024

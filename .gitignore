@@ -7,7 +7,6 @@
 !**/.gitignore
 !/.prettierignore
 !/.prettierrc.json
-!/.taprc
 !/src
 !/.tshy
 !/.commitlintrc.js
@@ -31,5 +30,5 @@
 !/release-please-config.json
 !/scripts/
 !/SECURITY.md
-!/tap-snapshots/
+!/ubq-snapshots/
 !/test/

@@ -67,9 +67,7 @@ export class Pax implements HeaderData {
       // XXX split the path
       // then the path should be PaxHeader + basename, but less than 99,
       // prepend with the dirname
-      /* c8 ignore start */
       path: ('PaxHeader/' + basename(this.path ?? '')).slice(0, 99),
-      /* c8 ignore stop */
       mode: this.mode || 0o644,
       uid: this.uid,
       gid: this.gid,
