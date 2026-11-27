@@ -279,7 +279,23 @@ export class Unpack extends Parser {
       // Resolve linkpath relative to the entry's directory.
       // `path.posix` is safe to use because we're operating on
       // tar paths, not a filesystem.
-      const entryDir = path.posix.dirname(entry.path)
+      // A '..' is only safe at the start of the target. Any named
+      // part before it can be a symlink, and then the '..' goes to
+      // the parent of that symlink's target.
+      const firstName = parts.findIndex(
+        part => part !== '..' && part !== '.' && part !== '',
+      )
+      if (firstName !== -1 && parts.includes('..', firstName)) {
+        this.warn(
+          'TAR_ENTRY_ERROR',
+          `${field} contains '..' after a path portion`,
+          { entry, [field]: p },
+        )
+        return false
+      }
+      // Normalize the path, so that the directory is the one where
+      // the link is created. The path 'x/.' creates the link 'x'.
+      const entryDir = path.posix.dirname(path.posix.normalize(entry.path))
       const resolved = path.posix.normalize(
         path.posix.join(entryDir, parts.join('/')),
       )

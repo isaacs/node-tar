@@ -2291,18 +2291,6 @@ describe('no linking through a symlink', () => {
     describe(type, () => {
       const exploit = makeTar([
         {
-          type: 'SymbolicLink',
-          path: 'a/b/up',
-          linkpath: '../..',
-          mode: 0o755,
-        },
-        {
-          type: 'SymbolicLink',
-          path: 'a/b/escape',
-          linkpath: 'up/..',
-          mode: 0o755,
-        },
-        {
           type,
           path: 'exploit',
           linkpath: 'a/b/escape/exploited-file',
@@ -2322,8 +2310,12 @@ describe('no linking through a symlink', () => {
         test(mode, async () => {
           const cwd = testdir({
             x: {},
+            a: { b: {} },
             'exploited-file': 'original content',
           })
+          // An archive cannot make a symlink that leaves the
+          // directory, so this one is on disk before the extraction.
+          fs.symlinkSync('../..', cwd + '/a/b/escape')
           const opt = { cwd, strict: true }
           if (mode === 'sync') {
             assert.throws(() => {
