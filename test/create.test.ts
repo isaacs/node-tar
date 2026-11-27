@@ -34,6 +34,8 @@ import {
   EOA,
   file,
   fsPath,
+  hdr,
+  pax,
   resolve,
   testdir,
   xorCodec,
@@ -709,6 +711,46 @@ describe('an @archive operand', () => {
     await assert.rejects(way.run({ cwd, strict: true }, ['@bad.tar']), {
       tarCode: 'TAR_ENTRY_INVALID',
     })
+  })
+
+  // A global PAX size does not change the size that the local PAX
+  // header gives. The body of the entry is a header block, and it is
+  // not an entry.
+  each('a filter sees each entry that a repack writes', async way => {
+    const cwd = testdir({
+      'in.tar': Buffer.from(
+        cat(
+          pax([['size', '512']]),
+          pax([['size', '0']], true),
+          hdr({ path: 'carrier.txt', type: 'File', size: 512 }),
+          hdr({ path: 'hidden.txt', type: 'File' }),
+          EOA,
+        ),
+      ),
+    })
+    const seen: string[] = []
+    const filter: Filter = path => {
+      seen.push(path)
+      return path !== 'hidden.txt'
+    }
+    const data = await way.run({ cwd, filter, strict: true }, ['@in.tar'])
+    assert.deepEqual(seen, ['carrier.txt'])
+    assert.match(read(data), [
+      { entry: { path: 'carrier.txt', size: 512 } },
+    ])
+    assert.equal(read(data).length, 1)
+  })
+
+  each('an archive that has the PAX value uid=Infinity', async way => {
+    const cwd = testdir({
+      'in.tar': Buffer.from(
+        cat(pax([['uid', 'Infinity']]), file('a.txt', 'hello'), EOA),
+      ),
+    })
+    const data = await way.run({ cwd, strict: true }, ['@in.tar'])
+    assert.match(read(data), [
+      { entry: { path: 'a.txt', uid: 501 }, body: 'hello' },
+    ])
   })
 
   each('an archive that ends in the body of an entry', async way => {
