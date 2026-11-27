@@ -95,6 +95,7 @@ describe('the core entry point', () => {
   test('the exports', () => {
     assert.deepEqual(Object.keys(tar).sort(), [
       'AppendScan',
+      'CwdError',
       'EntryCursor',
       'EntryData',
       'Header',
@@ -105,6 +106,7 @@ describe('the core entry point', () => {
       'PathReservations',
       'Pax',
       'ReadEntry',
+      'SymlinkError',
       'TarReader',
       'Unpack',
       'UnpackBase',

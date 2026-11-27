@@ -8,10 +8,12 @@ export { Pax } from './pax.js'
 export * as types from './types.js'
 export { gzip, type Codec, type CodecStream } from './codec.js'
 export { create, create as c } from './create.js'
+export { CwdError } from './cwd-error.js'
 export { entries, EntryCursor, TarReader } from './entries.js'
 export { extract, extract as x } from './extract.js'
 export type * from './fs.js'
 export { list, list as t } from './list.js'
+export type { MkdirOptions } from './mkdir.js'
 export type * from './options.js'
 export {
   Pack,
@@ -31,6 +33,7 @@ export {
   type BodySourceSync,
 } from './read-entry.js'
 export { AppendScan, replace, replace as r } from './replace.js'
+export { SymlinkError } from './symlink-error.js'
 export { Unpack, UnpackBase, type UnpackBaseOptions } from './unpack.js'
 export { update, update as u } from './update.js'
 export type { TarError, WarnData, WarnOptions } from './warn.js'

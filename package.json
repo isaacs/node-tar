@@ -14,7 +14,7 @@
     "preversion": "npm test",
     "postversion": "git push origin --follow-tags",
     "format": "prettier --write . --log-level warn",
-    "typedoc": "typedoc --tsconfig .tshy/esm.json ./src/*.ts",
+    "typedoc": "typedoc --tsconfig .tshy/esm.json ./src/index.ts ./src/node/index.ts",
     "lint": "oxlint --fix src test",
     "postsnap": "npm run lint",
     "postlint": "npm run format",
