@@ -202,19 +202,16 @@ test('the parser keeps no data after the end of the archive', () => {
 
 test('zstd data on a runtime with no zstd support is an error', async () => {
   const minizlib = await import('minizlib')
-  class ZstdDecompress {
+  class NoZstd {
     constructor() {
       throw new TypeError('Compression method not supported')
     }
   }
+  const ZstdDecompress =
+    NoZstd as unknown as typeof minizlib.ZstdDecompress
   const { Parser } = await mockImport(
     () => import('../src/parse.js'),
-    [
-      [
-        () => import('minizlib'),
-        { ...minizlib, ZstdDecompress } as unknown as typeof minizlib,
-      ],
-    ],
+    [[() => import('minizlib'), { ZstdDecompress }]],
   )
   const p = new Parser()
   const errors: unknown[] = []
