@@ -741,7 +741,9 @@ Options:
   in the archive. Default: true if `processUid` is 0 and `uid` is not
   set.
 - `uid`, `gid` Set the owner of each entry to this user and group. You
-  must set the two. You cannot set them with `preserveOwner`.
+  must set the two. You cannot set them with `preserveOwner`. Each
+  must be an integer from 0 to 4294967295. Any other number is a
+  `TypeError`.
 - `forceChown` Set the owner of each entry, also when it is the owner
   of the process.
 - `chmod` Call `fs.chmod()` on each directory, so that the umask of

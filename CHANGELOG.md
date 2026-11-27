@@ -43,6 +43,9 @@ A new API. See "Migration from version 7" in the README.
   entry, or a time that differs only by a part of a second.
 - A `jobs` or `maxReadSize` option that is not 0, a positive
   integer, or `Infinity` is a `TypeError`. 0 gives the default.
+- A `uid` or `gid` option of `extract()` that is not an unsigned
+  32-bit integer is a `TypeError`. Before, it was ignored, and the
+  owner in the archive was used.
 - The readers detect the compression format. The `brotli` and `zstd`
   options are only for `create()`.
 - Remove the subpath exports (`tar/create`, `tar/extract`,

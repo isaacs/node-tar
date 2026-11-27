@@ -1296,16 +1296,41 @@ describe('the uid and gid options', () => {
     })
   })
 
-  test('a number that is not one is not used', () => {
+  test('an option that is not one is an error', () => {
+    const expect = {
+      name: 'TypeError',
+      message: 'uid and gid must be unsigned 32-bit integers',
+    }
     for (const bad of [-1, 1.5, 2 ** 32, NaN, Infinity]) {
-      // The owner of the entry is next, and then the process owner.
-      assert.deepEqual(owner(bad, 3, entry(7, 8)), { uid: 7, gid: 3 })
-      assert.deepEqual(owner(3, bad, entry(7, 8)), { uid: 3, gid: 8 })
-      assert.deepEqual(owner(bad, bad, entry(bad, bad)), {
-        uid: 501,
-        gid: 20,
-      })
-      assert.deepEqual(owner(bad, bad, entry()), { uid: 501, gid: 20 })
+      assert.throws(() => owner(bad, 3, entry(7, 8)), expect)
+      assert.throws(() => owner(3, bad, entry(7, 8)), expect)
+      assert.throws(
+        () =>
+          extractSync({
+            cwd: '/x',
+            fs: fsSync,
+            input,
+            uid: bad,
+            gid: bad,
+          }),
+        expect,
+      )
+    }
+  })
+
+  test('an owner in the archive that is not one is not used', () => {
+    const preserve = (e: ReadEntry) =>
+      new Unpack({
+        cwd: '/x',
+        fs,
+        input,
+        preserveOwner: true,
+        ...ids,
+      }).owner(e)
+    for (const bad of [-1, 1.5, 2 ** 32, NaN, Infinity]) {
+      // The process owner is used in its place.
+      assert.deepEqual(preserve(entry(bad, 8)), { uid: 501, gid: 8 })
+      assert.deepEqual(preserve(entry(7, bad)), { uid: 7, gid: 20 })
     }
   })
 
@@ -1331,7 +1356,10 @@ describe('the uid and gid options', () => {
         return calls.filter(c => c[0] === 'fchown').map(c => c.slice(2))
       }
       assert.deepEqual(await chowns(2 ** 32 - 1, 0), [[2 ** 32 - 1, 0]])
-      assert.deepEqual(await chowns(-1, 2 ** 32), [[7, 8]])
+      await assert.rejects(chowns(-1, 2 ** 32), {
+        name: 'TypeError',
+        message: 'uid and gid must be unsigned 32-bit integers',
+      })
     })
   }
 })

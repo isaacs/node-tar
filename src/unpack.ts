@@ -54,7 +54,7 @@ const uint32 = (
   b: number | undefined,
   c: number | undefined,
 ) =>
-  a !== undefined && a === a >>> 0 ? a
+  a !== undefined ? a
   : b !== undefined && b === b >>> 0 ? b
   : c
 
@@ -122,6 +122,11 @@ export class UnpackBase<
       // need both or neither
       if (typeof opt.uid !== 'number' || typeof opt.gid !== 'number') {
         throw new TypeError('cannot set owner without number uid and gid')
+      }
+      // A value that is not valid must not fall back to the owner
+      // in the archive.
+      if (opt.uid !== opt.uid >>> 0 || opt.gid !== opt.gid >>> 0) {
+        throw new TypeError('uid and gid must be unsigned 32-bit integers')
       }
       if (opt.preserveOwner) {
         throw new TypeError(
