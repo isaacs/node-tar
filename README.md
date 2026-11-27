@@ -791,8 +791,10 @@ Options:
 - `cwd` The directory to extract into. It must exist and be a
   directory. If not, the command fails with a `CwdError`.
 - `strip` Remove this number of leading parts from each path. An entry
-  with fewer parts is skipped. `files` and `filter` see the path
-  before this change.
+  with no part left is skipped, with no warning. Thus `strip: 1` does
+  not apply the mode, the owner, or the times of the top directory of
+  the archive to the extraction directory. `files` and `filter` see
+  the path before this change.
 - `filter` A function `(path, entry)`. If it returns false, the entry
   is not extracted.
 - `onEntry` A function that gets each `ReadEntry` before it is
@@ -1396,7 +1398,10 @@ Paths:
 - The root of an absolute path is removed. The entry is extracted
   below the extraction directory, with a `TAR_ENTRY_INFO` warning.
 - An entry cannot replace the extraction directory with a file or a
-  link.
+  link. A directory entry with the path `.` sets the times of the
+  extraction directory, and its mode with `chmod`, and its owner with
+  the owner options. An entry whose path is empty after `strip` does
+  not.
 - No entry is extracted through a symbolic link. If a part of the path
   to an entry is a symbolic link, the entry is refused. With `unlink`,
   the link is removed and a directory is made.

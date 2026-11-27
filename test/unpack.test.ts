@@ -2474,6 +2474,96 @@ describe('using strip option when top level file exists', () => {
   }
 })
 
+// GNU tar and bsdtar skip an entry that has no path after the strip.
+// https://github.com/isaacs/node-tar/issues/294
+describe('strip removes each part of a path', () => {
+  const top: HeaderData = {
+    mode: 0o700,
+    uid: 12345,
+    gid: 54321,
+    mtime: new Date('2000-01-01T00:00:00Z'),
+  }
+  const cases: HeaderData[] = [
+    { path: 'top/', type: 'Directory' },
+    { path: 'top', type: 'Directory' },
+    { path: 'top//', type: 'Directory' },
+    { path: 'top', type: 'GNUDumpDir' },
+    { path: 'top', type: 'File' },
+    { path: 'top', type: 'SymbolicLink', linkpath: 'x' },
+    { path: 'top', type: 'Link', linkpath: 'top/x' },
+    { path: 'top', type: 'FIFO' },
+  ]
+  // Each call that can change an object, with no change on disk.
+  const hooks = {
+    chmod: () => SKIP,
+    chown: () => SKIP,
+    lchown: () => SKIP,
+    fchown: () => SKIP,
+    utimes: () => SKIP,
+    lutimes: () => SKIP,
+    futimes: () => SKIP,
+  }
+  const changes = (calls: unknown[][]) =>
+    calls
+      .filter(([op]) => String(op) in hooks)
+      .map(([op, path]) => [op, path])
+
+  for (const mode of modes) {
+    for (const c of cases) {
+      test(`${c.type} ${c.path}, ${mode}`, async () => {
+        const cwd = testdir({})
+        const data = makeTar([
+          { ...top, ...c, size: 0 },
+          { ...top, path: 'top/x', type: 'File', size: 1 },
+          'x',
+          '',
+          '',
+        ])
+        const { warnings, calls } = await runExtract(
+          mode,
+          {
+            cwd,
+            strip: 1,
+            chmod: true,
+            processUmask: 0o22,
+            forceChown: true,
+            preserveOwner: true,
+          },
+          data,
+          hooks,
+        )
+        assert.deepEqual(warnings, [])
+        assert.equal(read(cwd + '/x'), 'x')
+        // Only the file gets the owner and the times of its entry.
+        assert.deepEqual(changes(calls), [
+          ['futimes', cwd + '/x'],
+          ['fchown', cwd + '/x'],
+        ])
+      })
+    }
+
+    test(`the entry of the path '.' sets the extraction directory, ${mode}`, async () => {
+      const cwd = testdir({})
+      const data = makeTar([
+        { ...top, path: './', type: 'Directory', size: 0 },
+        '',
+        '',
+      ])
+      const { calls } = await runExtract(
+        mode,
+        { cwd, chmod: true, processUmask: 0o22, forceChown: true },
+        data,
+        hooks,
+      )
+      assert.deepEqual(changes(calls), [
+        ['chmod', cwd],
+        ['lutimes', cwd],
+        ['lchown', cwd],
+      ])
+    })
+  }
+})
+
 describe('handle EPERMs when creating symlinks', () => {
   // https://github.com/npm/node-tar/issues/265
   const msg =

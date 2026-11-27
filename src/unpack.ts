@@ -286,6 +286,9 @@ export class UnpackBase<
         entry.linkpath = linkparts.slice(this.strip).join('/')
       }
       parts.splice(0, this.strip)
+      // No part of the path is left, as for the top directory of a
+      // package. The entry must not change the extraction directory.
+      if (parts.every(part => part === '')) return false
       entry.path = parts.join('/')
     }
 
