@@ -525,19 +525,13 @@ describe('Windows', () => {
       () => import('../src/server/index.js'),
       [[() => import('../src/server/codecs.js'), {}]],
     )
-    // An entry from memory needs no file. The `\\` is a character of
-    // its name.
+    // The readers need no cwd. The `\\` is a character of the name
+    // of the entry.
+    const block = new Uint8Array(512)
+    new posix.Header({ path: 'a\\b', type: 'File', size: 0 }).encode(block)
+    const data = Buffer.concat([block, new Uint8Array(1024)])
     const pathOf = (opt: { platform?: 'win32' | 'posix' }) =>
-      [
-        ...posix.entriesSync(
-          Buffer.concat([
-            ...posix.createSync(opt, [
-              new posix.WriteEntry({ path: 'a\\b' }),
-            ]),
-          ]),
-          { platform: 'posix' },
-        ),
-      ].map(e => e.path)
+      [...posix.entriesSync(data, opt)].map(e => e.path)
     assert.deepEqual(pathOf({}), ['a\\b'])
     // The option of the caller wins.
     assert.deepEqual(pathOf({ platform: 'win32' }), ['a/b'])
@@ -558,20 +552,16 @@ describe('Windows', () => {
       ['src/a.txt'],
     )
     // The option of the caller wins. With 'posix', the `\\` is a
-    // character of the name. Only Windows finds the file with it.
+    // character of the name, and no file has that name. On Windows,
+    // the cwd of the test is not an absolute path for 'posix'.
     const posix = () => [
       ...win.createSync({ cwd: dir, platform: 'posix' }, ['src\\a.txt']),
     ]
-    if (!isWindows) assert.throws(posix, { code: 'ENOENT' })
-    else {
-      assert.deepEqual(
-        [
-          ...win.entriesSync(Buffer.concat(posix()), {
-            platform: 'posix',
-          }),
-        ].map(e => e.path),
-        ['src\\a.txt'],
-      )
-    }
+    assert.throws(
+      posix,
+      isWindows ?
+        { name: 'TypeError', message: 'cwd must be an absolute path' }
+      : { code: 'ENOENT' },
+    )
   })
 })

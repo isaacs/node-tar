@@ -1141,13 +1141,21 @@ describe('win32', () => {
     const posix = { platform: 'posix' } as const
     const data = await mode.run(posix, [new WriteEntry({ path: 'a\\b' })])
     assert.deepEqual(paths(data), ['a\\b'])
-    // Also in a prefix, and in the target of a link.
+    // Also in a prefix, and in the target of a link. The cwd is a
+    // POSIX path on each system, so the link is not a real file.
+    const stat = Object.assign(nodeFs.lstatSync(import.meta.filename), {
+      isFile: () => false,
+      isSymbolicLink: () => true,
+    })
     const link = await mode.run(
-      { ...posix, cwd: files, prefix: 'pre\\fix' },
+      { ...posix, cwd: '/x', prefix: 'pre\\fix' },
       ['symlink'],
       {
-        async: { readlink: async () => 'a\\b' },
-        sync: { readlinkSync: () => 'a\\b' },
+        async: {
+          lstat: async () => stat,
+          readlink: async () => 'a\\b',
+        },
+        sync: { lstatSync: () => stat, readlinkSync: () => 'a\\b' },
       },
     )
     assert.match(headerAt(link), {
