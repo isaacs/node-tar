@@ -795,12 +795,37 @@ describe('limit to specific files', () => {
     )
   })
 
-  test('files filter looks at 100 parent directories at most', () => {
-    const filter = filesFilter(['x'])
+  test('files filter looks at each parent directory', async () => {
+    const filter = filesFilter(['x', '/abs/dir', 'p//q'])
     assert.equal(filter('x/y', undefined), true)
-    assert.equal(filter('x/' + 'a/'.repeat(98) + 'b', undefined), true)
-    assert.equal(filter('x/' + 'a/'.repeat(99) + 'b', undefined), false)
-    assert.equal(filter('x/' + 'a/'.repeat(101) + 'b', undefined), false)
+    const deep = 'a/'.repeat(150) + 'b'
+    assert.equal(filter('x/' + deep, undefined), true)
+    assert.equal(filter('/abs/dir/' + deep, undefined), true)
+    assert.equal(filter('y/' + deep, undefined), false)
+    assert.equal(filter('/abs/' + deep, undefined), false)
+    assert.equal(filter('p//q/r', undefined), true)
+    assert.equal(filter('p/q/r', undefined), false)
+
+    const input = cat(
+      pax([['path', 'x/' + deep]]),
+      file('f', 'deep'),
+      pax([['path', 'y/' + deep]]),
+      file('g'),
+      EOA,
+    )
+    const found: string[] = []
+    const onEntry = (entry: { path: string }) => found.push(entry.path)
+    await list({ input, onEntry }, ['x'])
+    listSync({ input, onEntry }, ['x'])
+    assert.deepEqual(found, ['x/' + deep, 'x/' + deep])
+  })
+
+  test('files filter of a very long path is fast', () => {
+    const filter = filesFilter(['x'])
+    const long = 'a/'.repeat(500_000)
+    assert.equal(filter('x/' + long + 'b', undefined), true)
+    assert.equal(filter('y/' + long + 'b', undefined), false)
+    assert.equal(filter('/x/' + long + 'b', undefined), false)
   })
 })
 

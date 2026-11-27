@@ -835,8 +835,8 @@ console.log(paths)
 ```
 
 A path in `files` matches an entry if it is the path of the entry, or
-the path of one of its 100 nearest parent directories. Trailing
-slashes are ignored.
+the path of one of its parent directories. Trailing slashes are
+ignored.
 
 ### `replace(options, files)`
 

@@ -142,6 +142,8 @@ A new API. See "Migration from version 7" in the README.
   each directory that it makes, not only of the last one.
 - `update()` checks the paths in a directory also when the time of
   the directory did not change. A directory is always added again.
+- A path in the `files` of `list()` and `extract()` matches an
+  entry at each depth in that directory, not only 100 levels.
 
 ## 7.5
 
