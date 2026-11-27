@@ -1,7 +1,7 @@
-import { basename } from 'node:path'
 import type { HeaderData } from './header.js'
 import { Header } from './header.js'
 import { decodeUtf8, encodeUtf8Into, utf8Length } from './bytes.js'
+import { basename } from './next/path.js'
 
 const SIMPLE_NUMBER = /^\d+$/
 
@@ -132,7 +132,12 @@ export class Pax implements HeaderData {
   }
 
   static parse(str: string, ex?: HeaderData, g: boolean = false) {
-    return new Pax(merge(parseKV(str), ex), g)
+    return Pax.parseBytes(new TextEncoder().encode(str), ex, g)
+  }
+
+  /** Parse the body of a PAX header entry. */
+  static parseBytes(buf: Uint8Array, ex?: HeaderData, g: boolean = false) {
+    return new Pax(merge(parseKV(buf), ex), g)
   }
 }
 
@@ -142,9 +147,8 @@ const merge = (a: HeaderData, b?: HeaderData) =>
 // Each record is "<len> <key>=<value>\n". <len> is the byte length of
 // the whole record. A value can contain a newline, so use the length
 // to find the end of the record. Stop at the first malformed record.
-const parseKV = (str: string) => {
+const parseKV = (buf: Uint8Array) => {
   const set: Record<string, string | number | Date> = Object.create(null)
-  const buf = new TextEncoder().encode(str)
   let pos = 0
   while (pos < buf.length) {
     let sp = pos

@@ -3,7 +3,6 @@
 // the data could not be faithfully encoded in a simple header.
 // (Also, check header.needPax to see if it needs a pax header.)
 
-import { posix as pathModule } from 'node:path'
 import {
   decodeUtf8,
   encodeUtf8Into,
@@ -11,6 +10,7 @@ import {
   writeAscii,
 } from './bytes.js'
 import * as large from './large-numbers.js'
+import { basename, dirname, join } from './next/path.js'
 import type { EntryTypeCode, EntryTypeName } from './types.js'
 import * as types from './types.js'
 
@@ -314,14 +314,14 @@ const splitPrefix = (
   let pp = p
   let prefix = ''
   let ret: undefined | [string, string, boolean] = undefined
-  const root = pathModule.parse(p).root || '.'
+  const root = p.charAt(0) === '/' ? '/' : '.'
 
   if (utf8Length(pp) < pathSize) {
     ret = [pp, prefix, false]
   } else {
     // first set prefix to the dir, and path to the base
-    prefix = pathModule.dirname(pp)
-    pp = pathModule.basename(pp)
+    prefix = dirname(pp)
+    pp = basename(pp)
 
     do {
       if (utf8Length(pp) <= pathSize && utf8Length(prefix) <= prefixSize) {
@@ -335,8 +335,8 @@ const splitPrefix = (
         ret = [pp.slice(0, pathSize - 1), prefix, true]
       } else {
         // make path take a bit from prefix
-        pp = pathModule.join(pathModule.basename(prefix), pp)
-        prefix = pathModule.dirname(prefix)
+        pp = join(basename(prefix), pp)
+        prefix = dirname(prefix)
       }
     } while (prefix !== root && ret === undefined)
 
