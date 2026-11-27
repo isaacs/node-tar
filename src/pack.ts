@@ -264,7 +264,12 @@ export abstract class PackBase<
       const cwd = this.cwd as string
       // A link is only made to a path in the cwd. A directory beside
       // the cwd can have a name that starts with the name of the cwd.
-      if (target?.startsWith(cwd.endsWith('/') ? cwd : cwd + '/')) {
+      // A path that is added two times is a file each time: a link to
+      // itself cannot be extracted.
+      if (
+        target !== job.absolute &&
+        target?.startsWith(cwd.endsWith('/') ? cwd : cwd + '/')
+      ) {
         job.linkpath = relative(cwd, target)
         return 'Link'
       }

@@ -51,6 +51,8 @@ import {
   cat,
   ent,
   EOA,
+  extract,
+  extractSync,
   file,
   fsPath,
   isWindows,
@@ -1280,6 +1282,40 @@ describe('hard links', () => {
       assert.greaterThan(i, first)
     })
   })
+
+  each(
+    'a path that is added two times is not a link to itself',
+    async mode => {
+      const dir = testdir({ tree: { dir: { f: 'content' } }, out: {} })
+      const cwd = resolve(dir, 'tree')
+      nodeFs.linkSync(resolve(cwd, 'dir/f'), resolve(dir, 'other'))
+      const data = await mode.run({ cwd }, ['dir', 'dir/f', 'dir/f'])
+      assert.deepEqual(
+        read(data).map(f => [f.entry.type, f.entry.path, f.body]),
+        [
+          ['Directory', 'dir/', ''],
+          ['File', 'dir/f', 'content'],
+          ['File', 'dir/f', 'content'],
+          ['File', 'dir/f', 'content'],
+        ],
+      )
+      const out = resolve(dir, 'out')
+      if (mode.name === 'sync') {
+        extractSync({ cwd: out, fs: nodeFs, input: data, strict: true })
+      } else {
+        await extract({
+          cwd: out,
+          fs: nodeFsPromises,
+          input: data,
+          strict: true,
+        })
+      }
+      assert.equal(
+        nodeFs.readFileSync(resolve(out, 'dir/f'), 'utf8'),
+        'content',
+      )
+    },
+  )
 
   // Makes a package folder with three hard links to the target.
   const linkedPackage = (targetPath: string, extra = {}) => {

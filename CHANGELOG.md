@@ -144,6 +144,8 @@ A new API. See "Migration from version 7" in the README.
   the directory did not change. A directory is always added again.
 - A path in the `files` of `list()` and `extract()` matches an
   entry at each depth in that directory, not only 100 levels.
+- `create()` does not write a file that has more than one link as
+  a hard link to itself when its path is added two times.
 
 ## 7.5
 
