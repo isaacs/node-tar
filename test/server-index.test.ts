@@ -533,12 +533,17 @@ describe('Windows', () => {
       [...win.entriesSync(data)].map(e => e.path),
       ['src/a.txt'],
     )
-    // The option of the caller wins.
-    assert.throws(
-      () => [
-        ...win.createSync({ cwd: dir, platform: 'posix' }, ['src\\a.txt']),
-      ],
-      { code: 'ENOENT' },
-    )
+    // The option of the caller wins. With 'posix', the `\\` is a
+    // character of the name. Only Windows finds the file with it.
+    const posix = () => [
+      ...win.createSync({ cwd: dir, platform: 'posix' }, ['src\\a.txt']),
+    ]
+    if (!isWindows) assert.throws(posix, { code: 'ENOENT' })
+    else {
+      assert.deepEqual(
+        [...win.entriesSync(Buffer.concat(posix()))].map(e => e.path),
+        ['src\\a.txt'],
+      )
+    }
   })
 })

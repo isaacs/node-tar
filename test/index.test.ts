@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, relative } from 'node:path'
 import { assert, describe, test } from 'ubqtest'
 import * as tar from '../src/index.js'
+import { resolve, slash } from './helpers.js'
 
 const root = resolve(import.meta.dirname, '..')
 const src = resolve(root, 'src')
@@ -40,7 +41,7 @@ const graph = (entry: string) => {
 // The reasons why a file cannot be in a bundle for a browser.
 const problems = (file: string) => {
   const found: string[] = []
-  const name = relative(root, file)
+  const name = slash(relative(root, file))
   if (file.startsWith(server)) found.push(`${name} is a server file`)
   for (const spec of imports(file)) {
     if (!spec.startsWith('.')) found.push(`${name} imports ${spec}`)
@@ -55,7 +56,7 @@ describe('the core entry point', () => {
   const files = graph(resolve(src, 'index.ts'))
 
   test('the test finds the imports', () => {
-    const names = files.map(f => relative(root, f))
+    const names = files.map(f => slash(relative(root, f)))
     for (const name of [
       'src/index.ts',
       'src/replace.ts',
