@@ -155,7 +155,6 @@ export type CreateFileHandle = {
     position: number,
   ): Promise<{ bytesWritten: number }>
   stat(): Promise<{ size: number; dev: number; ino: number }>
-  stat(options: BigIntOption): Promise<FileId>
   close(): Promise<void>
 }
 
@@ -163,10 +162,11 @@ export type CreateFileHandle = {
  * The subset of `node:fs/promises` that the creation uses. It also
  * fits `TarFS`, which reads an `@archive` operand.
  *
- * The creation calls `lstat`, `stat`, and the `stat` of a file handle
- * with the option `bigint: true` only for a file whose `dev` or `ino`
- * number is not a safe integer. A function can ignore the option and
- * return numbers.
+ * The creation calls `lstat` (`stat` with `follow`) a second time,
+ * with the option `bigint: true`, only when the `dev` or `ino` number
+ * is not a safe integer, and only for a file with more than one link,
+ * or with `follow` for a directory. A function can ignore the option
+ * and return numbers.
  */
 export type CreateFS = {
   open(
@@ -190,7 +190,6 @@ export type CreateFS = {
 export type CreateFSSync = {
   openSync(path: string, flags: string, mode?: number): number
   fstatSync(fd: number): { size: number; dev: number; ino: number }
-  fstatSync(fd: number, options: BigIntOption): FileId
   readSync(
     fd: number,
     buffer: Uint8Array,

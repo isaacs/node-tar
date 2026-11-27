@@ -56,6 +56,7 @@ import {
   paths,
   pin,
   read,
+  stats,
   tracked,
   uid,
   type Mode,
@@ -131,20 +132,7 @@ const warner = () => {
 // Change the result of each lstat and stat.
 const statOver = (
   change: (stat: CreateStats, path: string) => CreateStats | void,
-): Over => {
-  const fix = (stat: CreateStats, path: string) =>
-    change(pin(stat), path) ?? stat
-  return {
-    async: {
-      lstat: async path => fix(await nodeFsPromises.lstat(path), path),
-      stat: async path => fix(await nodeFsPromises.stat(path), path),
-    },
-    sync: {
-      lstatSync: path => fix(nodeFs.lstatSync(path), path),
-      statSync: path => fix(nodeFs.statSync(path), path),
-    },
-  }
-}
+): Over => stats((stat, path) => change(pin(stat), path) ?? stat)
 
 // Change the `read` of each file.
 const readOver = (
@@ -544,12 +532,19 @@ describe('a path needs cwd and fs', () => {
     const { calls, over } = tracked({
       async: {
         readdir: async () => ['name'],
-        lstat: path => fs.lstat(path === '/name' ? zero : path),
+        lstat: ((path: string, ...more: []) =>
+          fs.lstat(
+            path === '/name' ? zero : path,
+            ...more,
+          )) as CreateFS['lstat'],
       },
       sync: {
         readdirSync: () => ['name'],
-        lstatSync: path =>
-          fsSync.lstatSync(path === '/name' ? zero : path),
+        lstatSync: ((path: string, ...more: []) =>
+          fsSync.lstatSync(
+            path === '/name' ? zero : path,
+            ...more,
+          )) as CreateFSSync['lstatSync'],
       },
     })
     const data = await mode.run({ cwd: '/' }, [''], over)
@@ -1536,10 +1531,10 @@ describe('hard links', () => {
   const slowTarget = (target: string): Partial<CreateFS> => ({
     readdir: async path =>
       (await fs.readdir(path)).sort((a, b) => a.localeCompare(b, 'en')),
-    lstat: async path => {
+    lstat: (async (path: string, ...more: []) => {
       if (path === target) await new Promise(res => setTimeout(res, 200))
-      return fs.lstat(path)
-    },
+      return fs.lstat(path, ...more)
+    }) as CreateFS['lstat'],
   })
 
   // https://github.com/isaacs/node-tar/issues/448
@@ -2224,18 +2219,18 @@ describe('a path that changes while the pack reads it', () => {
     }
     return {
       async: {
-        lstat: async p => {
-          const stat = await fs.lstat(p)
+        lstat: (async (p: string, ...more: []) => {
+          const stat = await fs.lstat(p, ...more)
           after(p)
           return stat
-        },
+        }) as CreateFS['lstat'],
       },
       sync: {
-        lstatSync: p => {
-          const stat = fsSync.lstatSync(p)
+        lstatSync: ((p: string, ...more: []) => {
+          const stat = fsSync.lstatSync(p, ...more)
           after(p)
           return stat
-        },
+        }) as CreateFSSync['lstatSync'],
       },
     }
   }
@@ -2341,12 +2336,12 @@ describe('a path that changes while the pack reads it', () => {
   )
 
   each('with follow, the pack does not compare', async mode => {
-    // The stat of a different file, as if the path changed.
-    const other = nodeFs.statSync(resolve(files, 'dir'))
+    // Each stat has different numbers, as if each path changed.
+    let ino = 1000
     const { calls, over } = tracked(
       statOver(stat => {
-        stat.dev = other.dev
-        stat.ino = other.ino + 12345
+        stat.dev = 7
+        stat.ino = ino++
       }),
     )
     const data = await mode.run(
@@ -2372,46 +2367,39 @@ describe('dev and ino numbers that are not exact', () => {
   const TWO = 9570149211882253n
   assert.equal(Number(ONE), Number(TWO))
 
-  // A file system that gives `Number(ino)` for each name in `inos`,
-  // and the exact value with the `bigint` option. A name with more
-  // than one value gets the next value at each call. `opened` has
-  // the values for the stat of an open file.
-  const inexact = (
-    inos: Record<string, bigint[]>,
-    { nlink = 1, opened = inos, bigint = true, openBigint = true } = {},
-  ): Over => {
-    const next = (from: Record<string, bigint[]>, path: string) => {
-      const list = from[path.replaceAll('\\', '/').split('/').pop() ?? '']
-      return list && list.length > 1 ? list.shift() : list?.[0]
-    }
-    const result = <
-      T extends { dev: number; ino: number; nlink?: number },
-    >(
-      from: Record<string, bigint[]>,
+  // A file system with chosen numbers for each name in `inos`: the
+  // `dev` 7, the `ino` as a number, and `nlink`. With the `bigint`
+  // option, a stat gives the exact `ino`. `exact` has the path of
+  // each call with that option. With `bigint: false`, the functions
+  // ignore the option.
+  const chosen = (
+    inos: Record<string, bigint>,
+    { nlink = 1, bigint = true } = {},
+  ) => {
+    const exact: string[] = []
+    const result = <T extends { dev: number; ino: number }>(
       path: string,
       stat: T,
-      option: unknown,
-      takesOption = bigint,
+      option?: unknown,
     ) => {
-      const ino = next(from, path)
+      const ino = inos[path.replaceAll('\\', '/').split('/').pop() ?? '']
       if (ino === undefined) return stat
-      if (option && takesOption) return { dev: BigInt(stat.dev), ino }
+      if (option) exact.push(path)
+      if (option && bigint) return { dev: 7n, ino }
       if ('nlink' in stat) stat.nlink = nlink
-      return Object.assign(stat, { ino: Number(ino) })
+      return Object.assign(stat, { dev: 7, ino: Number(ino) })
     }
     const fds = new Map<number, string>()
-    return {
+    const over: Over = {
       async: {
         lstat: (async (path: string, option?: unknown) =>
           result(
-            inos,
             path,
             pin(await nodeFsPromises.lstat(path)),
             option,
           )) as CreateFS['lstat'],
         stat: (async (path: string, option?: unknown) =>
           result(
-            inos,
             path,
             pin(await nodeFsPromises.stat(path)),
             option,
@@ -2422,14 +2410,8 @@ describe('dev and ino numbers that are not exact', () => {
             read: (...a) => handle.read(...a),
             write: (...a) => handle.write(...a),
             close: () => handle.close(),
-            stat: (async (option?: unknown) =>
-              result(
-                opened,
-                path,
-                await handle.stat(),
-                option,
-                openBigint,
-              )) as CreateFileHandle['stat'],
+            stat: async () =>
+              result(path, await handle.stat()) as nodeFs.Stats,
           }
           return wrapped
         },
@@ -2437,14 +2419,12 @@ describe('dev and ino numbers that are not exact', () => {
       sync: {
         lstatSync: ((path: string, option?: unknown) =>
           result(
-            inos,
             path,
             pin(nodeFs.lstatSync(path)),
             option,
           )) as CreateFSSync['lstatSync'],
         statSync: ((path: string, option?: unknown) =>
           result(
-            inos,
             path,
             pin(nodeFs.statSync(path)),
             option,
@@ -2454,16 +2434,11 @@ describe('dev and ino numbers that are not exact', () => {
           fds.set(fd, path)
           return fd
         },
-        fstatSync: ((fd: number, option?: unknown) =>
-          result(
-            opened,
-            fds.get(fd) ?? '',
-            nodeFs.fstatSync(fd),
-            option,
-            openBigint,
-          )) as CreateFSSync['fstatSync'],
+        fstatSync: fd =>
+          result(fds.get(fd) ?? '', nodeFs.fstatSync(fd)) as nodeFs.Stats,
       },
     }
+    return { exact, over }
   }
   const brief = (data: Buffer) =>
     read(data).map(f => [
@@ -2471,26 +2446,32 @@ describe('dev and ino numbers that are not exact', () => {
       f.entry.path,
       f.entry.linkpath ?? f.body,
     ])
-  const lstats = (calls: string[]) =>
-    calls.filter(call => call.startsWith('lstat'))
+  // The paths of the calls of `lstat` and `stat`, from the cwd.
+  const statCalls = (calls: string[], cwd: string) =>
+    calls
+      .filter(call => /^l?stat /.test(call))
+      .map(call => call.replace(cwd + '/', ''))
+      .sort()
+  const from = (paths: string[], cwd: string) =>
+    paths.map(path => path.replace(cwd + '/', '')).sort()
 
   each('two files with the same ino number are two files', async mode => {
     const cwd = testdir({ a: 'aaa', b: 'bbb' })
-    const { calls, over } = tracked(
-      inexact({ a: [ONE], b: [TWO] }, { nlink: 2 }),
-    )
-    const data = await mode.run({ cwd }, ['a', 'b'], over)
+    const { exact, over } = chosen({ a: ONE, b: TWO }, { nlink: 2 })
+    const t = tracked(over)
+    const data = await mode.run({ cwd }, ['a', 'b'], t.over)
     assert.deepEqual(brief(data), [
       ['File', 'a', 'aaa'],
       ['File', 'b', 'bbb'],
     ])
     // The second call of each path asks for the exact values.
-    assert.deepEqual(lstats(calls).sort(), [
-      `lstat ${cwd}/a`,
-      `lstat ${cwd}/a`,
-      `lstat ${cwd}/b`,
-      `lstat ${cwd}/b`,
+    assert.deepEqual(statCalls(t.calls, cwd), [
+      'lstat a',
+      'lstat a',
+      'lstat b',
+      'lstat b',
     ])
+    assert.deepEqual(from(exact, cwd), ['a', 'b'])
   })
 
   each(
@@ -2498,130 +2479,122 @@ describe('dev and ino numbers that are not exact', () => {
     async mode => {
       const cwd = testdir({ a: 'aaa' })
       nodeFs.linkSync(`${cwd}/a`, `${cwd}/b`)
-      const data = await mode.run(
-        { cwd },
-        ['a', 'b'],
-        inexact({ a: [TWO], b: [TWO] }, { nlink: 2 }),
-      )
+      const { exact, over } = chosen({ a: TWO, b: TWO }, { nlink: 2 })
+      const data = await mode.run({ cwd }, ['a', 'b'], over)
       assert.deepEqual(brief(data), [
         ['File', 'a', 'aaa'],
         ['Link', 'b', 'a'],
       ])
+      assert.deepEqual(from(exact, cwd), ['a', 'b'])
     },
   )
 
-  each('a file with exact numbers has one lstat', async mode => {
-    const cwd = testdir({ a: 'aaa', plain: 'p' })
-    nodeFs.linkSync(`${cwd}/a`, `${cwd}/b`)
-    const { calls, over } = tracked()
-    const data = await mode.run({ cwd }, ['a', 'b', 'plain'], over)
-    assert.deepEqual(brief(data), [
-      ['File', 'a', 'aaa'],
-      ['Link', 'b', 'a'],
-      ['File', 'plain', 'p'],
-    ])
-    assert.deepEqual(lstats(calls).sort(), [
-      `lstat ${cwd}/a`,
-      `lstat ${cwd}/b`,
-      `lstat ${cwd}/plain`,
-    ])
-  })
+  each(
+    'exact numbers and two links: one lstat for each path',
+    async mode => {
+      const cwd = testdir({ a: 'aaa', plain: 'p' })
+      nodeFs.linkSync(`${cwd}/a`, `${cwd}/b`)
+      const { exact, over } = chosen({ a: 101n, b: 101n }, { nlink: 2 })
+      const t = tracked(over)
+      const data = await mode.run({ cwd }, ['a', 'b', 'plain'], t.over)
+      assert.deepEqual(brief(data), [
+        ['File', 'a', 'aaa'],
+        ['Link', 'b', 'a'],
+        ['File', 'plain', 'p'],
+      ])
+      assert.deepEqual(statCalls(t.calls, cwd), [
+        'lstat a',
+        'lstat b',
+        'lstat plain',
+      ])
+      assert.deepEqual(exact, [])
+    },
+  )
+
+  // A wrong match of a file with one link loses no data, so the pack
+  // does not ask for the exact values.
+  each(
+    'numbers that are not exact and one link: one lstat',
+    async mode => {
+      const cwd = testdir({ a: 'aaa', b: 'bbb' })
+      const { exact, over } = chosen({ a: ONE, b: TWO })
+      const t = tracked(over)
+      const { warnings, onwarn } = warner()
+      const data = await mode.run({ cwd, onwarn }, ['a', 'b'], t.over)
+      assert.deepEqual(brief(data), [
+        ['File', 'a', 'aaa'],
+        ['File', 'b', 'bbb'],
+      ])
+      assert.deepEqual(statCalls(t.calls, cwd), ['lstat a', 'lstat b'])
+      assert.deepEqual(exact, [])
+      assert.deepEqual(warnings, [])
+    },
+  )
+
+  each(
+    'a directory with such numbers and no follow: one lstat',
+    async mode => {
+      const cwd = testdir({ d: { e: { f: 'f' } } })
+      const { exact, over } = chosen({ d: ONE, e: TWO, f: ONE })
+      const t = tracked(over)
+      const { warnings, onwarn } = warner()
+      const opt = { cwd, onwarn, noDirRecurse: true }
+      assert.deepEqual(brief(await mode.run(opt, ['d'], t.over)), [
+        ['Directory', 'd/', ''],
+      ])
+      assert.deepEqual(statCalls(t.calls, cwd), ['lstat d'])
+
+      // The pack that reads a directory calls `lstat` again after the
+      // `readdir`, with no option, to find a directory that changed.
+      t.calls.length = 0
+      assert.deepEqual(
+        brief(await mode.run({ cwd, onwarn }, ['d'], t.over)),
+        [
+          ['Directory', 'd/', ''],
+          ['Directory', 'd/e/', ''],
+          ['File', 'd/e/f', 'f'],
+        ],
+      )
+      assert.deepEqual(statCalls(t.calls, cwd), [
+        'lstat d',
+        'lstat d',
+        'lstat d/e',
+        'lstat d/e',
+        'lstat d/e/f',
+      ])
+      assert.deepEqual(exact, [])
+      assert.deepEqual(warnings, [])
+    },
+  )
 
   // The numbers are all that the pack has. It takes two files with
   // one number as two links of one file.
   each('a file system that ignores the bigint option', async mode => {
     const cwd = testdir({ a: 'aaa', b: 'bbb', c: 'ccc' })
-    const data = await mode.run(
-      { cwd },
-      ['a', 'b', 'c'],
-      inexact({ a: [ONE], b: [TWO] }, { nlink: 2, bigint: false }),
+    const { exact, over } = chosen(
+      { a: ONE, b: TWO },
+      { nlink: 2, bigint: false },
     )
+    const data = await mode.run({ cwd }, ['a', 'b', 'c'], over)
     assert.deepEqual(brief(data), [
       ['File', 'a', 'aaa'],
       ['Link', 'b', 'a'],
       ['File', 'c', 'ccc'],
     ])
+    assert.deepEqual(from(exact, cwd), ['a', 'b'])
   })
-
-  for (const [name, bigint, openBigint] of [
-    ['lstat', true, false],
-    ['the stat of an open file', false, true],
-  ] as const) {
-    each(`only ${name} takes the bigint option`, async mode => {
-      const cwd = testdir({ a: 'aaa', b: 'bbb' })
-      const { warnings, onwarn } = warner()
-      const data = await mode.run(
-        { cwd, onwarn },
-        ['a', 'b'],
-        inexact({ a: [ONE], b: [TWO] }, { bigint, openBigint }),
-      )
-      assert.deepEqual(brief(data), [
-        ['File', 'a', 'aaa'],
-        ['File', 'b', 'bbb'],
-      ])
-      assert.deepEqual(warnings, [])
-    })
-  }
-
-  each(
-    'a file that is a different file after open is skipped',
-    async mode => {
-      const cwd = testdir({ a: 'aaa', b: 'bbb' })
-      const { warnings, onwarn } = warner()
-      const data = await mode.run(
-        { cwd, onwarn },
-        ['a', 'b'],
-        inexact(
-          { a: [ONE], b: [TWO] },
-          { opened: { a: [TWO], b: [TWO] } },
-        ),
-      )
-      assert.deepEqual(brief(data), [['File', 'b', 'bbb']])
-      assert.deepEqual(
-        warnings.map(([code, message, { path }]) => [code, message, path]),
-        [['TAR_ENTRY_ERROR', 'file changed between lstat and open', 'a']],
-      )
-    },
-  )
-
-  each(
-    'a directory that is a different one after readdir is skipped',
-    async mode => {
-      const cwd = testdir({ d: { f: 'f' }, e: { g: 'g' } })
-      const { warnings, onwarn } = warner()
-      const data = await mode.run(
-        { cwd, onwarn },
-        ['d', 'e'],
-        // The values of the first call for the numbers, the call for
-        // the exact values, and the call after `readdir`.
-        inexact({ d: [ONE, ONE, TWO], e: [TWO] }),
-      )
-      assert.deepEqual(brief(data), [
-        ['Directory', 'e/', ''],
-        ['File', 'e/g', 'g'],
-      ])
-      assert.deepEqual(
-        warnings.map(([code, message, { path }]) => [code, message, path]),
-        [
-          [
-            'TAR_ENTRY_ERROR',
-            'directory changed between lstat and readdir',
-            'd',
-          ],
-        ],
-      )
-    },
-  )
 
   each(
     'with follow, a directory in one with the same number is added',
     async mode => {
       const cwd = testdir({ d: { e: { f: 'f' } } })
       const { warnings, onwarn } = warner()
+      const two = chosen({ d: ONE, e: TWO, f: ONE })
+      const t = tracked(two.over)
       const data = await mode.run(
         { cwd, onwarn, follow: true },
         ['d'],
-        inexact({ d: [ONE], e: [TWO] }),
+        t.over,
       )
       assert.deepEqual(brief(data), [
         ['Directory', 'd/', ''],
@@ -2629,11 +2602,22 @@ describe('dev and ino numbers that are not exact', () => {
         ['File', 'd/e/f', 'f'],
       ])
       assert.deepEqual(warnings, [])
+      // Each directory has a second call for the exact values. The
+      // file has one link, and has one call.
+      assert.deepEqual(statCalls(t.calls, cwd), [
+        'stat d',
+        'stat d',
+        'stat d/e',
+        'stat d/e',
+        'stat d/e/f',
+      ])
+      assert.deepEqual(from(two.exact, cwd), ['d', 'd/e'])
+
       // The same directory in itself is still found.
       const again = await mode.run(
         { cwd, onwarn, follow: true },
         ['d'],
-        inexact({ d: [ONE], e: [ONE] }),
+        chosen({ d: ONE, e: ONE }).over,
       )
       assert.deepEqual(brief(again), [['Directory', 'd/', '']])
       assert.equal(warnings[0]?.[1], 'directory is its own ancestor')

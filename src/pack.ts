@@ -36,16 +36,17 @@ const slashes = (path: string) => path.replaceAll('\\', '/')
 const idOf = (id: FileId) => `${id.dev}:${id.ino}`
 const BIG = { bigint: true } as const
 // Node.js gives `dev` and `ino` as numbers. A value that is not a
-// safe integer can be the value of more than one file, so the pack
-// then reads the identity again as `bigint` values.
+// safe integer can be the value of more than one file. On NTFS, most
+// `ino` values are not safe integers.
 const lossy = ({ dev, ino }: { dev: number; ino: number }) =>
   !Number.isSafeInteger(dev) || !Number.isSafeInteger(ino)
-const exact = (id: FileId) => typeof id.ino === 'bigint'
-// True if `now` is the object that had `stat` and the identity `id`.
-// A file system function can ignore the `bigint` option. Its numbers
-// are compared with the numbers of the stat.
-const same = (stat: CreateStats, id: FileId, now: FileId) =>
-  idOf(now) === idOf(exact(now) ? id : stat)
+// True if the path is still the object of its stat. The numbers are
+// enough here: one object always gives the same numbers, so numbers
+// that are not exact give no false alarm, and need no second stat.
+const same = (
+  a: { dev: number; ino: number },
+  b: { dev: number; ino: number },
+) => a.dev === b.dev && a.ino === b.ino
 
 const eof = (message: string, path: string) =>
   Object.assign(new Error(message), { path, syscall: 'read', code: 'EOF' })
@@ -89,7 +90,7 @@ export type Ancestor = { key: string; up?: Ancestor }
 /** What `Pack` reads for a path before it writes the entry. */
 export type PackLoad = {
   stat: CreateStats
-  /** The identity of the object: the stat, or its exact values. */
+  /** The identity of the object: the stat, or exact `dev` and `ino`. */
   id: FileId
   type: EntryTypeName
   /** The target of a symbolic link. */
@@ -256,6 +257,23 @@ export abstract class PackBase<
   protected shift(): void {
     this.head = this.head?.next
     if (!this.head) this.tail = undefined
+  }
+
+  /**
+   * True if the pack must read the exact `dev` and `ino` of the
+   * object with the `bigint` option: the numbers are not exact, and a
+   * wrong match loses data. That is a file with more than one link,
+   * which a wrong match makes a hard link to a different file, and
+   * with `follow` a directory, which a wrong match skips as a
+   * directory in itself. Each other object gets no second stat.
+   */
+  protected needsExact(stat: CreateStats): boolean {
+    return (
+      lossy(stat) &&
+      (stat.isDirectory() ?
+        !!this.opt.follow
+      : stat.isFile() && stat.nlink > 1)
+    )
   }
 
   /**
@@ -722,9 +740,9 @@ export class Pack
     const { follow } = this.opt
     const stat = await (follow ? fs.stat(path) : fs.lstat(path))
     const id =
-      !lossy(stat) ? stat : (
-        await (follow ? fs.stat(path, BIG) : fs.lstat(path, BIG))
-      )
+      !this.needsExact(stat) ?
+        stat
+      : await (follow ? fs.stat(path, BIG) : fs.lstat(path, BIG))
     return [stat, id]
   }
 
@@ -737,28 +755,18 @@ export class Pack
   ): Promise<PackLoad> {
     const { absolute } = job
     const { follow, noDirRecurse } = this.opt
-    const big = exact(id)
     const load: PackLoad = { stat, id, type }
     if (type === 'SymbolicLink') {
       load.linkpath = await fs.readlink(absolute)
     } else if (type === 'Directory' && !noDirRecurse) {
       load.names = await fs.readdir(absolute)
-      load.changed =
-        !follow &&
-        !same(
-          stat,
-          id,
-          await (big ? fs.lstat(absolute, BIG) : fs.lstat(absolute)),
-        )
+      load.changed = !follow && !same(stat, await fs.lstat(absolute))
     } else if (type === 'File' && stat.size) {
       const handle = await fs.open(absolute, 'r')
       try {
         const { size } = stat
         const length = blockLength(size)
-        if (
-          !follow &&
-          !same(stat, id, await (big ? handle.stat(BIG) : handle.stat()))
-        ) {
+        if (!follow && !same(stat, await handle.stat())) {
           load.changed = true
         } else if (length > this.maxReadSize) load.handle = handle
         else {
@@ -913,10 +921,9 @@ export class PackSync
       return this.missing(job, er)
     }
     const id: FileId =
-      !lossy(stat) ? stat
+      !this.needsExact(stat) ? stat
       : follow ? fs.statSync(absolute, BIG)
       : fs.lstatSync(absolute, BIG)
-    const big = exact(id)
     const type = this.plan(job, stat, id)
     if (!type) return
     let { linkpath } = job
@@ -928,14 +935,7 @@ export class PackSync
       if (type === 'SymbolicLink') linkpath = fs.readlinkSync(absolute)
       else if (type === 'Directory' && !noDirRecurse) {
         const names = fs.readdirSync(absolute)
-        if (
-          !follow &&
-          !same(
-            stat,
-            id,
-            big ? fs.lstatSync(absolute, BIG) : fs.lstatSync(absolute),
-          )
-        ) {
+        if (!follow && !same(stat, fs.lstatSync(absolute))) {
           return this.changed(job, type)
         }
         jobs.push(...this.children(job, names, id))
@@ -943,10 +943,7 @@ export class PackSync
         const { size } = stat
         const length = blockLength(size)
         fd = fs.openSync(absolute, 'r')
-        if (
-          !follow &&
-          !same(stat, id, big ? fs.fstatSync(fd, BIG) : fs.fstatSync(fd))
-        ) {
+        if (!follow && !same(stat, fs.fstatSync(fd))) {
           return this.changed(job, type)
         }
         if (length > this.maxReadSize) {

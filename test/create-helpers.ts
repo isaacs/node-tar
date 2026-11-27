@@ -77,21 +77,61 @@ export const pin = <T extends CreateStats>(stat: T): T =>
   Object.assign(stat, { atime, ctime, mtime })
 
 /**
+ * `lstat` and `stat` of Node.js, async and sync. `change` gets each
+ * result that has numbers, and its path. Each argument goes to
+ * Node.js, so a call with the `bigint` option gives the exact values
+ * of the file, with no change.
+ */
+export const stats = (
+  change: (stat: CreateStats, path: string) => CreateStats | void,
+): {
+  async: Pick<CreateFS, 'lstat' | 'stat'>
+  sync: Pick<CreateFSSync, 'lstatSync' | 'statSync'>
+} => {
+  const fix = <T>(stat: T, path: string, more: unknown[]): T =>
+    more[0] ? stat : ((change(stat as CreateStats, path) ?? stat) as T)
+  return {
+    async: {
+      lstat: (async (path: string, ...more: []) =>
+        fix(
+          await nodeFsPromises.lstat(path, ...more),
+          path,
+          more,
+        )) as CreateFS['lstat'],
+      stat: (async (path: string, ...more: []) =>
+        fix(
+          await nodeFsPromises.stat(path, ...more),
+          path,
+          more,
+        )) as CreateFS['stat'],
+    },
+    sync: {
+      lstatSync: ((path: string, ...more: []) =>
+        fix(
+          nodeFs.lstatSync(path, ...more),
+          path,
+          more,
+        )) as CreateFSSync['lstatSync'],
+      statSync: ((path: string, ...more: []) =>
+        fix(
+          nodeFs.statSync(path, ...more),
+          path,
+          more,
+        )) as CreateFSSync['statSync'],
+    },
+  }
+}
+
+const pinned = stats(pin)
+
+/**
  * `node:fs/promises`, with the times of each `lstat` and `stat`
  * pinned.
  */
-export const fs: CreateFS = {
-  ...nodeFsPromises,
-  lstat: async path => pin(await nodeFsPromises.lstat(path)),
-  stat: async path => pin(await nodeFsPromises.stat(path)),
-}
+export const fs: CreateFS = { ...nodeFsPromises, ...pinned.async }
 
 /** `node:fs`, with the times of each `lstatSync` and `statSync` pinned. */
-export const fsSync: CreateFSSync = {
-  ...nodeFs,
-  lstatSync: path => pin(nodeFs.lstatSync(path)),
-  statSync: path => pin(nodeFs.statSync(path)),
-}
+export const fsSync: CreateFSSync = { ...nodeFs, ...pinned.sync }
 
 /** The filter of a test that runs in each mode. */
 export type Filter = (
@@ -288,8 +328,7 @@ export const tracked = (over: Over = {}) => {
       const wrapped: CreateFileHandle = {
         read: (...a) => handle.read(...a),
         write: (...a) => handle.write(...a),
-        stat: ((...a: []) =>
-          handle.stat(...a)) as CreateFileHandle['stat'],
+        stat: () => handle.stat(),
         close: () => {
           open.delete(handle)
           return handle.close()

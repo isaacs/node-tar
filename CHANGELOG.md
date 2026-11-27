@@ -114,10 +114,12 @@ A new API. See "Migration from version 7" in the README.
   they find the place to append, and refuse an archive in any known
   compressed format.
 - Export `CwdError` and `SymlinkError`.
-- `create()` reads the `dev` and `ino` of a file as `bigint` values
-  when the numbers are not safe integers. On Windows, two files can
-  have the same `ino` number. Before, the second file was then
-  written as a hard link to the first, and its content was lost.
+- `create()` reads the `dev` and `ino` of a file with more than one
+  link as `bigint` values when the numbers are not safe integers. On
+  Windows, two files can have the same `ino` number. Before, the
+  second file was then written as a hard link to the first, and its
+  content was lost. With `follow`, a directory gets the same exact
+  values for the check that it is not in itself.
 - The error of `create()` for a file that has fewer or more bytes
   than its `lstat` size names the path and the size in its message.
 - `extract()` works with a `cwd` that is a root of the file system,

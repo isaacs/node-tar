@@ -24,6 +24,7 @@ import {
   fsSync,
   paths,
   read,
+  stats,
   tars,
   tracked,
   uid,
@@ -486,13 +487,14 @@ describe('the same content gives the same bytes', () => {
       })
     const order = (names: string[]) =>
       n % 2 ? names.sort() : names.sort().reverse()
+    const { async, sync } = stats(change)
     return {
       async: {
-        lstat: async path => change(await nodeFsPromises.lstat(path)),
+        ...async,
         readdir: async path => order(await nodeFsPromises.readdir(path)),
       },
       sync: {
-        lstatSync: path => change(nodeFs.lstatSync(path)),
+        ...sync,
         readdirSync: path => order(nodeFs.readdirSync(path)),
       },
     }

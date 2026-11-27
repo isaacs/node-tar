@@ -8,6 +8,8 @@ import {
   fs,
   fsSync,
   mtime as pinned,
+  pin,
+  stats,
   read,
   replace,
   replaceSync,
@@ -655,14 +657,10 @@ describe('update', () => {
   // The file systems of the helpers give each file the same mtime.
   // Give the files of this test the mtime of the map.
   const withMtimes = (mtimes: Record<string, Date>): Over => {
-    const set = <T extends { mtime: Date }>(path: string, stat: T) => {
+    return stats((stat, path) => {
       const name = Object.keys(mtimes).find(n => path.endsWith('/' + n))
-      return name ? Object.assign(stat, { mtime: mtimes[name] }) : stat
-    }
-    return {
-      async: { lstat: async p => set(p, await fs.lstat(p)) },
-      sync: { lstatSync: p => set(p, fsSync.lstatSync(p)) },
-    }
+      return Object.assign(pin(stat), name && { mtime: mtimes[name] })
+    })
   }
   const updateFixture = () => {
     const cwd = testdir({

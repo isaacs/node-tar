@@ -264,7 +264,7 @@ has the signature of the function of the same name in
 | ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TarFS`     | `list()` and `extract()` with `file`, and an `@archive` operand | `open(path, 'r')`. The handle has `read`, `stat`, and `close`.                                                                                                                                                      |
 | `ExtractFS` | `extract()`                                                     | `open`, `stat`, `lstat`, `mkdir`, `chmod`, `chown`, `lchown`, `utimes`, `lutimes`, `rmdir`, `unlink`, `rename`, `link`, `symlink`. The handle has `write`, `utimes`, `chown`, and `close`. `constants` is optional. |
-| `CreateFS`  | `create()`                                                      | `open`, `lstat`, `stat`, `readdir`, `readlink`. The handle has `read`, `write`, `stat`, and `close`. `lstat`, `stat`, and the `stat` of the handle can get the option `{ bigint: true }`.                           |
+| `CreateFS`  | `create()`                                                      | `open`, `lstat`, `stat`, `readdir`, `readlink`. The handle has `read`, `write`, `stat`, and `close`. `lstat` and `stat` can get the option `{ bigint: true }`.                                                      |
 | `ReplaceFS` | `replace()`, `update()`                                         | The same as `CreateFS`. `open` gets the flags `'r+'`, `'w+'`, and `'r'`.                                                                                                                                            |
 
 The sync types are `TarFSSync`, `ExtractFSSync`, `CreateFSSync`, and
@@ -288,21 +288,23 @@ Notes for an `ExtractFS`:
 Notes for a `CreateFS`:
 
 - `create()` knows a file by the `dev` and `ino` numbers of its
-  stat: to find the hard links of one file, and to find a path that
-  is a different object after it is opened. Node.js gives the two
-  values as numbers. On Windows, a value can be too large for a
-  number, and then two files can have the same number.
-- When `dev` or `ino` is not a safe integer, `create()` calls `lstat`
-  (`stat` with `follow`) one more time with the option
-  `{ bigint: true }`, and reads the `dev` and `ino` of the result,
-  which can be `bigint` values. It then also gives the option to the
-  `stat` of the file handle (`fstatSync`), and to the `lstat` after
-  `readdir`. `node:fs` gives exact values with this option.
+  stat. Node.js gives the two values as numbers. On Windows, most
+  `ino` values are too large for a number, and then two files can
+  have the same number.
+- A wrong match loses data in two cases: a file with more than one
+  link is written as a hard link to a different file, and with
+  `follow`, a directory is skipped as a directory in itself. Only in
+  these cases, and only when `dev` or `ino` is not a safe integer,
+  `create()` calls `lstat` (`stat` with `follow`) one more time with
+  the option `{ bigint: true }`, and reads the `dev` and `ino` of the
+  result. `node:fs` gives exact `bigint` values with this option.
+- A file with one link, and a directory without `follow`, never get
+  that call. The check that a path is the same object after `open`
+  and after `readdir` compares the numbers.
 - Your function can ignore the option and return the stat with
-  numbers. `create()` then compares the numbers. Two files with the
-  same `dev` and `ino` numbers, and more than one link, are then one
-  file and a hard link to it.
-- A file whose numbers are safe integers gets no call with the option.
+  numbers. `create()` then uses the numbers. Two files with the same
+  `dev` and `ino` numbers, and more than one link, are then one file
+  and a hard link to it.
 
 This example extracts an archive into a `Map`.
 
