@@ -264,7 +264,7 @@ has the signature of the function of the same name in
 | ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TarFS`     | `list()` and `extract()` with `file`, and an `@archive` operand | `open(path, 'r')`. The handle has `read`, `stat`, and `close`.                                                                                                                                                      |
 | `ExtractFS` | `extract()`                                                     | `open`, `stat`, `lstat`, `mkdir`, `chmod`, `chown`, `lchown`, `utimes`, `lutimes`, `rmdir`, `unlink`, `rename`, `link`, `symlink`. The handle has `write`, `utimes`, `chown`, and `close`. `constants` is optional. |
-| `CreateFS`  | `create()`                                                      | `open`, `lstat`, `stat`, `readdir`, `readlink`. The handle has `read`, `write`, `stat`, and `close`.                                                                                                                |
+| `CreateFS`  | `create()`                                                      | `open`, `lstat`, `stat`, `readdir`, `readlink`. The handle has `read`, `write`, `stat`, and `close`. `lstat`, `stat`, and the `stat` of the handle can get the option `{ bigint: true }`.                           |
 | `ReplaceFS` | `replace()`, `update()`                                         | The same as `CreateFS`. `open` gets the flags `'r+'`, `'w+'`, and `'r'`.                                                                                                                                            |
 
 The sync types are `TarFSSync`, `ExtractFSSync`, `CreateFSSync`, and
@@ -284,6 +284,25 @@ Notes for an `ExtractFS`:
 - `chown` and `lchown` are called only when the options set an owner.
   `chmod` is called only with the `chmod` option. `rename` is called
   only with `platform: 'win32'`.
+
+Notes for a `CreateFS`:
+
+- `create()` knows a file by the `dev` and `ino` numbers of its
+  stat: to find the hard links of one file, and to find a path that
+  is a different object after it is opened. Node.js gives the two
+  values as numbers. On Windows, a value can be too large for a
+  number, and then two files can have the same number.
+- When `dev` or `ino` is not a safe integer, `create()` calls `lstat`
+  (`stat` with `follow`) one more time with the option
+  `{ bigint: true }`, and reads the `dev` and `ino` of the result,
+  which can be `bigint` values. It then also gives the option to the
+  `stat` of the file handle (`fstatSync`), and to the `lstat` after
+  `readdir`. `node:fs` gives exact values with this option.
+- Your function can ignore the option and return the stat with
+  numbers. `create()` then compares the numbers. Two files with the
+  same `dev` and `ino` numbers, and more than one link, are then one
+  file and a hard link to it.
+- A file whose numbers are safe integers gets no call with the option.
 
 This example extracts an archive into a `Map`.
 

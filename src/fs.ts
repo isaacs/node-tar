@@ -112,6 +112,17 @@ export type ExtractFSSync = {
   symlinkSync(target: string, path: string): void
 }
 
+/**
+ * The device number and the inode number of a file. With the option
+ * `bigint: true`, `node:fs` gives them as `bigint` values, which are
+ * exact. A `number` larger than `Number.MAX_SAFE_INTEGER` is not
+ * exact: two files can have the same value.
+ */
+export type FileId = { dev: number | bigint; ino: number | bigint }
+
+/** The option that asks for the exact `FileId` of a file. */
+export type BigIntOption = { bigint: true }
+
 /** The subset of the `Stats` of `lstat` that the creation uses. */
 export type CreateStats = {
   isFile(): boolean
@@ -144,12 +155,18 @@ export type CreateFileHandle = {
     position: number,
   ): Promise<{ bytesWritten: number }>
   stat(): Promise<{ size: number; dev: number; ino: number }>
+  stat(options: BigIntOption): Promise<FileId>
   close(): Promise<void>
 }
 
 /**
  * The subset of `node:fs/promises` that the creation uses. It also
  * fits `TarFS`, which reads an `@archive` operand.
+ *
+ * The creation calls `lstat`, `stat`, and the `stat` of a file handle
+ * with the option `bigint: true` only for a file whose `dev` or `ino`
+ * number is not a safe integer. A function can ignore the option and
+ * return numbers.
  */
 export type CreateFS = {
   open(
@@ -158,18 +175,22 @@ export type CreateFS = {
     mode?: number,
   ): Promise<CreateFileHandle>
   lstat(path: string): Promise<CreateStats>
+  lstat(path: string, options: BigIntOption): Promise<FileId>
   stat(path: string): Promise<CreateStats>
+  stat(path: string, options: BigIntOption): Promise<FileId>
   readdir(path: string): Promise<string[]>
   readlink(path: string): Promise<string>
 }
 
 /**
  * The subset of `node:fs` that the sync creation uses. It also fits
- * `TarFSSync`, which reads an `@archive` operand.
+ * `TarFSSync`, which reads an `@archive` operand. The `bigint` option
+ * is used as in `CreateFS`.
  */
 export type CreateFSSync = {
   openSync(path: string, flags: string, mode?: number): number
   fstatSync(fd: number): { size: number; dev: number; ino: number }
+  fstatSync(fd: number, options: BigIntOption): FileId
   readSync(
     fd: number,
     buffer: Uint8Array,
@@ -186,7 +207,9 @@ export type CreateFSSync = {
   ): number
   closeSync(fd: number): void
   lstatSync(path: string): CreateStats
+  lstatSync(path: string, options: BigIntOption): FileId
   statSync(path: string): CreateStats
+  statSync(path: string, options: BigIntOption): FileId
   readdirSync(path: string): string[]
   readlinkSync(path: string): string
 }

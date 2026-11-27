@@ -9,6 +9,7 @@ import type {
   CreateFS,
   CreateFSSync,
   CreateStats,
+  FileId,
 } from './fs.js'
 import {
   countOption,
@@ -30,11 +31,21 @@ const noop = () => {}
 
 const blockLength = (size: number) => 512 * Math.ceil(size / 512)
 const slashes = (path: string) => path.replaceAll('\\', '/')
-const idOf = (stat: CreateStats) => `${stat.dev}:${stat.ino}`
-const same = (
-  a: { dev: number; ino: number },
-  b: { dev: number; ino: number },
-) => a.dev === b.dev && a.ino === b.ino
+// The identity of a file: a key for a `Map`, and a value to compare.
+// The key of two `bigint` values is the key of the same two numbers.
+const idOf = (id: FileId) => `${id.dev}:${id.ino}`
+const BIG = { bigint: true } as const
+// Node.js gives `dev` and `ino` as numbers. A value that is not a
+// safe integer can be the value of more than one file, so the pack
+// then reads the identity again as `bigint` values.
+const lossy = ({ dev, ino }: { dev: number; ino: number }) =>
+  !Number.isSafeInteger(dev) || !Number.isSafeInteger(ino)
+const exact = (id: FileId) => typeof id.ino === 'bigint'
+// True if `now` is the object that had `stat` and the identity `id`.
+// A file system function can ignore the `bigint` option. Its numbers
+// are compared with the numbers of the stat.
+const same = (stat: CreateStats, id: FileId, now: FileId) =>
+  idOf(now) === idOf(exact(now) ? id : stat)
 
 const eof = (message: string, path: string) =>
   Object.assign(new Error(message), { path, syscall: 'read', code: 'EOF' })
@@ -78,6 +89,8 @@ export type Ancestor = { key: string; up?: Ancestor }
 /** What `Pack` reads for a path before it writes the entry. */
 export type PackLoad = {
   stat: CreateStats
+  /** The identity of the object: the stat, or its exact values. */
+  id: FileId
   type: EntryTypeName
   /** The target of a symbolic link. */
   linkpath?: string
@@ -248,17 +261,19 @@ export abstract class PackBase<
   /**
    * The type of the entry to write for a path, or `undefined` to
    * write no entry. The pack calls it one time for each path, in the
-   * order of the queue.
+   * order of the queue. `id` is the stat, or the exact `dev` and `ino`
+   * of the object.
    */
   protected plan(
     job: PackJob,
     stat: CreateStats,
+    id: FileId,
   ): EntryTypeName | undefined {
     const { filter } = this.opt
     if (filter && !filter(job.path, stat)) return
     if (stat.isDirectory()) {
       for (let a = job.up; a; a = a.up) {
-        if (a.key !== idOf(stat)) continue
+        if (a.key !== idOf(id)) continue
         warn(
           this.opt,
           'TAR_ENTRY_ERROR',
@@ -282,7 +297,7 @@ export abstract class PackBase<
       return
     }
     if (stat.nlink > 1) {
-      const key = idOf(stat)
+      const key = idOf(id)
       const target = this.#links.get(key)
       const cwd = this.cwd as string
       // A link is only made to a path in the cwd. A directory beside
@@ -305,15 +320,14 @@ export abstract class PackBase<
   protected children(
     job: PackJob,
     names: string[],
-    stat: CreateStats,
+    id: FileId,
   ): PackJob[] {
     const base = job.path === './' ? '' : job.path.replace(/\/*$/, '/')
     const dir =
       job.absolute.endsWith('/') ? job.absolute : job.absolute + '/'
     // Only a pack that follows symbolic links can find a directory
     // in itself.
-    const up =
-      this.opt.follow ? { key: idOf(stat), up: job.up } : undefined
+    const up = this.opt.follow ? { key: idOf(id), up: job.up } : undefined
     // Node.js sorts the names of a directory. Bun does not. Sort
     // them, so that each runtime makes the same archive.
     return [...names].sort().map(name => {
@@ -674,14 +688,13 @@ export class Pack
       // An entry can change what the filter does with a later path.
       if (!(job instanceof PackJob)) break
       if (job.ready) continue
-      const stat =
-        this.opt.follow ? fs.stat(job.absolute) : fs.lstat(job.absolute)
+      const stat = this.#stat(fs, job.absolute)
       stat.catch(noop)
       const planned = this.#planned
         .then(() => stat)
-        .then(st => {
-          const type = this.plan(job, st)
-          return type && { load: this.#load(fs, job, st, type) }
+        .then(([st, id]) => {
+          const type = this.plan(job, st, id)
+          return type && { load: this.#load(fs, job, st, id, type) }
         })
       this.#planned = planned.catch(noop)
       job.ready = planned.then(p => p?.load)
@@ -689,26 +702,48 @@ export class Pack
     }
   }
 
+  // The stat of a path, and the identity of the object.
+  async #stat(fs: CreateFS, path: string): Promise<[CreateStats, FileId]> {
+    const { follow } = this.opt
+    const stat = await (follow ? fs.stat(path) : fs.lstat(path))
+    const id =
+      !lossy(stat) ? stat : (
+        await (follow ? fs.stat(path, BIG) : fs.lstat(path, BIG))
+      )
+    return [stat, id]
+  }
+
   async #load(
     fs: CreateFS,
     job: PackJob,
     stat: CreateStats,
+    id: FileId,
     type: EntryTypeName,
   ): Promise<PackLoad> {
     const { absolute } = job
     const { follow, noDirRecurse } = this.opt
-    const load: PackLoad = { stat, type }
+    const big = exact(id)
+    const load: PackLoad = { stat, id, type }
     if (type === 'SymbolicLink') {
       load.linkpath = await fs.readlink(absolute)
     } else if (type === 'Directory' && !noDirRecurse) {
       load.names = await fs.readdir(absolute)
-      load.changed = !follow && !same(stat, await fs.lstat(absolute))
+      load.changed =
+        !follow &&
+        !same(
+          stat,
+          id,
+          await (big ? fs.lstat(absolute, BIG) : fs.lstat(absolute)),
+        )
     } else if (type === 'File' && stat.size) {
       const handle = await fs.open(absolute, 'r')
       try {
         const { size } = stat
         const length = blockLength(size)
-        if (!follow && !same(stat, await handle.stat())) {
+        if (
+          !follow &&
+          !same(stat, id, await (big ? handle.stat(BIG) : handle.stat()))
+        ) {
           load.changed = true
         } else if (length > this.maxReadSize) load.handle = handle
         else {
@@ -727,7 +762,7 @@ export class Pack
   async *#path(job: PackJob): AsyncGenerator<Uint8Array, void, void> {
     const load = await job.ready
     if (!load) return
-    const { stat, type, names, buf, handle } = load
+    const { stat, id, type, names, buf, handle } = load
     if (load.changed) return this.changed(job, type)
     let ok = false
     try {
@@ -743,7 +778,7 @@ export class Pack
         body,
       )
       if (names) {
-        for (const child of this.children(job, names, stat)) {
+        for (const child of this.children(job, names, id)) {
           this.push(child)
         }
       }
@@ -857,7 +892,12 @@ export class PackSync
     const { absolute } = job
     const { follow, noDirRecurse } = this.opt
     const stat = follow ? fs.statSync(absolute) : fs.lstatSync(absolute)
-    const type = this.plan(job, stat)
+    const id: FileId =
+      !lossy(stat) ? stat
+      : follow ? fs.statSync(absolute, BIG)
+      : fs.lstatSync(absolute, BIG)
+    const big = exact(id)
+    const type = this.plan(job, stat, id)
     if (!type) return
     let { linkpath } = job
     let buf: Uint8Array | undefined
@@ -868,15 +908,25 @@ export class PackSync
       if (type === 'SymbolicLink') linkpath = fs.readlinkSync(absolute)
       else if (type === 'Directory' && !noDirRecurse) {
         const names = fs.readdirSync(absolute)
-        if (!follow && !same(stat, fs.lstatSync(absolute))) {
+        if (
+          !follow &&
+          !same(
+            stat,
+            id,
+            big ? fs.lstatSync(absolute, BIG) : fs.lstatSync(absolute),
+          )
+        ) {
           return this.changed(job, type)
         }
-        jobs.push(...this.children(job, names, stat))
+        jobs.push(...this.children(job, names, id))
       } else if (type === 'File' && stat.size) {
         const { size } = stat
         const length = blockLength(size)
         fd = fs.openSync(absolute, 'r')
-        if (!follow && !same(stat, fs.fstatSync(fd))) {
+        if (
+          !follow &&
+          !same(stat, id, big ? fs.fstatSync(fd, BIG) : fs.fstatSync(fd))
+        ) {
           return this.changed(job, type)
         }
         if (length > this.maxReadSize) {

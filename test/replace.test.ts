@@ -282,7 +282,7 @@ describe('a failure goes to the caller, and no file stays open', () => {
             read: (...r) => handle.read(...r),
             write: (...w) => handle.write(...w),
             close: () => handle.close(),
-            stat: () => Promise.reject(poop),
+            stat: (): Promise<never> => Promise.reject(poop),
           }
         },
       },

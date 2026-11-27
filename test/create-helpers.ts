@@ -277,8 +277,8 @@ export const tracked = (over: Over = {}) => {
       return fn(...a)
     }
   const async: CreateFS = {
-    lstat: note('lstat', base.lstat),
-    stat: note('stat', base.stat),
+    lstat: note('lstat', base.lstat) as CreateFS['lstat'],
+    stat: note('stat', base.stat) as CreateFS['stat'],
     readdir: note('readdir', base.readdir),
     readlink: note('readlink', base.readlink),
     open: async (path, flags, mode) => {
@@ -288,7 +288,8 @@ export const tracked = (over: Over = {}) => {
       const wrapped: CreateFileHandle = {
         read: (...a) => handle.read(...a),
         write: (...a) => handle.write(...a),
-        stat: () => handle.stat(),
+        stat: ((...a: []) =>
+          handle.stat(...a)) as CreateFileHandle['stat'],
         close: () => {
           open.delete(handle)
           return handle.close()
@@ -299,8 +300,11 @@ export const tracked = (over: Over = {}) => {
   }
   const sync: CreateFSSync = {
     ...baseSync,
-    lstatSync: note('lstat', baseSync.lstatSync),
-    statSync: note('stat', baseSync.statSync),
+    lstatSync: note(
+      'lstat',
+      baseSync.lstatSync,
+    ) as CreateFSSync['lstatSync'],
+    statSync: note('stat', baseSync.statSync) as CreateFSSync['statSync'],
     readdirSync: note('readdir', baseSync.readdirSync),
     readlinkSync: note('readlink', baseSync.readlinkSync),
     openSync: (path, flags, mode) => {

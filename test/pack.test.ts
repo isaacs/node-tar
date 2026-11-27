@@ -16,7 +16,12 @@ import type { HeaderData } from '../src/header.js'
 import type { Codec, CodecStream } from '../src/codec.js'
 import type { PackOptions, PackOptionsSync } from '../src/options.js'
 import { entries, entriesSync } from '../src/entries.js'
-import type { CreateFileHandle, CreateFS, CreateStats } from '../src/fs.js'
+import type {
+  CreateFileHandle,
+  CreateFS,
+  CreateFSSync,
+  CreateStats,
+} from '../src/fs.js'
 import {
   create as coreCreate,
   createSync as coreCreateSync,
@@ -2262,6 +2267,284 @@ describe('a path that changes while the pack reads it', () => {
       `stat ${resolve(files, 'dir/x')}`,
     ])
   })
+})
+
+// On Windows, Node.js can give the same `ino` number for two files,
+// because the real value does not fit a number.
+// https://github.com/isaacs/node-tar/issues/431
+describe('dev and ino numbers that are not exact', () => {
+  // The `ino` number of the report. These two values are that number.
+  const ONE = 9570149211882252n
+  const TWO = 9570149211882253n
+  assert.equal(Number(ONE), Number(TWO))
+
+  // A file system that gives `Number(ino)` for each name in `inos`,
+  // and the exact value with the `bigint` option. A name with more
+  // than one value gets the next value at each call. `opened` has
+  // the values for the stat of an open file.
+  const inexact = (
+    inos: Record<string, bigint[]>,
+    { nlink = 1, opened = inos, bigint = true, openBigint = true } = {},
+  ): Over => {
+    const next = (from: Record<string, bigint[]>, path: string) => {
+      const list = from[path.replaceAll('\\', '/').split('/').pop() ?? '']
+      return list && list.length > 1 ? list.shift() : list?.[0]
+    }
+    const result = <
+      T extends { dev: number; ino: number; nlink?: number },
+    >(
+      from: Record<string, bigint[]>,
+      path: string,
+      stat: T,
+      option: unknown,
+      takesOption = bigint,
+    ) => {
+      const ino = next(from, path)
+      if (ino === undefined) return stat
+      if (option && takesOption) return { dev: BigInt(stat.dev), ino }
+      if ('nlink' in stat) stat.nlink = nlink
+      return Object.assign(stat, { ino: Number(ino) })
+    }
+    const fds = new Map<number, string>()
+    return {
+      async: {
+        lstat: (async (path: string, option?: unknown) =>
+          result(
+            inos,
+            path,
+            pin(await nodeFsPromises.lstat(path)),
+            option,
+          )) as CreateFS['lstat'],
+        stat: (async (path: string, option?: unknown) =>
+          result(
+            inos,
+            path,
+            pin(await nodeFsPromises.stat(path)),
+            option,
+          )) as CreateFS['stat'],
+        open: async (path, flags, mode) => {
+          const handle = await nodeFsPromises.open(path, flags, mode)
+          const wrapped: CreateFileHandle = {
+            read: (...a) => handle.read(...a),
+            write: (...a) => handle.write(...a),
+            close: () => handle.close(),
+            stat: (async (option?: unknown) =>
+              result(
+                opened,
+                path,
+                await handle.stat(),
+                option,
+                openBigint,
+              )) as CreateFileHandle['stat'],
+          }
+          return wrapped
+        },
+      },
+      sync: {
+        lstatSync: ((path: string, option?: unknown) =>
+          result(
+            inos,
+            path,
+            pin(nodeFs.lstatSync(path)),
+            option,
+          )) as CreateFSSync['lstatSync'],
+        statSync: ((path: string, option?: unknown) =>
+          result(
+            inos,
+            path,
+            pin(nodeFs.statSync(path)),
+            option,
+          )) as CreateFSSync['statSync'],
+        openSync: (path, flags, mode) => {
+          const fd = nodeFs.openSync(path, flags, mode)
+          fds.set(fd, path)
+          return fd
+        },
+        fstatSync: ((fd: number, option?: unknown) =>
+          result(
+            opened,
+            fds.get(fd) ?? '',
+            nodeFs.fstatSync(fd),
+            option,
+            openBigint,
+          )) as CreateFSSync['fstatSync'],
+      },
+    }
+  }
+  const brief = (data: Buffer) =>
+    read(data).map(f => [
+      f.entry.type,
+      f.entry.path,
+      f.entry.linkpath ?? f.body,
+    ])
+  const lstats = (calls: string[]) =>
+    calls.filter(call => call.startsWith('lstat'))
+
+  each('two files with the same ino number are two files', async mode => {
+    const cwd = testdir({ a: 'aaa', b: 'bbb' })
+    const { calls, over } = tracked(
+      inexact({ a: [ONE], b: [TWO] }, { nlink: 2 }),
+    )
+    const data = await mode.run({ cwd }, ['a', 'b'], over)
+    assert.deepEqual(brief(data), [
+      ['File', 'a', 'aaa'],
+      ['File', 'b', 'bbb'],
+    ])
+    // The second call of each path asks for the exact values.
+    assert.deepEqual(lstats(calls).sort(), [
+      `lstat ${cwd}/a`,
+      `lstat ${cwd}/a`,
+      `lstat ${cwd}/b`,
+      `lstat ${cwd}/b`,
+    ])
+  })
+
+  each(
+    'two links of a file with such a number are a file and a link',
+    async mode => {
+      const cwd = testdir({ a: 'aaa' })
+      nodeFs.linkSync(`${cwd}/a`, `${cwd}/b`)
+      const data = await mode.run(
+        { cwd },
+        ['a', 'b'],
+        inexact({ a: [TWO], b: [TWO] }, { nlink: 2 }),
+      )
+      assert.deepEqual(brief(data), [
+        ['File', 'a', 'aaa'],
+        ['Link', 'b', 'a'],
+      ])
+    },
+  )
+
+  each('a file with exact numbers has one lstat', async mode => {
+    const cwd = testdir({ a: 'aaa', plain: 'p' })
+    nodeFs.linkSync(`${cwd}/a`, `${cwd}/b`)
+    const { calls, over } = tracked()
+    const data = await mode.run({ cwd }, ['a', 'b', 'plain'], over)
+    assert.deepEqual(brief(data), [
+      ['File', 'a', 'aaa'],
+      ['Link', 'b', 'a'],
+      ['File', 'plain', 'p'],
+    ])
+    assert.deepEqual(lstats(calls).sort(), [
+      `lstat ${cwd}/a`,
+      `lstat ${cwd}/b`,
+      `lstat ${cwd}/plain`,
+    ])
+  })
+
+  // The numbers are all that the pack has. It takes two files with
+  // one number as two links of one file.
+  each('a file system that ignores the bigint option', async mode => {
+    const cwd = testdir({ a: 'aaa', b: 'bbb', c: 'ccc' })
+    const data = await mode.run(
+      { cwd },
+      ['a', 'b', 'c'],
+      inexact({ a: [ONE], b: [TWO] }, { nlink: 2, bigint: false }),
+    )
+    assert.deepEqual(brief(data), [
+      ['File', 'a', 'aaa'],
+      ['Link', 'b', 'a'],
+      ['File', 'c', 'ccc'],
+    ])
+  })
+
+  for (const [name, bigint, openBigint] of [
+    ['lstat', true, false],
+    ['the stat of an open file', false, true],
+  ] as const) {
+    each(`only ${name} takes the bigint option`, async mode => {
+      const cwd = testdir({ a: 'aaa', b: 'bbb' })
+      const { warnings, onwarn } = warner()
+      const data = await mode.run(
+        { cwd, onwarn },
+        ['a', 'b'],
+        inexact({ a: [ONE], b: [TWO] }, { bigint, openBigint }),
+      )
+      assert.deepEqual(brief(data), [
+        ['File', 'a', 'aaa'],
+        ['File', 'b', 'bbb'],
+      ])
+      assert.deepEqual(warnings, [])
+    })
+  }
+
+  each(
+    'a file that is a different file after open is skipped',
+    async mode => {
+      const cwd = testdir({ a: 'aaa', b: 'bbb' })
+      const { warnings, onwarn } = warner()
+      const data = await mode.run(
+        { cwd, onwarn },
+        ['a', 'b'],
+        inexact(
+          { a: [ONE], b: [TWO] },
+          { opened: { a: [TWO], b: [TWO] } },
+        ),
+      )
+      assert.deepEqual(brief(data), [['File', 'b', 'bbb']])
+      assert.deepEqual(
+        warnings.map(([code, message, { path }]) => [code, message, path]),
+        [['TAR_ENTRY_ERROR', 'file changed between lstat and open', 'a']],
+      )
+    },
+  )
+
+  each(
+    'a directory that is a different one after readdir is skipped',
+    async mode => {
+      const cwd = testdir({ d: { f: 'f' }, e: { g: 'g' } })
+      const { warnings, onwarn } = warner()
+      const data = await mode.run(
+        { cwd, onwarn },
+        ['d', 'e'],
+        // The values of the first call for the numbers, the call for
+        // the exact values, and the call after `readdir`.
+        inexact({ d: [ONE, ONE, TWO], e: [TWO] }),
+      )
+      assert.deepEqual(brief(data), [
+        ['Directory', 'e/', ''],
+        ['File', 'e/g', 'g'],
+      ])
+      assert.deepEqual(
+        warnings.map(([code, message, { path }]) => [code, message, path]),
+        [
+          [
+            'TAR_ENTRY_ERROR',
+            'directory changed between lstat and readdir',
+            'd',
+          ],
+        ],
+      )
+    },
+  )
+
+  each(
+    'with follow, a directory in one with the same number is added',
+    async mode => {
+      const cwd = testdir({ d: { e: { f: 'f' } } })
+      const { warnings, onwarn } = warner()
+      const data = await mode.run(
+        { cwd, onwarn, follow: true },
+        ['d'],
+        inexact({ d: [ONE], e: [TWO] }),
+      )
+      assert.deepEqual(brief(data), [
+        ['Directory', 'd/', ''],
+        ['Directory', 'd/e/', ''],
+        ['File', 'd/e/f', 'f'],
+      ])
+      assert.deepEqual(warnings, [])
+      // The same directory in itself is still found.
+      const again = await mode.run(
+        { cwd, onwarn, follow: true },
+        ['d'],
+        inexact({ d: [ONE], e: [ONE] }),
+      )
+      assert.deepEqual(brief(again), [['Directory', 'd/', '']])
+      assert.equal(warnings[0]?.[1], 'directory is its own ancestor')
+    },
+  )
 })
 
 describe('follow and a link to a directory above', () => {
