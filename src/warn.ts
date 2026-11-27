@@ -20,6 +20,10 @@ export type WarnOptions = {
   file?: string
 }
 
+// A message that is not a string is an error. The test is not
+// `instanceof Error`, which is false for an error of a different
+// realm, such as an error of `node:fs` in a `node:vm` context.
+
 const fill = (
   opt: WarnOptions,
   code: string,
@@ -28,7 +32,7 @@ const fill = (
 ) => {
   if (opt.file) data.file = opt.file
   data.code =
-    (message instanceof Error && (message as TarError).code) || code
+    (typeof message === 'object' && (message as TarError).code) || code
   data.tarCode = code
   return data
 }
@@ -41,7 +45,9 @@ export const tarError = (
   data: WarnData = {},
 ): TarError =>
   Object.assign(
-    message instanceof Error ? message : new Error(`${code}: ${message}`),
+    typeof message === 'object' ? message : (
+      new Error(`${code}: ${message}`)
+    ),
     fill(opt, code, message, data),
   )
 
@@ -59,7 +65,7 @@ export const warn = (
     throw tarError(opt, code, message, data)
   }
   fill(opt, code, message, data)
-  if (message instanceof Error) {
+  if (typeof message === 'object') {
     data = Object.assign(message, data)
     message = message.message
   }

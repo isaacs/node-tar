@@ -12,6 +12,7 @@ import { entries, entriesSync } from '../src/entries.js'
 import { Header } from '../src/header.js'
 import { list, listSync } from '../src/list.js'
 import { Pack, PackSync } from '../src/pack.js'
+import { tarError, warn } from '../src/warn.js'
 import { WriteEntry } from '../src/write-entry.js'
 import { collect, read } from './create-helpers.js'
 import { cat, EOA, file } from './helpers.js'
@@ -133,6 +134,31 @@ test('a Date of a different realm, in a PAX header', async () => {
   assert.match(read(data), [
     { entry: { path, mtime: new Date(1500) }, body: 'alpha' },
   ])
+})
+
+test('an Error of a different realm, in a warning', () => {
+  const error = () =>
+    vm.runInNewContext(
+      'Object.assign(new Error("boom"), { code: "ENOENT" })',
+    ) as Error
+  const er = error()
+  assert(!(er instanceof Error))
+  const warnings: unknown[][] = []
+  warn({ onwarn: (...args) => warnings.push(args) }, 'TAR_X', er)
+  assert.deepEqual(warnings, [['TAR_X', 'boom', er]])
+  assert.match<unknown>(er, { code: 'ENOENT', tarCode: 'TAR_X' })
+
+  const strict = error()
+  assert.equal(
+    assert.throws(() => warn({ strict: true }, 'TAR_X', strict), {
+      message: 'boom',
+      code: 'ENOENT',
+      tarCode: 'TAR_X',
+    }),
+    strict,
+  )
+  const made = error()
+  assert.equal<unknown>(tarError({}, 'TAR_X', made), made)
 })
 
 // The constructors of this realm are not the ones that made the
