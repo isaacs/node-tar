@@ -971,6 +971,46 @@ describe('readFile', () => {
     assert.equal(chunks.length, Math.ceil(data.length / 4096))
   })
 
+  test('maxReadSize 0 is the default', async () => {
+    const data = nodeFs.readFileSync(longPaths)
+    const chunks: Uint8Array[] = []
+    for await (const chunk of readFile(fs, longPaths, 0))
+      chunks.push(chunk)
+    assert.equal(Buffer.concat(chunks).equals(data), true)
+    assert.equal(
+      Buffer.concat([...readFileSync(fsSync, longPaths, 0)]).equals(data),
+      true,
+    )
+
+    const found: string[] = []
+    const onEntry = (entry: { path: string }) => found.push(entry.path)
+    await list({ file: longPaths, fs, maxReadSize: 0, onEntry })
+    listSync({ file: longPaths, fs: fsSync, maxReadSize: 0, onEntry })
+    assert.deepEqual(found, [...expectLong, ...expectLong])
+  })
+
+  test('a maxReadSize that is not a positive integer', async () => {
+    const expect = {
+      name: 'TypeError',
+      message: 'maxReadSize must be a positive integer',
+    }
+    for (const maxReadSize of [-1, 1.5, NaN, '10' as unknown as number]) {
+      assert.throws(() => readFile(fs, longPaths, maxReadSize), expect)
+      assert.throws(
+        () => readFileSync(fsSync, longPaths, maxReadSize),
+        expect,
+      )
+      await assert.rejects(
+        list({ file: longPaths, fs, maxReadSize }),
+        expect,
+      )
+      assert.throws(
+        () => listSync({ file: longPaths, fs: fsSync, maxReadSize }),
+        expect,
+      )
+    }
+  })
+
   test('an empty file', async () => {
     const dir = testdir({ empty: '' })
     const chunks: Uint8Array[] = []

@@ -4,13 +4,14 @@ import * as wc from './winchars.js'
 import { TarReader, TarReaderSync } from './entries.js'
 import type { ExtractFS, ExtractFSSync, ExtractStats } from './fs.js'
 import { mkdir, mkdirSync, type MkdirOptions } from './mkdir.js'
-import type {
-  ExtractOptions,
-  ExtractOptionsSync,
-  ReadOptions,
-  TarInput,
-  TarInputSync,
-  UnpackOptions,
+import {
+  countOption,
+  type ExtractOptions,
+  type ExtractOptionsSync,
+  type ReadOptions,
+  type TarInput,
+  type TarInputSync,
+  type UnpackOptions,
 } from './options.js'
 import { PathReservations } from './path-reservations.js'
 import {
@@ -530,7 +531,7 @@ export class Unpack extends UnpackBase<ReadEntry, ExtractOptions> {
     super(opt)
     this.#fs = this.opt.fs
     this.#reservations = new PathReservations(this.win32)
-    this.#jobs = Number(this.opt.jobs) || DEFAULT_JOBS
+    this.#jobs = countOption('jobs', this.opt.jobs, DEFAULT_JOBS)
   }
 
   /**

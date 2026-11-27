@@ -17,6 +17,7 @@ import {
   hookFs,
   resolve,
   testdir,
+  Unpack,
 } from './helpers.js'
 
 // The modules of Node fit the adapter types as they are.
@@ -268,6 +269,55 @@ describe('no file list', () => {
       assert.equal(calls.filter(c => c[0] === 'read').length, reads)
       assert.deepEqual(calls[0]?.slice(0, 3), ['open', file, 'r'])
     })
+  }
+})
+
+test('maxReadSize 0 is the default', async () => {
+  const file = resolve(tars, 'body-byte-counts.tar')
+  for (const mode of ['async', 'sync']) {
+    const cwd = testdir({})
+    const { fs, fsSync, calls } = hookFs()
+    if (mode === 'sync') {
+      extractSync({ file, cwd, maxReadSize: 0, fs: fsSync })
+    } else await extract({ file, cwd, maxReadSize: 0, fs })
+    assert.equal(nodeFs.lstatSync(resolve(cwd, 'one-byte.txt')).size, 1)
+    assert.equal(calls.filter(c => c[0] === 'read').length, 1, mode)
+  }
+})
+
+test('a maxReadSize or a jobs that is not a positive integer', async () => {
+  const file = resolve(tars, 'body-byte-counts.tar')
+  const cwd = testdir({})
+  const input = nodeFs.readFileSync(file)
+  for (const bad of [-1, 1.5, NaN, '2' as unknown as number]) {
+    const size = {
+      name: 'TypeError',
+      message: 'maxReadSize must be a positive integer',
+    }
+    await assert.rejects(
+      extract({ file, cwd, maxReadSize: bad, fs }),
+      size,
+    )
+    assert.throws(
+      () => extractSync({ file, cwd, maxReadSize: bad, fs: fsSync }),
+      size,
+    )
+    const jobs = {
+      name: 'TypeError',
+      message: 'jobs must be a positive integer',
+    }
+    await assert.rejects(extract({ input, cwd, jobs: bad, fs }), jobs)
+    assert.throws(() => new Unpack({ cwd, jobs: bad, fs, input }), jobs)
+  }
+  assert.deepEqual(nodeFs.readdirSync(cwd), [])
+})
+
+test('jobs: 0, Infinity, and no value', async () => {
+  const input = nodeFs.readFileSync(resolve(tars, 'body-byte-counts.tar'))
+  for (const jobs of [0, Infinity, undefined, 1]) {
+    const cwd = testdir({})
+    await extract({ input, cwd, jobs, fs })
+    assert.equal(nodeFs.readdirSync(cwd).length, 4, `jobs ${jobs}`)
   }
 })
 

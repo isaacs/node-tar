@@ -1,4 +1,5 @@
 import type { TarFS, TarFSSync } from './fs.js'
+import { countOption } from './options.js'
 
 const MAX_READ = 16 * 1024 * 1024
 // The size of the first read, and of the read after a skip.
@@ -25,8 +26,8 @@ class Plan {
   #max: number
   #want: number = FIRST_READ
 
-  constructor(max: number) {
-    this.#max = max
+  constructor(maxReadSize: number | undefined) {
+    this.#max = countOption('maxReadSize', maxReadSize, MAX_READ)
   }
 
   // The number of bytes to read at `pos`. 0 at the end of the file.
@@ -92,14 +93,15 @@ function* chunksSync(
 }
 
 /**
- * Read a file in chunks of `maxReadSize` bytes at most (default
- * 16 MiB). Each chunk is a new array. The first chunk is small, and
- * the chunks grow. A reader can skip a large part of the file.
+ * Read a file in chunks of `maxReadSize` bytes at most. The default,
+ * and the value for 0, is 16 MiB. Each chunk is a new array. The
+ * first chunk is small, and the chunks grow. A reader can skip a
+ * large part of the file.
  */
 export const readFile = (
   fs: TarFS,
   file: string,
-  maxReadSize: number = MAX_READ,
+  maxReadSize?: number,
 ): AsyncGenerator<Uint8Array, void, void> & Skip => {
   const plan = new Plan(maxReadSize)
   return Object.assign(chunks(fs, file, plan), {
@@ -111,7 +113,7 @@ export const readFile = (
 export const readFileSync = (
   fs: TarFSSync,
   file: string,
-  maxReadSize: number = MAX_READ,
+  maxReadSize?: number,
 ): Generator<Uint8Array, void, void> & Skip => {
   const plan = new Plan(maxReadSize)
   return Object.assign(chunksSync(fs, file, plan), {

@@ -38,6 +38,8 @@ A new API. See "Migration from version 7" in the README.
   strict mode it is an error.
 - `update()` does not add a file again when its time differs from
   the entry only by a part of a second.
+- A `jobs` or `maxReadSize` option that is not 0, a positive
+  integer, or `Infinity` is a `TypeError`. 0 gives the default.
 - The readers detect the compression format. The `brotli` and `zstd`
   options are only for `create()`.
 - Remove the subpath exports (`tar/create`, `tar/extract`,

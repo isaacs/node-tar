@@ -11,6 +11,26 @@ import type {
 } from './fs.js'
 import type { WriteEntry } from './write-entry.js'
 
+/**
+ * The value of an option that is a count, such as `jobs`: the
+ * default if the option is not set or is 0, and a `TypeError` if the
+ * value is not a positive integer or `Infinity`.
+ */
+export const countOption = (
+  name: string,
+  value: unknown,
+  def: number,
+): number => {
+  if (value === undefined || value === null || value === 0) return def
+  if (
+    value === Infinity ||
+    (Number.isInteger(value) && Number(value) > 0)
+  ) {
+    return value as number
+  }
+  throw new TypeError(`${name} must be a positive integer`)
+}
+
 /** The options of a `Parser`. */
 export type ParserOptions<E extends EntryData = EntryData> =
   WarnOptions & {
@@ -64,7 +84,10 @@ export type ListOptions = ReadOptions & {
   /** The path of the archive file. */
   file?: string
   fs?: TarFS
-  /** The most bytes to read from the file at one time. Default 16 MiB. */
+  /**
+   * The most bytes to read from the file at one time. Default, and
+   * with 0, 16 MiB. A positive integer, or `Infinity`.
+   */
   maxReadSize?: number
   /** Called with each entry. A promise is awaited before the next entry. */
   onEntry?: (entry: ReadEntry) => unknown
@@ -76,7 +99,10 @@ export type ListOptionsSync = ReadOptionsSync & {
   /** The path of the archive file. */
   file?: string
   fs?: TarFSSync
-  /** The most bytes to read from the file at one time. Default 16 MiB. */
+  /**
+   * The most bytes to read from the file at one time. Default, and
+   * with 0, 16 MiB. A positive integer, or `Infinity`.
+   */
   maxReadSize?: number
   /** Called with each entry. */
   onEntry?: (entry: ReadEntrySync) => unknown
@@ -159,7 +185,10 @@ export type UnpackOptions = {
  */
 export type ExtractOptions = ReadOptions &
   UnpackOptions & {
-    /** The most bytes to read from the file at one time. Default 16 MiB. */
+    /**
+     * The most bytes to read from the file at one time. Default, and
+     * with 0, 16 MiB. A positive integer, or `Infinity`.
+     */
     maxReadSize?: number
     /**
      * Called with each entry before it is extracted. A promise is
@@ -173,7 +202,10 @@ export type ExtractOptions = ReadOptions &
     transform?: (
       entry: ReadEntry,
     ) => TransformStream<Uint8Array, Uint8Array> | undefined
-    /** The most entries to extract at one time. Default 16. */
+    /**
+     * The most entries to extract at one time. Default, and with 0,
+     * 16. A positive integer, or `Infinity`.
+     */
     jobs?: number
   } & (
     | {
@@ -197,7 +229,10 @@ export type ExtractOptions = ReadOptions &
 /** The options of `extractSync`. Set `input`, or `file`. */
 export type ExtractOptionsSync = ReadOptionsSync &
   UnpackOptions & {
-    /** The most bytes to read from the file at one time. Default 16 MiB. */
+    /**
+     * The most bytes to read from the file at one time. Default, and
+     * with 0, 16 MiB. A positive integer, or `Infinity`.
+     */
     maxReadSize?: number
     /** Called with each entry before it is extracted. */
     onEntry?: (entry: ReadEntrySync) => unknown
@@ -258,8 +293,9 @@ export type PackOptionsBase<E extends EntryData> = WarnOptions & {
    */
   filter?: (path: string, entry: CreateStats | E) => boolean
   /**
-   * The most bytes to read from a file at one time. Default 16 MiB.
-   * A larger file is not read before the pack comes to it.
+   * The most bytes to read from a file at one time. Default, and
+   * with 0, 16 MiB. A positive integer, or `Infinity`. A larger file
+   * is not read before the pack comes to it.
    */
   maxReadSize?: number
   /**
@@ -301,7 +337,8 @@ export type PackOptions = PackOptionsBase<ReadEntry> & {
   fs?: CreateFS
   /**
    * The number of paths at the start of the queue that are read
-   * before the pack writes them. Default 4.
+   * before the pack writes them. Default, and with 0, 4. A positive
+   * integer, or `Infinity`.
    */
   jobs?: number
 }

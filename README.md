@@ -670,6 +670,8 @@ Options:
   Default 16 MiB.
 - `jobs` The number of paths that are read ahead at one time.
   Default 4. Async only.
+- `maxReadSize` and `jobs` take a positive integer, or `Infinity`.
+  0 gives the default. Each other value is a `TypeError`.
 - `processUid`, `processUname` See
   [The process options](#the-process-options).
 - `strict`, `onwarn`, `fs`, `platform` The common options.
@@ -762,6 +764,8 @@ Options:
   only.
 - `maxReadSize` The most bytes to read from the archive file at one
   time. Default 16 MiB.
+- `jobs` and `maxReadSize` take a positive integer, or `Infinity`.
+  0 gives the default. Each other value is a `TypeError`.
 - `maxMetaEntrySize`, `maxDecompressionRatio`, `codecs` The options of
   [`entries()`](#entriesinput-options).
 - `processUid`, `processGid` See
@@ -813,7 +817,8 @@ Options:
 - `filter` A function `(path, entry)`. If it returns false, `onEntry`
   does not get the entry.
 - `maxReadSize` The most bytes to read from the archive file at one
-  time. Default 16 MiB.
+  time. Default 16 MiB. A positive integer, or `Infinity`. 0 gives the
+  default. Each other value is a `TypeError`.
 - `maxMetaEntrySize`, `maxDecompressionRatio`, `codecs` The options of
   [`entries()`](#entriesinput-options).
 - `strict`, `onwarn`, `fs`, `platform` The common options.

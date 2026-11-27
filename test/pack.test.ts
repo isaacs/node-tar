@@ -2823,3 +2823,40 @@ describe('entries of a different copy of the package', () => {
     )
   })
 })
+
+describe('the jobs and maxReadSize options', () => {
+  const expect = (name: string) => ({
+    name: 'TypeError',
+    message: `${name} must be a positive integer`,
+  })
+  test('a value that is not a positive integer', () => {
+    for (const bad of [-1, 1.5, NaN, '2' as unknown as number]) {
+      assert.throws(() => new Pack({ jobs: bad }), expect('jobs'))
+      assert.throws(
+        () => new Pack({ maxReadSize: bad }),
+        expect('maxReadSize'),
+      )
+      assert.throws(
+        () => new PackSync({ maxReadSize: bad }),
+        expect('maxReadSize'),
+      )
+    }
+  })
+
+  test('0 and no value are the default, and Infinity has no limit', async () => {
+    const none = null as unknown as undefined
+    assert.equal(new Pack({ jobs: 0 }).jobs, 4)
+    assert.equal(new Pack({ jobs: none }).jobs, 4)
+    assert.equal(new Pack({ jobs: Infinity }).jobs, Infinity)
+    assert.equal(new Pack({ maxReadSize: 0 }).maxReadSize, 2 ** 24)
+    assert.equal(new PackSync({ maxReadSize: 0 }).maxReadSize, 2 ** 24)
+    assert.equal(new Pack({ maxReadSize: 7 }).maxReadSize, 7)
+    for (const mode of modes) {
+      const data = await mode.run(
+        { cwd: files, jobs: Infinity, maxReadSize: Infinity },
+        ['1024-bytes.txt'],
+      )
+      assert.match(read(data), [{ entry: { path: '1024-bytes.txt' } }])
+    }
+  })
+})

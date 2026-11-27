@@ -10,10 +10,11 @@ import type {
   CreateFSSync,
   CreateStats,
 } from './fs.js'
-import type {
-  PackOptions,
-  PackOptionsBase,
-  PackOptionsSync,
+import {
+  countOption,
+  type PackOptions,
+  type PackOptionsBase,
+  type PackOptionsSync,
 } from './options.js'
 import { relative, resolve } from './path.js'
 import type { ReadEntry, ReadEntrySync } from './read-entry.js'
@@ -134,7 +135,11 @@ export abstract class PackBase<
     this.opt = opt
     this.fs = opt.fs
     this.win32 = opt.platform === 'win32'
-    this.maxReadSize = opt.maxReadSize || MAX_READ
+    this.maxReadSize = countOption(
+      'maxReadSize',
+      opt.maxReadSize,
+      MAX_READ,
+    )
     const { prefix, noPax } = opt
     this.header = {
       prefix: prefix && this.win32 ? slashes(prefix) : prefix,
@@ -552,7 +557,7 @@ export class Pack
 
   constructor(opt: PackOptions = {}) {
     super(opt, 'compress')
-    this.jobs = Number(opt.jobs) || 4
+    this.jobs = countOption('jobs', opt.jobs, 4)
   }
 
   async next(): Promise<IteratorResult<Uint8Array, undefined>> {
