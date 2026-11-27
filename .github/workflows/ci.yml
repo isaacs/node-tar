@@ -21,8 +21,7 @@ permissions:
 
 jobs:
   # The whole suite on each supported version of Node.js, with the
-  # type check. On Linux and macOS, the run fails if code ran in no
-  # test. On Windows, many tests skip, so that check is off.
+  # type check. The run fails if code ran in no test.
   build:
     strategy:
       matrix:
@@ -37,7 +36,7 @@ jobs:
           coverage-check: '1'
         - os: windows-latest
           shell: bash
-          coverage-check: '0'
+          coverage-check: '1'
       fail-fast: false
 
     runs-on: ${{ matrix.platform.os }}
