@@ -41,7 +41,7 @@
     "prettier": "^3.8.3",
     "tshy": "^4.1.2",
     "typedoc": "^0.28.19",
-    "ubqtest": "^0.0.30"
+    "ubqtest": "^1.0.0"
   },
   "license": "BlueOak-1.0.0",
   "engines": {

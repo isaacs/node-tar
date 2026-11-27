@@ -2113,6 +2113,9 @@ describe('recognize C:.. as a dot path part', () => {
     return mockImport(
       () => import('../src/unpack.js'),
       [
+        // An empty mock gives a new instance, which reads the
+        // platform again.
+        [() => import('../src/normalize-windows-path.js'), {}],
         [
           () => import('path'),
           {
