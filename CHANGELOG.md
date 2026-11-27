@@ -140,6 +140,8 @@ A new API. See "Migration from version 7" in the README.
 
 - On Windows, `extract()` with `preservePaths` sets the owner of
   each directory that it makes, not only of the last one.
+- `update()` checks the paths in a directory also when the time of
+  the directory did not change. A directory is always added again.
 
 ## 7.5
 

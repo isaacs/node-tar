@@ -234,7 +234,8 @@ export const replaceSync = (
 
 /**
  * The same as `replace`, but a file is added only if it is newer than
- * the last entry of the archive that has its path.
+ * the last entry of the archive that has its path. A directory is
+ * always added, and each path in it is checked.
  */
 export const update = (
   opt: WithAliases<ReplaceOptions>,

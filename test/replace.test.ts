@@ -712,6 +712,39 @@ describe('update', () => {
     })
   }
 
+  for (const arg of ['dir', 'dir/']) {
+    each(`a changed file in the directory ${arg}`, async mode => {
+      const root = testdir({
+        tree: { dir: { a: 'a', b: 'b', sub: { c: 'c' } } },
+      })
+      const cwd = resolve(root, 'tree')
+      const file = resolve(root, 'a.tar')
+      await mode.replace({ file, cwd }, [arg])
+      const all = ['dir/', 'dir/a', 'dir/b', 'dir/sub/', 'dir/sub/c']
+      assert.deepEqual(pathsOf(file), all)
+
+      // No time changed: only the directories are added again.
+      await mode.update({ file, cwd }, [arg])
+      assert.deepEqual(pathsOf(file), [...all, 'dir/', 'dir/sub/'])
+
+      // The times of the directories did not change.
+      nodeFs.writeFileSync(file, '')
+      await mode.replace({ file, cwd }, [arg])
+      await mode.update(
+        { file, cwd },
+        [arg],
+        withMtimes({ a: future, c: future }),
+      )
+      assert.deepEqual(pathsOf(file), [
+        ...all,
+        'dir/',
+        'dir/a',
+        'dir/sub/',
+        'dir/sub/c',
+      ])
+    })
+  }
+
   each('a file that the archive does not have is added', async mode => {
     const { cwd, file } = updateFixture()
     await mode.update(

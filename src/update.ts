@@ -6,7 +6,9 @@ import type { EntryData } from './read-entry.js'
 import { replace, replaceSync } from './replace.js'
 
 // Add a filter that refuses a path that is not newer than the entry
-// of the same path in the archive.
+// of the same path in the archive. The filter accepts each directory
+// of the file system: a file in a directory can be newer than the
+// directory, and the pack reads a directory only if it adds it.
 
 // A ustar header has the time in whole seconds. A file is not newer
 // than such an entry if only the part below one second differs.
@@ -29,6 +31,7 @@ const newer = <
     mtimeCache,
     filter: (path: string, entry: CreateStats | E) => {
       if (filter && !filter(path, entry)) return false
+      if ('isDirectory' in entry && entry.isDirectory()) return true
       const archived = mtimeCache.get(path)
       return !archived || !entry.mtime || isNewer(entry.mtime, archived)
     },
@@ -37,7 +40,8 @@ const newer = <
 
 /**
  * The same as `replace`, but a file is added only if it is newer than
- * the last entry of the archive that has its path.
+ * the last entry of the archive that has its path. A directory is
+ * always added, and each path in it is checked.
  */
 export const update = (
   opt: WithAliases<ReplaceOptions>,

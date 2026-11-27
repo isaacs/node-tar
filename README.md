@@ -862,6 +862,10 @@ The same as `replace()`, with the same options. A path is added only
 if its `mtime` is later than the `mtime` of the last entry of the
 archive that has that path.
 
+A directory is always added again, and each path in it is checked.
+So a changed file in a directory is added, also when the `mtime` of
+the directory did not change.
+
 A basic tar header holds the `mtime` in whole seconds. For such an
 entry, the file is newer only if its `mtime` is in a later second. A
 change in the same second as the entry is not seen.
