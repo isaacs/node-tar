@@ -268,6 +268,54 @@ describe('paths', () => {
     )
   })
 
+  // https://github.com/isaacs/node-tar/issues/426
+  test('an entry with a ReadableStream body, to a stream and a file', async () => {
+    const parts = ['one ', 'two ', 'three']
+    const size = parts.join('').length
+    const body = () => {
+      const chunks = parts.map(part => new TextEncoder().encode(part))
+      return new ReadableStream<Uint8Array>({
+        pull: controller => {
+          const chunk = chunks.shift()
+          if (chunk) controller.enqueue(chunk)
+          else controller.close()
+        },
+      })
+    }
+    const items = () => [
+      new WriteEntry({ path: 'stream.txt', size }, body()),
+      new WriteEntry({ path: 'after.txt' }, 'after'),
+    ]
+    const expect = [
+      { entry: { path: 'stream.txt', size }, body: 'one two three' },
+      { entry: { path: 'after.txt' }, body: 'after' },
+    ]
+    assert.match(read(await collect(create({}, items()))), expect)
+    const zipped = await collect(create({ gzip: true }, items()))
+    assert.match(read(zlib.gunzipSync(zipped)), expect)
+    const file = resolve(testdir(), 'out.tar')
+    await create({ file, fs }, items())
+    assert.match(read(nodeFs.readFileSync(file)), expect)
+
+    // A stream of Node.js is an async iterable of chunks.
+    const source = resolve(files, 'one-byte.txt')
+    const data = await collect(
+      create({}, [
+        new WriteEntry(
+          { path: 'node.txt', size: 1 },
+          nodeFs.createReadStream(source),
+        ),
+      ]),
+    )
+    assert.match(read(data), [{ entry: { path: 'node.txt' }, body: 'a' }])
+
+    // The header has the size, so a stream needs it.
+    assert.throws(() => new WriteEntry({ path: 'a' }, body()), {
+      name: 'TypeError',
+      message: 'a stream body needs the size option',
+    })
+  })
+
   each('entries of the caller, with no fs for them', async way => {
     const opt: Opt = way.toFile ? {} : { fs: undefined }
     const data = await way.run(opt, [

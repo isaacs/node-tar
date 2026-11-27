@@ -554,6 +554,40 @@ await create({ file: 'bundle.tgz', gzip: true }, [
 ])
 ```
 
+### Create an archive from a stream
+
+A file of an archive can come from a `ReadableStream`, such as the
+body of a `fetch()` response. Make a `WriteEntry` with the stream as
+its body, and give it to `create()`.
+
+You must set `size`, the number of bytes that the stream gives. A tar
+header has the size of the file, and the header comes before the
+content. `create()` cannot write the entry without it. If you do not
+know the size, read the stream into memory first, for example with
+`await new Response(stream).bytes()`, and give the bytes as the body.
+
+```js
+import { create, WriteEntry } from 'tar'
+
+const text = new TextEncoder().encode('the content of the stream\n')
+// A stream of two chunks. A stream from a file or from the network
+// works in the same way.
+const stream = new ReadableStream({
+  start: controller => {
+    controller.enqueue(text.subarray(0, 10))
+    controller.enqueue(text.subarray(10))
+    controller.close()
+  },
+})
+
+await create({ file: 'from-stream.tgz', gzip: true }, [
+  new WriteEntry({ path: 'stream.txt', size: text.length }, stream),
+])
+```
+
+A Node.js `Readable` is an async iterable of chunks, so it can also be
+the body. `Readable.toWeb(readable)` makes a `ReadableStream` of it.
+
 This example copies an archive, and removes some entries.
 
 ```js
