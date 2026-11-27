@@ -12,6 +12,15 @@ import type {
 import type { WriteEntry } from './write-entry.js'
 
 /**
+ * A copy of the options with no prototype, so that an option that is
+ * not set cannot get a value from a changed `Object.prototype`.
+ */
+export const ownOptions = <T extends object>(
+  opt: T,
+  more?: Partial<T>,
+): T => Object.assign(Object.create(null) as T, opt, more)
+
+/**
  * The value of an option that is a count, such as `jobs`: the
  * default if the option is not set or is 0, and a `TypeError` if the
  * value is not a positive integer or `Infinity`.

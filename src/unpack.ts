@@ -6,6 +6,7 @@ import type { ExtractFS, ExtractFSSync, ExtractStats } from './fs.js'
 import { mkdir, mkdirSync, type MkdirOptions } from './mkdir.js'
 import {
   countOption,
+  ownOptions,
   type ExtractOptions,
   type ExtractOptionsSync,
   type ReadOptions,
@@ -56,15 +57,6 @@ const uint32 = (
   a !== undefined && a === a >>> 0 ? a
   : b !== undefined && b === b >>> 0 ? b
   : c
-
-/**
- * A copy of the options with no prototype, so that an option that is
- * not set cannot get a value from a changed `Object.prototype`.
- */
-export const ownOptions = <T extends object>(
-  opt: T,
-  more?: Partial<T>,
-): T => Object.assign(Object.create(null) as T, opt, more)
 
 /** The options that `UnpackBase` reads. */
 export type UnpackBaseOptions<E extends EntryData> = ReadOptions<E> &
@@ -176,8 +168,13 @@ export class UnpackBase<
    * be complete, unless the parser says that it can continue.
    */
   warn(code: string, message: string | Error, data: WarnData = {}): void {
-    if (code === 'TAR_BAD_ARCHIVE' || code === 'TAR_ABORT') {
-      data.recoverable ??= false
+    // Only a value that the parser set makes a damaged archive
+    // recoverable, not a value of a changed `Object.prototype`.
+    if (
+      (code === 'TAR_BAD_ARCHIVE' || code === 'TAR_ABORT') &&
+      !Object.hasOwn(data, 'recoverable')
+    ) {
+      data.recoverable = false
     }
     data.cwd = this.cwd
     warn(this.opt, code, message, data)

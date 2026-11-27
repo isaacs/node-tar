@@ -2,7 +2,7 @@ import { decodeUtf8 } from './bytes.js'
 import { Header } from './header.js'
 import { Pax } from './pax.js'
 import type { EntryTypeName } from './types.js'
-import type { ParserOptions } from './options.js'
+import { ownOptions, type ParserOptions } from './options.js'
 import { EntryData } from './read-entry.js'
 import { warn, type WarnData, type WarnOptions } from './warn.js'
 
@@ -97,7 +97,8 @@ export class Parser<E extends EntryData = EntryData> {
   #blockRemain: number = 0
   #ex?: Pax
   // the names of the GNU long name headers for the next entry
-  #long?: { path?: string; linkpath?: string }
+  #longPath?: string
+  #longLinkpath?: string
   #gex?: Pax
   #ended: boolean = false
   #sawNull: boolean = false
@@ -111,7 +112,7 @@ export class Parser<E extends EntryData = EntryData> {
    * required if `E` is not `EntryData`.
    */
   constructor(opt: ParserOptions<E> = {}, createEntry?: CreateEntry<E>) {
-    this.#opt = opt
+    opt = this.#opt = ownOptions(opt)
     this.maxMetaEntrySize = opt.maxMetaEntrySize || 1024 * 1024
     this.#filter = opt.filter
     const win32 = opt.platform === 'win32'
@@ -305,11 +306,12 @@ export class Parser<E extends EntryData = EntryData> {
     // A PAX name wins over a GNU long name. The header does not use
     // these values if it is a PAX or GNU header itself.
     let ex = this.#ex
-    const long = this.#long
-    if (long) {
+    const longPath = this.#longPath
+    const longLinkpath = this.#longLinkpath
+    if (longPath !== undefined || longLinkpath !== undefined) {
       ex = Object.assign(Object.create(null) as Pax, ex)
-      ex.path ??= long.path
-      ex.linkpath ??= long.linkpath
+      ex.path ??= longPath
+      ex.linkpath ??= longLinkpath
     }
     let header: Header
     try {
@@ -386,7 +388,7 @@ export class Parser<E extends EntryData = EntryData> {
       return
     }
 
-    this.#ex = this.#long = undefined
+    this.#ex = this.#longPath = this.#longLinkpath = undefined
     const entry = this.#create(header, ex, this.#gex)
     if (
       !entry.ignore &&
@@ -418,11 +420,11 @@ export class Parser<E extends EntryData = EntryData> {
       // The last GNU long name of each kind is the one to use.
       case 'NextFileHasLongPath':
       case 'OldGnuLongPath':
-        ;(this.#long ??= {}).path = cstring(meta)
+        this.#longPath = cstring(meta)
         break
       // NextFileHasLongLinkpath
       default:
-        ;(this.#long ??= {}).linkpath = cstring(meta)
+        this.#longLinkpath = cstring(meta)
     }
   }
 }

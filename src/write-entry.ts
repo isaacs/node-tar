@@ -1,5 +1,6 @@
 import { isBlob, isUint8Array } from './bytes.js'
 import { Header } from './header.js'
+import { ownOptions } from './options.js'
 import { Pax } from './pax.js'
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
 import type { EntryTypeName } from './types.js'
@@ -137,6 +138,7 @@ export class WriteEntry {
     opt: EncodeOptions = {},
     block: Uint8Array = new Uint8Array(512),
   ): Uint8Array[] {
+    opt = ownOptions(opt)
     const path = prefixPath(this.path, opt.prefix)
     // The target of a symbolic link is not a path in the archive.
     const linkpath =

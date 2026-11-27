@@ -123,7 +123,8 @@ A new API. See "Migration from version 7" in the README.
 - Harden extraction against local races and bad state: a file
   descriptor is not used after it is closed, the times and the owner
   of a directory are set with `lutimes` and `lchown`, and options
-  cannot come from a changed `Object.prototype`.
+  and the data of a warning cannot come from a changed
+  `Object.prototype`, in the commands and in each class.
   (GHSA-m6rr-3gqh-4f88, GHSA-5x73-x9rx-m7x2, GHSA-qf42-f7hw-qxrq)
 - `create()` skips a file or directory that changes between `lstat`
   and `open` or `readdir`, and does not read it through a symbolic

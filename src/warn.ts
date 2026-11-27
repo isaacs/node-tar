@@ -61,7 +61,10 @@ export const warn = (
   message: string | Error,
   data: WarnData = {},
 ): void => {
-  if (opt.strict || data.recoverable === false) {
+  // The value of a changed `Object.prototype` does not count.
+  const fatal =
+    Object.hasOwn(data, 'recoverable') && data.recoverable === false
+  if (opt.strict || fatal) {
     throw tarError(opt, code, message, data)
   }
   fill(opt, code, message, data)

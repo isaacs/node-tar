@@ -7,11 +7,12 @@ import {
 import { Header } from './header.js'
 import { gzip, type Codec } from './codec.js'
 import { concat } from './concat.js'
-import type {
-  ReadOptions,
-  ReadOptionsSync,
-  TarInput,
-  TarInputSync,
+import {
+  ownOptions,
+  type ReadOptions,
+  type ReadOptionsSync,
+  type TarInput,
+  type TarInputSync,
 } from './options.js'
 import { Parser } from './parser.js'
 import {
@@ -171,6 +172,7 @@ export class TarReader
   #done: boolean = false
 
   constructor(input: TarInput, opt: ReadOptions = {}) {
+    opt = ownOptions(opt)
     const win32 = opt.platform === 'win32'
     this.parser = new Parser<ReadEntry>(
       opt,
@@ -310,6 +312,7 @@ export class TarReaderSync
   #done: boolean = false
 
   constructor(input: TarInputSync, opt: ReadOptionsSync = {}) {
+    opt = ownOptions(opt)
     const win32 = opt.platform === 'win32'
     this.parser = new Parser<ReadEntrySync>(
       opt,

@@ -12,6 +12,7 @@ import type {
 } from './fs.js'
 import {
   countOption,
+  ownOptions,
   type PackOptions,
   type PackOptionsBase,
   type PackOptionsSync,
@@ -132,7 +133,7 @@ export abstract class PackBase<
     opt: PackOptionsBase<E> & { fs?: FS },
     compress: 'compress' | 'compressSync',
   ) {
-    this.opt = opt
+    opt = this.opt = ownOptions(opt)
     this.fs = opt.fs
     this.win32 = opt.platform === 'win32'
     this.maxReadSize = countOption(
@@ -562,7 +563,7 @@ export class Pack
 
   constructor(opt: PackOptions = {}) {
     super(opt, 'compress')
-    this.jobs = countOption('jobs', opt.jobs, 4)
+    this.jobs = countOption('jobs', (this.opt as PackOptions).jobs, 4)
   }
 
   async next(): Promise<IteratorResult<Uint8Array, undefined>> {
