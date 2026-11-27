@@ -2474,8 +2474,8 @@ describe('compression', () => {
     assert.deepEqual(paths(zlib.gunzipSync(plain)), expect)
   })
 
-  test('a codec of the caller, selected by its name', async () => {
-    const opt = { cwd: files, codecs: [xorCodec], xor: true }
+  test('a codec of the caller, in the compress option', async () => {
+    const opt = { cwd: files, compress: xorCodec }
     for (const mode of modes) {
       const plain = await mode.run({ cwd: files }, ['dir'])
       const zipped = await mode.run(opt, ['dir'])
@@ -2484,13 +2484,34 @@ describe('compression', () => {
         Buffer.from(xorCodec.compressSync?.(plain) as Uint8Array),
       )
     }
-    // With no option of its name, the codec does nothing.
+    // An option with the name of the codec does not select it.
+    const named = { cwd: files, codecs: [xorCodec], xor: true }
     const data = await collect(
-      pack({ cwd: files, codecs: [xorCodec] })
+      pack(named as Options)
         .add('dir')
         .end(),
     )
     assert.deepEqual(paths(data), expect)
+  })
+
+  each('the compress option gives options to the codec', async mode => {
+    seen.length = 0
+    const [gz] = codecs
+    assert(gz)
+    const options = { level: 1 }
+    const opt: Options = { cwd: files, compress: [gz, options] }
+    const zipped = await mode.run(opt, ['dir'])
+    assert.deepEqual(paths(zlib.gunzipSync(zipped)), expect)
+    // Only a codec with the name gzip gets the portable option.
+    await mode.run({ ...opt, portable: true }, ['dir'])
+    const other = { ...gz, name: 'other' }
+    await mode.run({ ...opt, compress: other, portable: true }, ['dir'])
+    assert.deepEqual(seen, [
+      { level: 1 },
+      { level: 1, portable: true },
+      {},
+    ])
+    assert.deepEqual(options, { level: 1 })
   })
 
   for (const [name, opt, message] of [
@@ -2504,8 +2525,8 @@ describe('compression', () => {
     ],
     [
       'gzip and a codec of the caller',
-      { gzip: true, xor: true, codecs: [xorCodec] },
-      'gzip, xor',
+      { gzip: true, compress: xorCodec },
+      'gzip, compress',
     ],
   ] as const) {
     test(`${name} are mutually exclusive`, () => {
@@ -2521,12 +2542,11 @@ describe('compression', () => {
   test('an option with no codec that can compress', () => {
     const none: Codec = { ...xorCodec, compress: undefined }
     const noSync: Codec = { ...xorCodec, compressSync: undefined }
-    const opt = { xor: true }
     assert.throws(() => new Pack({ brotli: true }), {
       name: 'TypeError',
       message: 'no codec named brotli has a compress function',
     })
-    assert.throws(() => new Pack({ ...opt, codecs: [none] }), {
+    assert.throws(() => new Pack({ compress: [none, {}] }), {
       message: 'no codec named xor has a compress function',
     })
     assert.throws(() => new PackSync({ zstd: true }), {
@@ -2536,12 +2556,12 @@ describe('compression', () => {
     assert.throws(() => new PackSync({ gzip: true }), {
       message: 'no codec named gzip has a compressSync function',
     })
-    assert.throws(() => new PackSync({ ...opt, codecs: [noSync] }), {
+    assert.throws(() => new PackSync({ compress: noSync }), {
       message: 'no codec named xor has a compressSync function',
     })
     // A codec that the pack does not use needs no function.
     assert.equal(new Pack({ codecs: [none] }).codec, undefined)
-    assert.equal(new Pack({ ...opt, codecs: [noSync] }).codec, noSync)
+    assert.equal(new Pack({ compress: noSync }).codec, noSync)
   })
 
   test('an error of the pack goes through the compression', async () => {
@@ -2570,7 +2590,7 @@ describe('compression', () => {
         throw poop
       },
     }
-    const opt = { cwd: files, codecs: [bad], xor: true }
+    const opt = { cwd: files, compress: bad }
     for (const mode of modes) {
       const { open, over } = tracked()
       const er = await assert.rejects(
@@ -2589,9 +2609,8 @@ describe('compression', () => {
       {
         cwd: dir,
         maxReadSize: 512,
-        codecs: [xorCodec],
-        xor: true,
-      } as Options,
+        compress: xorCodec,
+      },
       over.async,
     )
     assert.equal((await p.add('a').add('b').end().next()).value?.length, 4)

@@ -774,7 +774,7 @@ describe('compression', () => {
   })
 
   each('a codec of the caller', async way => {
-    const opt = { cwd: files, codecs: [xorCodec], xor: true } as Opt
+    const opt = { cwd: files, compress: xorCodec }
     const plain = await way.run({ cwd: files }, ['dir'])
     const zipped = await way.run(opt, ['dir'])
     assert.deepEqual(zipped, Buffer.from(xorCompress(plain)))

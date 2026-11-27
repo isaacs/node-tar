@@ -277,9 +277,9 @@ export type PackOptionsBase<E extends EntryData> = WarnOptions & {
    */
   onWriteEntry?: (entry: WriteEntry) => unknown
   /**
-   * Compression formats, before the gzip support of the runtime. An
-   * option with the name of a codec selects it, and the value of the
-   * option, if it is an object, is given to its `compress` function.
+   * Compression formats, before the gzip support of the runtime. The
+   * options `gzip`, `brotli`, and `zstd` select the first codec that
+   * has that name.
    */
   codecs?: Codec[]
   /** Compress with the codec named `gzip`. */
@@ -288,6 +288,12 @@ export type PackOptionsBase<E extends EntryData> = WarnOptions & {
   brotli?: boolean | Record<string, unknown>
   /** Compress with the codec named `zstd` in `codecs`. */
   zstd?: boolean | Record<string, unknown>
+  /**
+   * Compress with this codec. It does not need to be in `codecs`.
+   * With a pair, the second item is given to the `compress` function
+   * of the codec.
+   */
+  compress?: Codec | [codec: Codec, options: Record<string, unknown>]
 }
 
 /** The options of `Pack`. */

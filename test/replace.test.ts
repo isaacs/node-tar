@@ -187,9 +187,9 @@ describe('a compressed archive is refused', () => {
     assert.deepEqual(nodeFs.readFileSync(file), data)
   })
 
-  each('the option of a codec of the caller', async mode => {
+  each('the compress option', async mode => {
     const { cwd, file } = fixture(data)
-    const opt = { file, cwd, codecs: [xorCodec], xor: true }
+    const opt = { file, cwd, compress: xorCodec }
     await assert.rejects(mode.replace(opt, ['new.txt']), {
       name: 'TypeError',
       message,

@@ -128,27 +128,35 @@ export abstract class PackBase<
     const cwd = opt.cwd && (this.win32 ? slashes(opt.cwd) : opt.cwd)
     this.cwd = cwd && this.#resolve(cwd, '')
 
-    const codecs = [...(opt.codecs ?? []), gzip]
     const set = opt as Record<string, unknown>
-    const names = [
-      ...new Set(['gzip', 'brotli', 'zstd', ...codecs.map(c => c.name)]),
-    ].filter(name => set[name])
+    const names = ['gzip', 'brotli', 'zstd', 'compress'].filter(
+      name => set[name],
+    )
     if (names.length > 1) {
       throw new TypeError(`${names.join(', ')} are mutually exclusive`)
     }
     const [name] = names
     if (name) {
-      const codec = codecs.find(c => c.name === name)
+      const custom = opt.compress
+      // The named options use a codec of `codecs`, or the gzip of
+      // the runtime. The `compress` option has its own codec.
+      const [codec, value] =
+        !custom ?
+          [
+            [...(opt.codecs ?? []), gzip].find(c => c.name === name),
+            set[name],
+          ]
+        : Array.isArray(custom) ? custom
+        : [custom]
       if (!codec?.[compress]) {
         throw new TypeError(
-          `no codec named ${name} has a ${compress} function`,
+          `no codec named ${codec?.name ?? name} has a ${compress} function`,
         )
       }
-      const value = set[name]
       this.codec = codec
       this.codecOptions = {
         ...(typeof value === 'object' ? value : undefined),
-        ...(name === 'gzip' && opt.portable ?
+        ...(codec.name === 'gzip' && opt.portable ?
           { portable: true }
         : undefined),
       }
