@@ -1,11 +1,11 @@
 import { Header, type HeaderData } from '../../src/header.js'
-export type Chunks = (Buffer | string | HeaderData)[]
+export type Chunks = (Uint8Array | string | HeaderData)[]
 
 export const makeTar = (chunks: Chunks) => {
   let dataLen = 0
   return Buffer.concat(
     chunks.map(chunk => {
-      if (Buffer.isBuffer(chunk)) {
+      if (chunk instanceof Uint8Array) {
         dataLen += chunk.length
         return chunk
       }

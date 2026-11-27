@@ -207,7 +207,7 @@ test('unknown entry type', () => {
   h.encode()
   // this triggers its type to be Unsupported, which means that any
   // data written to it will be thrown away.
-  h.block.write('9', 156, 1, 'ascii')
+  h.block[156] = '9'.charCodeAt(0)
 
   const body = Buffer.alloc(512)
   body.write('not that long, actually')

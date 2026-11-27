@@ -561,7 +561,7 @@ describe(
 describe('unsupported entries', () => {
   const unknown = new Header({ path: 'qux', size: 4 })
   unknown.encode()
-  unknown.block?.write('Z', 156)
+  unknown.block[156] = 'Z'.charCodeAt(0)
   const data = makeTar([
     {
       path: 'dev/random',

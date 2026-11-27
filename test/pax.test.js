@@ -79,12 +79,12 @@ test('create a pax', () => {
   )
 
   const actual = p.encode()
-  assert.deepEqual(actual, buf)
+  assert.deepEqual(actual, new Uint8Array(buf))
 })
 
 test('null pax', () => {
   const p = new Pax({})
-  assert.deepEqual(p.encode(), Buffer.allocUnsafe(0))
+  assert.deepEqual(p.encode(), new Uint8Array(0))
 })
 
 test('tiny pax', () => {
@@ -136,7 +136,7 @@ test('tiny pax', () => {
     'hex',
   )
 
-  assert.deepEqual(actual, buf)
+  assert.deepEqual(actual, new Uint8Array(buf))
 })
 
 test('parse', () => {
@@ -241,7 +241,7 @@ test('no non-finite or unsafe size', () => {
 })
 
 test('encode a pax with no path', () => {
-  const buf = new Pax({ uid: 24561 }).encode()
+  const buf = Buffer.from(new Pax({ uid: 24561 }).encode())
   assert.equal(buf.length, 1024)
   assert.equal(
     buf.subarray(0, 100).toString().replace(/\0.*$/, ''),

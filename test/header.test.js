@@ -104,7 +104,7 @@ test('xstar format', () => {
   h.encode()
   const slab = h.block
 
-  assert.equal(slab.toString('hex'), buf.subarray(0, 512).toString('hex'))
+  assert.deepEqual(slab, new Uint8Array(buf.subarray(0, 512)))
 
   const h2 = new Header(buf)
 

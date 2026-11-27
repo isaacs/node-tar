@@ -1,6 +1,7 @@
 import { basename } from 'node:path'
 import type { HeaderData } from './header.js'
 import { Header } from './header.js'
+import { decodeUtf8, encodeUtf8Into, utf8Length } from './bytes.js'
 
 const SIMPLE_NUMBER = /^\d+$/
 
@@ -49,19 +50,14 @@ export class Pax implements HeaderData {
   encode() {
     const body = this.encodeBody()
     if (body === '') {
-      return Buffer.allocUnsafe(0)
+      return new Uint8Array(0)
     }
 
-    const bodyLen = Buffer.byteLength(body)
+    const bodyLen = utf8Length(body)
     // round up to 512 bytes
     // add 512 for header
     const bufLen = 512 * Math.ceil(1 + bodyLen / 512)
-    const buf = Buffer.allocUnsafe(bufLen)
-
-    // 0-fill the header section, it might not hit every field
-    for (let i = 0; i < 512; i++) {
-      buf[i] = 0
-    }
+    const buf = new Uint8Array(bufLen)
 
     new Header({
       // XXX split the path
@@ -83,12 +79,7 @@ export class Pax implements HeaderData {
       ctime: this.ctime,
     }).encode(buf)
 
-    buf.write(body, 512, bodyLen, 'utf8')
-
-    // null pad after the body
-    for (let i = bodyLen + 512; i < buf.length; i++) {
-      buf[i] = 0
-    }
+    encodeUtf8Into(body, buf, 512, bodyLen)
 
     return buf
   }
@@ -128,7 +119,7 @@ export class Pax implements HeaderData {
       '=' +
       v +
       '\n'
-    const byteLen = Buffer.byteLength(s)
+    const byteLen = utf8Length(s)
     // the digits includes the length of the digits in ascii base-10
     // so if it's 9 characters, then adding 1 for the 9 makes it 10
     // which makes it 11 chars.
@@ -153,7 +144,7 @@ const merge = (a: HeaderData, b?: HeaderData) =>
 // to find the end of the record. Stop at the first malformed record.
 const parseKV = (str: string) => {
   const set: Record<string, string | number | Date> = Object.create(null)
-  const buf = Buffer.from(str)
+  const buf = new TextEncoder().encode(str)
   let pos = 0
   while (pos < buf.length) {
     let sp = pos
@@ -165,10 +156,10 @@ const parseKV = (str: string) => {
       sp++
     }
     if (sp === pos || buf[sp] !== 0x20) break
-    const n = Number(buf.toString('ascii', pos, sp))
+    const n = Number(decodeUtf8(buf, pos, sp))
     const end = pos + n
     if (end <= sp + 1 || end > buf.length || buf[end - 1] !== 0x0a) break
-    parseKVLine(set, buf.toString('utf8', sp + 1, end - 1))
+    parseKVLine(set, decodeUtf8(buf, sp + 1, end - 1))
     pos = end
   }
   return set

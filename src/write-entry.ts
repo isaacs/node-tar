@@ -563,6 +563,11 @@ export class WriteEntrySync extends WriteEntry implements Warner {
   }
 }
 
+// The stream of a tar entry takes Buffer chunks. This is a view of the
+// same bytes, not a copy.
+const toBuffer = (bytes: Uint8Array) =>
+  Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+
 export class WriteEntryTar
   extends Minipass<Buffer, Buffer | string, WarnEvent>
   implements Warner
@@ -686,30 +691,32 @@ export class WriteEntryTar
 
     if (this.header.encode() && !this.noPax) {
       super.write(
-        new Pax({
-          atime: this.portable ? undefined : this.atime,
-          ctime: this.portable ? undefined : this.ctime,
-          gid: this.portable ? undefined : this.gid,
-          mtime: this.noMtime ? undefined : this.mtime,
-          path: this[PREFIX](this.path),
-          linkpath:
-            this.type === 'Link' && this.linkpath !== undefined ?
-              this[PREFIX](this.linkpath)
-            : this.linkpath,
-          size: this.size,
-          uid: this.portable ? undefined : this.uid,
-          uname: this.portable ? undefined : this.uname,
-          dev: this.portable ? undefined : this.readEntry.dev,
-          ino: this.portable ? undefined : this.readEntry.ino,
-          nlink: this.portable ? undefined : this.readEntry.nlink,
-        }).encode(),
+        toBuffer(
+          new Pax({
+            atime: this.portable ? undefined : this.atime,
+            ctime: this.portable ? undefined : this.ctime,
+            gid: this.portable ? undefined : this.gid,
+            mtime: this.noMtime ? undefined : this.mtime,
+            path: this[PREFIX](this.path),
+            linkpath:
+              this.type === 'Link' && this.linkpath !== undefined ?
+                this[PREFIX](this.linkpath)
+              : this.linkpath,
+            size: this.size,
+            uid: this.portable ? undefined : this.uid,
+            uname: this.portable ? undefined : this.uname,
+            dev: this.portable ? undefined : this.readEntry.dev,
+            ino: this.portable ? undefined : this.readEntry.ino,
+            nlink: this.portable ? undefined : this.readEntry.nlink,
+          }).encode(),
+        ),
       )
     }
 
     const b = this.header?.block
     // ubq: not measured: encode() always sets header.block
     if (!b) throw new Error('failed to encode header')
-    super.write(b)
+    super.write(toBuffer(b))
     readEntry.pipe(this)
   }
 

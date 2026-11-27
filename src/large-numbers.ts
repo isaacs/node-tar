@@ -1,7 +1,7 @@
 // Tar can encode large and negative numbers using a leading byte of
 // 0xff for negative, and 0x80 for positive.
 
-export const encode = (num: number, buf: Buffer) => {
+export const encode = (num: number, buf: Uint8Array) => {
   if (!Number.isSafeInteger(num)) {
     // The number is so large that javascript cannot represent it with integer
     // precision.
@@ -16,7 +16,7 @@ export const encode = (num: number, buf: Buffer) => {
   return buf
 }
 
-const encodePositive = (num: number, buf: Buffer) => {
+const encodePositive = (num: number, buf: Uint8Array) => {
   buf[0] = 0x80
 
   for (var i = buf.length; i > 1; i--) {
@@ -25,7 +25,7 @@ const encodePositive = (num: number, buf: Buffer) => {
   }
 }
 
-const encodeNegative = (num: number, buf: Buffer) => {
+const encodeNegative = (num: number, buf: Uint8Array) => {
   buf[0] = 0xff
   var flipped = false
   num = num * -1
@@ -43,7 +43,7 @@ const encodeNegative = (num: number, buf: Buffer) => {
   }
 }
 
-export const parse = (buf: Buffer) => {
+export const parse = (buf: Uint8Array) => {
   const pre = buf[0]
   const value =
     pre === 0x80 ? pos(buf.subarray(1, buf.length))
@@ -62,7 +62,7 @@ export const parse = (buf: Buffer) => {
   return value
 }
 
-const twos = (buf: Buffer) => {
+const twos = (buf: Uint8Array) => {
   var len = buf.length
   var sum = 0
   var flipped = false
@@ -84,7 +84,7 @@ const twos = (buf: Buffer) => {
   return sum
 }
 
-const pos = (buf: Buffer) => {
+const pos = (buf: Uint8Array) => {
   var len = buf.length
   var sum = 0
   for (var i = len - 1; i > -1; i--) {

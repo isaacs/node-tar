@@ -4,6 +4,12 @@
 // (Also, check header.needPax to see if it needs a pax header.)
 
 import { posix as pathModule } from 'node:path'
+import {
+  decodeUtf8,
+  encodeUtf8Into,
+  utf8Length,
+  writeAscii,
+} from './bytes.js'
 import * as large from './large-numbers.js'
 import type { EntryTypeCode, EntryTypeName } from './types.js'
 import * as types from './types.js'
@@ -42,7 +48,7 @@ export class Header implements HeaderData {
   needPax: boolean = false
   nullBlock: boolean = false
 
-  block?: Buffer
+  block?: Uint8Array
   path?: string
   mode?: number
   uid?: number
@@ -63,19 +69,19 @@ export class Header implements HeaderData {
   comment?: string
 
   constructor(
-    data?: Buffer | HeaderData,
+    data?: Uint8Array | HeaderData,
     off: number = 0,
     ex?: HeaderData,
     gex?: HeaderData,
   ) {
-    if (Buffer.isBuffer(data)) {
+    if (data instanceof Uint8Array) {
       this.decode(data, off || 0, ex, gex)
     } else if (data) {
       this.#slurp(data)
     }
   }
 
-  decode(buf: Buffer, off: number, ex?: HeaderData, gex?: HeaderData) {
+  decode(buf: Uint8Array, off: number, ex?: HeaderData, gex?: HeaderData) {
     if (!off) {
       off = 0
     }
@@ -143,9 +149,7 @@ export class Header implements HeaderData {
     }
 
     this.linkpath = decString(buf, off + 157, 100)
-    if (
-      buf.subarray(off + 257, off + 265).toString() === 'ustar\u000000'
-    ) {
+    if (decodeUtf8(buf, off + 257, off + 265) === 'ustar\u000000') {
       this.uname =
         exForFields?.uname ??
         gexForFields?.uname ??
@@ -214,9 +218,9 @@ export class Header implements HeaderData {
     )
   }
 
-  encode(buf?: Buffer, off: number = 0) {
+  encode(buf?: Uint8Array, off: number = 0) {
     if (!buf) {
-      buf = this.block = Buffer.alloc(512)
+      buf = this.block = new Uint8Array(512)
     }
 
     if (this.#type === 'Unsupported') {
@@ -242,7 +246,7 @@ export class Header implements HeaderData {
     buf[off + 156] = Number(this.#type.codePointAt(0))
     this.needPax =
       encString(buf, off + 157, 100, this.linkpath) || this.needPax
-    buf.write('ustar\u000000', off + 257, 8)
+    writeAscii('ustar\u000000', buf, off + 257)
     this.needPax =
       encString(buf, off + 265, 32, this.uname) || this.needPax
     this.needPax =
@@ -312,7 +316,7 @@ const splitPrefix = (
   let ret: undefined | [string, string, boolean] = undefined
   const root = pathModule.parse(p).root || '.'
 
-  if (Buffer.byteLength(pp) < pathSize) {
+  if (utf8Length(pp) < pathSize) {
     ret = [pp, prefix, false]
   } else {
     // first set prefix to the dir, and path to the base
@@ -320,15 +324,12 @@ const splitPrefix = (
     pp = pathModule.basename(pp)
 
     do {
-      if (
-        Buffer.byteLength(pp) <= pathSize &&
-        Buffer.byteLength(prefix) <= prefixSize
-      ) {
+      if (utf8Length(pp) <= pathSize && utf8Length(prefix) <= prefixSize) {
         // both fit!
         ret = [pp, prefix, false]
       } else if (
-        Buffer.byteLength(pp) > pathSize &&
-        Buffer.byteLength(prefix) <= prefixSize
+        utf8Length(pp) > pathSize &&
+        utf8Length(prefix) <= prefixSize
       ) {
         // prefix fits in prefix, but path doesn't fit in path
         ret = [pp.slice(0, pathSize - 1), prefix, true]
@@ -347,36 +348,29 @@ const splitPrefix = (
   return ret
 }
 
-const decString = (buf: Buffer, off: number, size: number) =>
-  buf
-    .subarray(off, off + size)
-    .toString('utf8')
-    .replace(/\0.*/s, '')
+// The string ends at the first NUL, or at the end of the field.
+const decString = (buf: Uint8Array, off: number, size: number) => {
+  let end = off
+  const max = Math.min(off + size, buf.length)
+  while (end < max && buf[end] !== 0) end++
+  return decodeUtf8(buf, off, end)
+}
 
-const decDate = (buf: Buffer, off: number, size: number) =>
+const decDate = (buf: Uint8Array, off: number, size: number) =>
   numToDate(decNumber(buf, off, size))
 
 const numToDate = (num?: number) =>
   num === undefined ? undefined : new Date(num * 1000)
 
-const decNumber = (buf: Buffer, off: number, size: number) =>
+const decNumber = (buf: Uint8Array, off: number, size: number) =>
   Number(buf[off]) & 0x80 ?
     large.parse(buf.subarray(off, off + size))
   : decSmallNumber(buf, off, size)
 
 const nanUndef = (value: number) => (isNaN(value) ? undefined : value)
 
-const decSmallNumber = (buf: Buffer, off: number, size: number) =>
-  nanUndef(
-    parseInt(
-      buf
-        .subarray(off, off + size)
-        .toString('utf8')
-        .replace(/\0.*$/, '')
-        .trim(),
-      8,
-    ),
-  )
+const decSmallNumber = (buf: Uint8Array, off: number, size: number) =>
+  nanUndef(parseInt(decString(buf, off, size).trim(), 8))
 
 // the maximum encodable as a null-terminated octal, by field size
 const MAXNUM = {
@@ -385,7 +379,7 @@ const MAXNUM = {
 }
 
 const encNumber = (
-  buf: Buffer,
+  buf: Uint8Array,
   off: number,
   size: 12 | 8,
   num?: number,
@@ -396,11 +390,11 @@ const encNumber = (
   : (encSmallNumber(buf, off, size, num), false)
 
 const encSmallNumber = (
-  buf: Buffer,
+  buf: Uint8Array,
   off: number,
   size: number,
   num: number,
-) => buf.write(octalString(num, size), off, size, 'ascii')
+) => writeAscii(octalString(num, size), buf, off)
 
 const octalString = (num: number, size: number) =>
   padOctal(Math.floor(num).toString(8), size)
@@ -410,21 +404,24 @@ const padOctal = (str: string, size: number) =>
     str
   : new Array(size - str.length - 1).join('0') + str + ' ') + '\0'
 
-const encDate = (buf: Buffer, off: number, size: 8 | 12, date?: Date) =>
+const encDate = (
+  buf: Uint8Array,
+  off: number,
+  size: 8 | 12,
+  date?: Date,
+) =>
   date === undefined ? false : (
     encNumber(buf, off, size, date.getTime() / 1000)
   )
 
-// enough to fill the longest string we've got
-const NULLS = new Array(156).join('\0')
 // pad with nulls, return true if it's longer or non-ascii
 const encString = (
-  buf: Buffer,
+  buf: Uint8Array,
   off: number,
   size: number,
   str?: string,
 ) =>
   str === undefined ? false : (
-    (buf.write(str + NULLS, off, size, 'utf8'),
-    str.length !== Buffer.byteLength(str) || str.length > size)
+    (encodeUtf8Into(str, buf, off, size),
+    str.length !== utf8Length(str) || str.length > size)
   )
