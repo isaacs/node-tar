@@ -452,6 +452,11 @@ export class Unpack extends Parser {
 
     assert.equal(typeof entry.absolute, 'string')
 
+    // Never set the setuid, setgid, or sticky bit from an archive.
+    if (typeof entry.mode === 'number') {
+      entry.mode = entry.mode & 0o777
+    }
+
     switch (entry.type) {
       case 'Directory':
       case 'GNUDumpDir':

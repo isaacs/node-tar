@@ -30,8 +30,9 @@ implementation. (Note that most of these are disabled if
   extracted.
 - File and directory ownership is not mutated unless `forceChown`
   is set, or the extraction is run as root.
-- File and directory modes in the archive are ignored, unless
-  the `chmod: true` option is set.
+- Files and directories are created with the mode in the archive,
+  and the process `umask` applies. The setuid, setgid, and sticky
+  bits in the archive are always removed.
 - A path-reservation system is used to ensure that even when
   multiple entries are being extracted in parallel, subsequent
   entries with the same filename will not interfere with one
@@ -557,13 +558,15 @@ The following options are supported:
   that passes the filter.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered. (See "Warnings and Errors")
-- `chmod` Set to true to call `fs.chmod()` to ensure that the
-  extracted file matches the entry mode. This may necessitate a
-  call to the deprecated and thread-unsafe `process.umask()`
-  method to determine the default umask value, unless a
-  `processUmask` options is also provided. Otherwise tar will
-  extract with whatever mode is provided, and let the process
-  `umask` apply normally.
+- `chmod` Set to true to call `fs.chmod()` on each extracted
+  directory, so that its mode matches the entry mode even when
+  the process `umask` would remove bits. This has no effect on
+  files. Files are always created with the entry mode, and the
+  process `umask` applies. This may necessitate a call to the
+  deprecated and thread-unsafe `process.umask()` method to
+  determine the default umask value, unless a `processUmask`
+  option is also provided. The setuid, setgid, and sticky bits
+  are removed in all cases.
 - `processUmask` Set to an explicit numeric value to avoid
   calling `process.umask()` when `chmod: true` is set.
 - `maxDepth` The maximum depth of subfolders to extract into. This
@@ -579,7 +582,10 @@ advanced use cases, such as re-using caches between runs.
 
 - `maxReadSize` The maximum buffer size for `fs.read()` operations.
   Defaults to 16 MB.
-- `umask` Filter the modes of entries like `process.umask()`.
+- `umask` The mask for the default modes `dmode` and `fmode`.
+  These apply to parent directories that are not in the archive,
+  and to entries that have no mode. It does not change the mode
+  of an entry that has one.
 - `dmode` Default mode for directories
 - `fmode` Default mode for files
 - `maxMetaEntrySize` The maximum size of meta entries that is
@@ -859,7 +865,10 @@ Most unpack errors will cause a `warn` event to be emitted. If the
   Pathnames with fewer elements will be silently skipped. Note that
   the pathname is edited after applying the filter, but before
   security checks.
-- `umask` Filter the modes of entries like `process.umask()`.
+- `umask` The mask for the default modes `dmode` and `fmode`.
+  These apply to parent directories that are not in the archive,
+  and to entries that have no mode. It does not change the mode
+  of an entry that has one.
 - `dmode` Default mode for directories
 - `fmode` Default mode for files
 - `maxMetaEntrySize` The maximum size of meta entries that is
@@ -897,13 +906,15 @@ Most unpack errors will cause a `warn` event to be emitted. If the
   that passes the filter.
 - `onwarn` A function that will get called with `(code, message, data)` for
   any warnings encountered. (See "Warnings and Errors")
-- `chmod` Set to true to call `fs.chmod()` to ensure that the
-  extracted file matches the entry mode. This may necessitate a
-  call to the deprecated and thread-unsafe `process.umask()`
-  method to determine the default umask value, unless a
-  `processUmask` options is also provided. Otherwise tar will
-  extract with whatever mode is provided, and let the process
-  `umask` apply normally.
+- `chmod` Set to true to call `fs.chmod()` on each extracted
+  directory, so that its mode matches the entry mode even when
+  the process `umask` would remove bits. This has no effect on
+  files. Files are always created with the entry mode, and the
+  process `umask` applies. This may necessitate a call to the
+  deprecated and thread-unsafe `process.umask()` method to
+  determine the default umask value, unless a `processUmask`
+  option is also provided. The setuid, setgid, and sticky bits
+  are removed in all cases.
 - `processUmask` Set to an explicit numeric value to avoid
   calling `process.umask()` when `chmod: true` is set.
 - `maxDepth` The maximum depth of subfolders to extract into. This

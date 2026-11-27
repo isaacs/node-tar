@@ -173,3 +173,42 @@ test('sync: a file that replaces a directory is made one time', () => {
   assert.equal(open.calls.length, 1)
   assert.equal(fs.readFileSync(resolve(cwd, 'f'), 'utf8'), 'data')
 })
+
+// GHSA-3482-qrvx-gvgq
+for (const sync of [false, true]) {
+  const mode = sync ? 'sync' : 'async'
+  test(`${mode}: no setuid, setgid, or sticky bit from an archive`, async () => {
+    const root = testdir({ cwd: {} })
+    const cwd = resolve(root, 'cwd')
+    const file = resolve(root, 'a.tar')
+    fs.writeFileSync(
+      file,
+      Buffer.concat([
+        ent({ path: 'd', type: 'Directory', mode: 0o7777 }),
+        ent({ path: 'f', type: 'File', mode: 0o6755 }, 'x'),
+        EOA,
+      ]),
+    )
+    // Some systems remove these bits when a normal user makes a
+    // file, so also check the mode that the code asks for.
+    const { open, openSync } = fs
+    const call = (fn: unknown, args: unknown[]) =>
+      (fn as (...a: unknown[]) => number)(...args)
+    const spies = [
+      spyOn(fs, 'open', ((...args: unknown[]) =>
+        call(open, args)) as unknown as typeof fs.open),
+      spyOn(fs, 'openSync', ((...args: unknown[]) =>
+        call(openSync, args)) as typeof fs.openSync),
+    ]
+    const opt = { file, cwd, chmod: true, processUmask: 0o22 }
+    if (sync) extract({ ...opt, sync: true })
+    else await extract(opt)
+    const made = spies
+      .flatMap(s => s.calls)
+      .filter(c => c.args[0] === resolve(cwd, 'f'))
+      .map(c => c.args[2])
+    assert.deepEqual(made, [0o755])
+    assert.equal(fs.statSync(resolve(cwd, 'd')).mode & 0o7777, 0o777)
+    assert.equal(fs.statSync(resolve(cwd, 'f')).mode & 0o7000, 0)
+  })
+}
