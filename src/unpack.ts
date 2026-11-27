@@ -345,7 +345,8 @@ export class UnpackBase<
     if (
       !this.preservePaths &&
       absolute !== cwd &&
-      !absolute.startsWith(cwd + '/')
+      // A root, such as `/` or `c:/`, ends with a slash.
+      !absolute.startsWith(cwd.endsWith('/') ? cwd : cwd + '/')
     ) {
       this.warn('TAR_ENTRY_ERROR', 'path escaped extraction target', {
         entry,

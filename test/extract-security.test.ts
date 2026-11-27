@@ -3,10 +3,12 @@
 import * as nodeFs from 'node:fs'
 import { resolve } from 'node:path'
 import { assert, cleanup, describe, test, testdir } from 'ubqtest'
-import type { HeaderData } from '../src/header.js'
+import { Header, type HeaderData } from '../src/header.js'
 import { extract, extractSync } from '../src/extract.js'
-import type { ExtractFS } from '../src/fs.js'
+import type { ExtractFS, ExtractFSSync } from '../src/fs.js'
 import { normalizeUnicode } from '../src/normalize-unicode.js'
+import { EntryData } from '../src/read-entry.js'
+import { UnpackBase } from '../src/unpack.js'
 import {
   cat,
   ent,
@@ -32,6 +34,88 @@ const read = (...parts: string[]) =>
   nodeFs.readFileSync(resolve(...parts), 'utf8')
 const brief = (warnings: [string, string, unknown][]) =>
   warnings.map(([code, message]) => [code, message])
+
+// A file system in memory that has only the directory `root`. The
+// value of a directory in `nodes` is null. The value of a file is
+// its content.
+const memFs = (root: string) => {
+  const nodes = new Map<string, string | null>([[root, null]])
+  const fds: string[] = []
+  const error = (code: string) => Object.assign(new Error(code), { code })
+  const lstat = (path: string) => {
+    const node = nodes.get(path)
+    if (node === undefined) throw error('ENOENT')
+    return {
+      isDirectory: () => node === null,
+      isFile: () => node !== null,
+      isSymbolicLink: () => false,
+      nlink: 1,
+      mode: 0o755,
+      mtime: MTIME,
+    }
+  }
+  const mkdir = (path: string) => {
+    if (nodes.has(path)) throw error('EEXIST')
+    nodes.set(path, null)
+    return undefined
+  }
+  const open = (path: string) => {
+    nodes.set(path, '')
+    return fds.push(path) - 1
+  }
+  const write = (fd: number, data: Uint8Array) => {
+    const path = fds[fd] as string
+    nodes.set(path, nodes.get(path) + new TextDecoder().decode(data))
+    return data.length
+  }
+  const no = () => {}
+  const noAsync = async () => {}
+  const fs: ExtractFS = {
+    open: async path => {
+      const fd = open(path)
+      return {
+        write: async data => write(fd, data),
+        utimes: noAsync,
+        chown: noAsync,
+        close: noAsync,
+      }
+    },
+    stat: async path => lstat(path),
+    lstat: async path => lstat(path),
+    mkdir: async path => mkdir(path),
+    chmod: noAsync,
+    chown: noAsync,
+    lchown: noAsync,
+    utimes: noAsync,
+    lutimes: noAsync,
+    rmdir: noAsync,
+    unlink: noAsync,
+    rename: noAsync,
+    link: noAsync,
+    symlink: noAsync,
+  }
+  const fsSync: ExtractFSSync = {
+    openSync: open,
+    writeSync: write,
+    futimesSync: no,
+    fchownSync: no,
+    closeSync: no,
+    statSync: lstat,
+    lstatSync: lstat,
+    mkdirSync: mkdir,
+    chmodSync: no,
+    chownSync: no,
+    lchownSync: no,
+    utimesSync: no,
+    lutimesSync: no,
+    rmdirSync: no,
+    unlinkSync: no,
+    renameSync: no,
+    linkSync: no,
+    symlinkSync: no,
+  }
+  return { fs, fsSync, nodes }
+}
 
 // A symlink in the archive must not resolve outside of the extraction
 // directory. GHSA-3wwj-8j6r-q339, GHSA-jmj2-9c5q-vw73,
@@ -530,19 +614,67 @@ describe('hardening', () => {
     })
   }
 
-  test('each entry is refused when the cwd is the root', async () => {
-    // The old code has the same behavior.
-    for (const [platform, cwd] of [
-      ['posix', '/'],
-      ['win32', 'c:\\'],
+  for (const mode of modes) {
+    for (const [platform, cwd, root] of [
+      ['posix', '/', '/'],
+      ['win32', 'c:\\', 'c:/'],
     ] as const) {
-      const data = cat(hdr({ path: 'f', type: 'File' }), EOA)
-      const opt = { cwd, platform }
-      const { warnings, calls } = await runExtract('async', opt, data, {})
-      assert.deepEqual(brief(warnings), [
-        ['TAR_ENTRY_ERROR', 'path escaped extraction target'],
-      ])
-      assert.deepEqual(calls, [])
+      test(`${mode}: ${platform} entries extract under a root cwd`, async () => {
+        const { fs, fsSync, nodes } = memFs(root)
+        const data = cat(
+          dir('d'),
+          ent({ path: 'd/f', type: 'File' }, 'data'),
+          ent({ path: 'top', type: 'File' }, 'top'),
+          EOA,
+        )
+        const warnings: unknown[][] = []
+        const opt = {
+          cwd,
+          platform,
+          input: data,
+          onwarn: (...w: unknown[]) => warnings.push(w),
+        }
+        if (mode === 'sync') extractSync({ ...opt, fs: fsSync })
+        else await extract({ ...opt, fs })
+        assert.deepEqual(warnings, [])
+        assert.deepEqual(Object.fromEntries(nodes), {
+          [root]: null,
+          [root + 'd']: null,
+          [root + 'd/f']: 'data',
+          [root + 'top']: 'top',
+        })
+      })
+    }
+  }
+
+  // The checks of the path refuse each known escape before this
+  // check. The test gives the check a resolved path directly.
+  test('a resolved path that is not below the cwd is refused', () => {
+    const cases = [
+      ['posix', '/a/b', '/a/b/x', true],
+      ['posix', '/a/b', '/a/bc/x', false],
+      ['posix', '/a/b', '/a', false],
+      ['posix', '/a/b', '/x', false],
+      ['posix', '/', '/x', true],
+      ['win32', 'c:\\', 'c:/x', true],
+      ['win32', 'c:\\', 'd:/x', false],
+      ['win32', 'c:\\a', 'c:/ab/x', false],
+    ] as const
+    for (const [platform, cwd, resolved, ok] of cases) {
+      const warnings: [string, string][] = []
+      const unpack = new UnpackBase({
+        cwd,
+        platform,
+        fs: {},
+        onwarn: (code, message) => warnings.push([code, message]),
+      })
+      unpack.resolve = () => resolved
+      const entry = new EntryData(new Header({ path: 'x', type: 'File' }))
+      assert.equal(unpack.check(entry), ok, `${cwd} ${resolved}`)
+      assert.deepEqual(
+        warnings,
+        ok ? [] : [['TAR_ENTRY_ERROR', 'path escaped extraction target']],
+      )
     }
   })
 })
