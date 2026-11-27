@@ -17,6 +17,8 @@ const strings = [
   '\ud83c',
   '\udf1f',
   'a\ud83cb',
+  // a byte order mark at the start is a character of the text
+  '\ufeffab',
 ]
 
 for (const str of strings) {
@@ -27,6 +29,7 @@ for (const str of strings) {
 
   test(`decodeUtf8 of ${name}`, () => {
     const bytes = Buffer.from(`<${str}>`)
+    assert.equal(decodeUtf8(Buffer.from(str)), Buffer.from(str).toString())
     assert.equal(decodeUtf8(bytes), bytes.toString())
     assert.equal(
       decodeUtf8(bytes, 1, bytes.length - 1),

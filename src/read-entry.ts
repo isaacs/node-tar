@@ -144,6 +144,8 @@ export type BodySourceSync = {
   readBody(entry: ReadEntrySync): Uint8Array | null
 }
 
+// As `Response.text()` does, this decoder removes a byte order mark
+// at the start of the body.
 const decoder = new TextDecoder()
 const decode = (parts: Uint8Array[]) => {
   let text = ''
@@ -240,7 +242,10 @@ export class ReadEntry extends EntryData {
     return (await this.bytes()).buffer
   }
 
-  /** The body, decoded as UTF-8. */
+  /**
+   * The body, decoded as UTF-8. As with `Response.text()`, a byte
+   * order mark at the start is not in the text.
+   */
   async text(): Promise<string> {
     this.#claim()
     return decode(await this.#read())
@@ -315,7 +320,10 @@ export class ReadEntrySync extends EntryData {
     return this.bytes().buffer
   }
 
-  /** The body, decoded as UTF-8. */
+  /**
+   * The body, decoded as UTF-8. A byte order mark at the start is not
+   * in the text.
+   */
   text(): string {
     return decode(this.#read())
   }

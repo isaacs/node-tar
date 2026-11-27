@@ -1028,6 +1028,33 @@ describe('PAX records are framed by their length', () => {
   })
 })
 
+describe('a name that starts with U+FEFF keeps it', () => {
+  const name = '\ufeffab'
+  test('the name of a header', () => {
+    assert.deepEqual(parse([file(name), EOA]).paths, [name])
+  })
+  test('a PAX path and linkpath', () => {
+    const { entries } = parse([
+      pax([
+        ['path', name],
+        ['linkpath', name],
+      ]),
+      ent({ path: 'l', type: 'SymbolicLink', linkpath: 'x' }),
+      EOA,
+    ])
+    assert.match(entries, [{ path: name, linkpath: name }])
+  })
+  test('a GNU long path and linkpath', () => {
+    const { entries } = parse([
+      longPath(name),
+      longLink(name),
+      ent({ path: 'l', type: 'SymbolicLink', linkpath: 'x' }),
+      EOA,
+    ])
+    assert.match(entries, [{ path: name, linkpath: name }])
+  })
+})
+
 describe('a NUL ends a name, also before a line break', () => {
   for (const br of ['\n', '\r', ' ', ' ']) {
     const name = `a\0b${br}c\0d`

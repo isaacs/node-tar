@@ -1,7 +1,8 @@
 // Text and byte helpers that work on a plain Uint8Array in any
 // JavaScript runtime.
 
-const decoder = new TextDecoder()
+// A name can start with U+FEFF. The decoder must keep it.
+const decoder = new TextDecoder('utf-8', { ignoreBOM: true })
 const encoder = new TextEncoder()
 
 /** The number of bytes in the UTF-8 form of the string. */

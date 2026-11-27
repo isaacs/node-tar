@@ -244,6 +244,13 @@ describe('ReadEntry', () => {
     assert.equal(await e.text(), 'héllo wörld')
   })
 
+  test('text has no byte order mark, as Response.text()', async () => {
+    const body = bytes('\ufeffa\ufeffb')
+    const { e } = entry([body.subarray(0, 2), body.subarray(2)])
+    assert.equal(await e.text(), 'a\ufeffb')
+    assert.equal(await new Response(body).text(), 'a\ufeffb')
+  })
+
   test('blob', async () => {
     const { e } = entry(parts())
     const blob = await e.blob()
@@ -356,6 +363,12 @@ describe('ReadEntrySync', () => {
     assert(buffer instanceof ArrayBuffer)
     assert.deepEqual(new Uint8Array(buffer), bytes('héllo wörld'))
     assert.equal(entrySync(partsSync()).e.text(), 'héllo wörld')
+  })
+
+  test('text has no byte order mark', () => {
+    const body = bytes('\ufeffa\ufeffb')
+    const { e } = entrySync([body.subarray(0, 2), body.subarray(2)])
+    assert.equal(e.text(), 'a\ufeffb')
   })
 
   test('body is an iterator of the parts, with no copy', () => {

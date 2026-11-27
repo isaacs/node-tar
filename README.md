@@ -423,7 +423,7 @@ Read the body with one of these:
 - `entry.body` A `ReadableStream<Uint8Array>`.
 - `await entry.bytes()` A new `Uint8Array`.
 - `await entry.arrayBuffer()` A new `ArrayBuffer`.
-- `await entry.text()` A string, decoded as UTF-8.
+- `await entry.text()` A string, decoded as UTF-8. As with `Response.text()`, a byte order mark at the start is not in the string.
 - `await entry.blob()` A new `Blob`.
 
 Rules for the body:
