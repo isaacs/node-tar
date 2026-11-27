@@ -1205,6 +1205,137 @@ describe('explicit chmod', () => {
   }
 })
 
+describe('chmod of an existing directory', () => {
+  const data = makeTar([
+    { path: 'd', mode: 0o7755, type: 'Directory' },
+    '',
+    '',
+  ])
+  const chmods = (calls: unknown[][]) =>
+    calls.filter(c => c[0] === 'chmod')
+
+  for (const mode of modes) {
+    test(`no setuid, setgid, or sticky bit from the entry, ${mode}`, async () => {
+      const cwd = testdir({ d: { keep: 'x' } })
+      nodeFs.chmodSync(cwd + '/d', 0o700)
+      const opt = { cwd, chmod: true, processUmask: 0o22 }
+      const { calls } = await runExtract(mode, opt, data, {})
+      assert.deepEqual(chmods(calls), [['chmod', cwd + '/d', 0o755]])
+      assert.equal(modeOf(cwd + '/d'), statMode(0o755))
+    })
+
+    test(
+      `a sticky bit on disk is removed, ${mode}`,
+      { skip: isWindows && 'Windows has no sticky bit' },
+      async () => {
+        const cwd = testdir({ d: { keep: 'x' } })
+        nodeFs.chmodSync(cwd + '/d', 0o1755)
+        const opt = { cwd, chmod: true, processUmask: 0o22 }
+        const { calls } = await runExtract(mode, opt, data, {})
+        assert.deepEqual(chmods(calls), [['chmod', cwd + '/d', 0o755]])
+        assert.equal(modeOf(cwd + '/d'), 0o755)
+      },
+    )
+  }
+})
+
+describe('strict mode stops the entries that wait', () => {
+  // Each entry has the same path, so each one waits for the entry
+  // before it.
+  const data = makeTar([
+    { path: 'x', type: 'File', size: 1 },
+    'a',
+    { path: 'x', type: 'File', size: 1 },
+    'b',
+    { path: 'x', type: 'File', size: 1 },
+    'c',
+    '',
+    '',
+  ])
+
+  test('no entry is extracted after the first error', async () => {
+    const poop = poopError()
+    const cwd = testdir({})
+    let opens = 0
+    const hooked = hookFs({
+      open: () => {
+        if (opens++ === 0) throw poop
+      },
+    })
+    // The file system is slow, so all the entries are read before
+    // the first one fails.
+    const slow: ExtractFS = {
+      ...hooked.fs,
+      open: async (path, flags, mode) => {
+        await new Promise(res => setTimeout(res, 20))
+        return hooked.fs.open(path, flags, mode)
+      },
+    }
+    const er = await assert.rejects(
+      extract({ cwd, fs: slow, input: data, strict: true }),
+      { message: 'poop' },
+    )
+    assert.equal(er, poop)
+    assert.equal(opens, 1)
+    assert.deepEqual(nodeFs.readdirSync(cwd), [])
+  })
+})
+
+describe('the uid and gid options', () => {
+  const input = new Uint8Array(1024)
+  const ids = { processUid: 501, processGid: 20 }
+  const entry = (uid?: number, gid?: number) => ({ uid, gid }) as ReadEntry
+  const owner = (uid: number, gid: number, e: ReadEntry) =>
+    new Unpack({ cwd: '/x', fs, input, uid, gid, ...ids }).owner(e)
+
+  test('an unsigned 32-bit integer is used', () => {
+    assert.deepEqual(owner(0, 0, entry(7, 8)), { uid: 0, gid: 0 })
+    assert.deepEqual(owner(2 ** 32 - 1, 2 ** 32 - 1, entry(7, 8)), {
+      uid: 2 ** 32 - 1,
+      gid: 2 ** 32 - 1,
+    })
+  })
+
+  test('a number that is not one is not used', () => {
+    for (const bad of [-1, 1.5, 2 ** 32, NaN, Infinity]) {
+      // The owner of the entry is next, and then the process owner.
+      assert.deepEqual(owner(bad, 3, entry(7, 8)), { uid: 7, gid: 3 })
+      assert.deepEqual(owner(3, bad, entry(7, 8)), { uid: 3, gid: 8 })
+      assert.deepEqual(owner(bad, bad, entry(bad, bad)), {
+        uid: 501,
+        gid: 20,
+      })
+      assert.deepEqual(owner(bad, bad, entry()), { uid: 501, gid: 20 })
+    }
+  })
+
+  for (const mode of modes) {
+    test(`the owner that a file gets, ${mode}`, async () => {
+      const data = makeTar([
+        { path: 'f', type: 'File', size: 1, uid: 7, gid: 8 },
+        'x',
+        '',
+        '',
+      ])
+      const hooks = { fchown: () => SKIP }
+      const chowns = async (uid: number, gid: number) => {
+        const cwd = testdir({})
+        const opt = { cwd, uid, gid, ...ids }
+        const { calls, warnings } = await runExtract(
+          mode,
+          opt,
+          data,
+          hooks,
+        )
+        assert.deepEqual(warnings, [])
+        return calls.filter(c => c[0] === 'fchown').map(c => c.slice(2))
+      }
+      assert.deepEqual(await chowns(2 ** 32 - 1, 0), [[2 ** 32 - 1, 0]])
+      assert.deepEqual(await chowns(-1, 2 ** 32), [[7, 8]])
+    })
+  }
+})
+
 describe('chown implicit dirs and also the entries', () => {
   test('throws when setting uid/gid improperly', () => {
     const input = new Uint8Array(1024)
