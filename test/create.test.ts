@@ -10,6 +10,7 @@ import type {
 } from '../src/fs.js'
 import type { CreateOptions, CreateOptionsSync } from '../src/options.js'
 import { PackSync } from '../src/pack.js'
+import { zlibCodecs } from '../src/server/codecs.js'
 import type { WarnData } from '../src/warn.js'
 import { WriteEntry } from '../src/write-entry.js'
 import {
@@ -327,6 +328,83 @@ describe('paths', () => {
       { entry: { path: 'd', type: 'Directory' } },
     ])
   })
+})
+
+// The async pack of version 7 did not end with some trees of hard
+// links, and `create` with a file then left a cut archive.
+// https://github.com/isaacs/node-tar/issues/460
+describe('hard links do not stop the pack', () => {
+  const pad = (i: number) => String(i).padStart(3, '0')
+
+  for (const jobs of [undefined, 1, 2]) {
+    each(
+      `many directories with links to one file, jobs=${jobs}`,
+      async way => {
+        const cwd = testdir()
+        for (let i = 0; i < 20; i++) {
+          nodeFs.mkdirSync(`${cwd}/dir${pad(i)}`)
+          nodeFs.writeFileSync(
+            `${cwd}/dir${pad(i)}/file.txt`,
+            `content-${i}`,
+          )
+        }
+        const source = `${cwd}/dir000/hardlink-source.txt`
+        nodeFs.writeFileSync(source, 'I am the link target')
+        for (let i = 1; i < 15; i++) {
+          nodeFs.linkSync(source, `${cwd}/dir${pad(i)}/hardlink.txt`)
+        }
+        const found = read(await way.run({ cwd, jobs }, ['.']))
+        const count = (type: string) =>
+          found.filter(f => f.entry.type === type).length
+        assert.equal(count('Directory'), 21)
+        assert.equal(count('File'), 21)
+        assert.equal(count('Link'), 14)
+        assert.equal(found.length, 56)
+        for (const { entry } of found) {
+          if (entry.type !== 'Link') continue
+          assert.equal(entry.linkpath, 'dir000/hardlink-source.txt')
+        }
+      },
+    )
+  }
+
+  each(
+    'files with a link outside of the archive, and plain files',
+    async way => {
+      const cwd = testdir({ src: {}, elsewhere: {} })
+      const names: string[] = []
+      const expect: [string, string][] = []
+      for (let i = 0; i < 60; i++) {
+        const name = `src/f${pad(i)}.bin`
+        // The only other link of this file is not in the archive.
+        nodeFs.writeFileSync(`${cwd}/elsewhere/${i}`, `linked ${i}`)
+        nodeFs.linkSync(`${cwd}/elsewhere/${i}`, `${cwd}/${name}`)
+        names.push(name)
+        expect.push([name, `linked ${i}`])
+        if (i % 5 === 0) {
+          const plain = `src/p${pad(i)}.bin`
+          nodeFs.writeFileSync(`${cwd}/${plain}`, `plain ${i}`)
+          names.push(plain)
+          expect.push([plain, `plain ${i}`])
+        }
+      }
+      const opt = {
+        cwd,
+        portable: true,
+        noDirRecurse: true,
+        strict: true,
+        codecs: zlibCodecs(),
+      }
+      for (const gzip of [false, true]) {
+        const data = await way.run({ ...opt, gzip }, names)
+        const found = read(gzip ? zlib.gunzipSync(data) : data)
+        assert.deepEqual(
+          found.map(f => [f.entry.type, f.entry.path, f.body]),
+          expect.map(([name, body]) => ['File', name, body]),
+        )
+      }
+    },
+  )
 })
 
 describe('the archive file', () => {
