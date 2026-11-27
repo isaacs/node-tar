@@ -96,11 +96,15 @@ export class ReadEntry extends Minipass<Buffer, Buffer> {
     this.uname = header.uname
     this.gname = header.gname
 
-    if (ex) {
-      this.#slurp(ex)
-    }
-    if (gex) {
-      this.#slurp(gex, true)
+    // Pending extended headers describe the next file entry, not a
+    // meta entry. Apply global first, so that local values win.
+    if (!this.meta) {
+      if (gex) {
+        this.#slurp(gex, true)
+      }
+      if (ex) {
+        this.#slurp(ex)
+      }
     }
   }
 
@@ -136,7 +140,15 @@ export class ReadEntry extends Minipass<Buffer, Buffer> {
           // we slurp in everything except for the path attribute in
           // a global extended header, because that's weird. Also, any
           // null/undefined values are ignored.
-          return !(v === null || v === undefined || (k === 'path' && gex))
+          // The Header already resolved size. It sets the body length.
+          return !(
+            v === null ||
+            v === undefined ||
+            k === 'size' ||
+            k === 'global' ||
+            (k === 'path' && gex) ||
+            (k === 'linkpath' && gex)
+          )
         }),
       ),
     )

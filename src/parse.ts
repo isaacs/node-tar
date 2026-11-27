@@ -195,6 +195,12 @@ export class Parser extends EE implements Warner {
         this[EMIT]('nullBlock')
       }
     } else {
+      if (this[SAW_NULL_BLOCK] && header.cksumValid) {
+        // Other tar programs stop reading at a lone null block.
+        this.warn('TAR_BAD_ARCHIVE', 'entry after a lone null block', {
+          header,
+        })
+      }
       this[SAW_NULL_BLOCK] = false
       if (!header.cksumValid) {
         this.warn('TAR_ENTRY_INVALID', 'checksum failure', { header })
@@ -387,14 +393,14 @@ export class Parser extends EE implements Warner {
       case 'OldGnuLongPath': {
         const ex: Pax = this[EX] ?? Object.create(null)
         this[EX] = ex
-        ex.path = this[META].replace(/\0.*/, '')
+        ex.path ??= this[META].replace(/\0.*/s, '')
         break
       }
 
       case 'NextFileHasLongLinkpath': {
         const ex: Pax = this[EX] || Object.create(null)
         this[EX] = ex
-        ex.linkpath = this[META].replace(/\0.*/, '')
+        ex.linkpath ??= this[META].replace(/\0.*/s, '')
         break
       }
 

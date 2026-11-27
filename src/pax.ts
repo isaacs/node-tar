@@ -2,7 +2,7 @@ import { basename } from 'node:path'
 import type { HeaderData } from './header.js'
 import { Header } from './header.js'
 
-const SIMPLE_NUMBER = /^(?:0|[1-9]\d*)$/
+const SIMPLE_NUMBER = /^\d+$/
 
 export class Pax implements HeaderData {
   atime?: Date
@@ -148,25 +148,36 @@ export class Pax implements HeaderData {
 const merge = (a: HeaderData, b?: HeaderData) =>
   b ? Object.assign({}, b, a) : a
 
-const parseKV = (str: string) =>
-  str
-    .replace(/\n$/, '')
-    .split('\n')
-    .reduce(parseKVLine, Object.create(null))
+// Each record is "<len> <key>=<value>\n". <len> is the byte length of
+// the whole record. A value can contain a newline, so use the length
+// to find the end of the record. Stop at the first malformed record.
+const parseKV = (str: string) => {
+  const set: Record<string, string | number | Date> = Object.create(null)
+  const buf = Buffer.from(str)
+  let pos = 0
+  while (pos < buf.length) {
+    let sp = pos
+    while (
+      sp < buf.length &&
+      (buf[sp] as number) >= 0x30 &&
+      (buf[sp] as number) <= 0x39
+    ) {
+      sp++
+    }
+    if (sp === pos || buf[sp] !== 0x20) break
+    const n = Number(buf.toString('ascii', pos, sp))
+    const end = pos + n
+    if (end <= sp + 1 || end > buf.length || buf[end - 1] !== 0x0a) break
+    parseKVLine(set, buf.toString('utf8', sp + 1, end - 1))
+    pos = end
+  }
+  return set
+}
 
 const parseKVLine = (
   set: Record<string, string | number | Date>,
   line: string,
 ) => {
-  const n = parseInt(line, 10)
-
-  // XXX Values with \n in them will fail this.
-  // Refactor to not be a naive line-by-line parse.
-  if (n !== Buffer.byteLength(line) + 1) {
-    return set
-  }
-
-  line = line.slice((n + ' ').length)
   const kv = line.split('=')
   const r = kv.shift()
 
@@ -176,7 +187,7 @@ const parseKVLine = (
 
   const k = r.replace(/^SCHILY\.(dev|ino|nlink)/, '$1')
 
-  const v = kv.join('=').replace(/\0.*/, '')
+  const v = kv.join('=').replace(/\0.*/s, '')
   switch (k) {
     case 'path':
     case 'linkpath':
@@ -190,23 +201,21 @@ const parseKVLine = (
     case 'ctime':
     case 'atime':
     case 'mtime':
-      set[k] = new Date(Number(v) * 1000)
+      const d = new Date(Number(v) * 1000)
+      if (!isNaN(d.getTime())) set[k] = d
       break
     case 'size':
-      // value must be a string of digits with no negative sign
-      if (!SIMPLE_NUMBER.test(v.trim())) break
-      const s = +v
-      // must be a finite, non-negative integer, like the binary header path
-      if (!Number.isSafeInteger(s)) break
-      set[k] = s
-      break
     case 'gid':
     case 'uid':
     case 'dev':
     case 'ino':
     case 'nlink':
     case 'mode':
-      set[k] = +v
+      // value must be a string of decimal digits
+      if (!SIMPLE_NUMBER.test(v.trim())) break
+      const s = +v
+      if (!Number.isSafeInteger(s)) break
+      set[k] = s
       break
   }
   return set

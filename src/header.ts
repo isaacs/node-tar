@@ -351,7 +351,7 @@ const decString = (buf: Buffer, off: number, size: number) =>
   buf
     .subarray(off, off + size)
     .toString('utf8')
-    .replace(/\0.*/, '')
+    .replace(/\0.*/s, '')
 
 const decDate = (buf: Buffer, off: number, size: number) =>
   numToDate(decNumber(buf, off, size))
