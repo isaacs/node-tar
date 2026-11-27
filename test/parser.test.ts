@@ -1153,6 +1153,64 @@ describe('a PAX name wins over a GNU long name', () => {
   })
 })
 
+describe('the last GNU long name wins', () => {
+  const link = ent({ path: 'l', type: 'SymbolicLink', linkpath: 'hdr' })
+  test('two GNU long paths', () => {
+    assert.deepEqual(
+      parse([longPath('one'), longPath('two'), file('f'), file('g'), EOA])
+        .paths,
+      ['two', 'g'],
+    )
+  })
+  test('two GNU long linkpaths', () => {
+    const { entries } = parse([
+      longLink('one'),
+      longLink('two'),
+      link,
+      link,
+      EOA,
+    ])
+    assert.match(entries, [
+      { path: 'l', linkpath: 'two' },
+      { path: 'l', linkpath: 'hdr' },
+    ])
+  })
+  test('PAX path, then two GNU long paths', () => {
+    assert.deepEqual(
+      parse([
+        pax([['path', 'pax']]),
+        longPath('one'),
+        longPath('two'),
+        file('f'),
+        EOA,
+      ]).paths,
+      ['pax'],
+    )
+  })
+  test('a PAX path between two GNU long paths', () => {
+    assert.deepEqual(
+      parse([
+        longPath('one'),
+        pax([['path', 'pax']]),
+        longPath('two'),
+        file('f'),
+        EOA,
+      ]).paths,
+      ['pax'],
+    )
+  })
+  test('a PAX linkpath between two GNU long linkpaths', () => {
+    const { entries } = parse([
+      longLink('one'),
+      pax([['linkpath', 'pax']]),
+      longLink('two'),
+      link,
+      EOA,
+    ])
+    assert.match(entries, [{ path: 'l', linkpath: 'pax' }])
+  })
+})
+
 describe('maxMetaEntrySize', () => {
   const name = 'n'.repeat(300)
   const data = cat(

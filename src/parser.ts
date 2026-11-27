@@ -98,6 +98,8 @@ export class Parser<E extends EntryData = EntryData> {
   // body bytes at the end of the input that are less than a block
   #held: number = 0
   #ex?: Pax
+  // the names of the GNU long name headers for the next entry
+  #long?: { path?: string; linkpath?: string }
   #gex?: Pax
   #ended: boolean = false
   #sawNull: boolean = false
@@ -301,9 +303,18 @@ export class Parser<E extends EntryData = EntryData> {
   #consumeHeader(buf: Uint8Array, off: number): ParseEvent<E> | undefined {
     this.offset += 512
     if (this.#sawValid === undefined) this.#sawValid = false
+    // A PAX name wins over a GNU long name. The header does not use
+    // these values if it is a PAX or GNU header itself.
+    let ex = this.#ex
+    const long = this.#long
+    if (long) {
+      ex = Object.assign(Object.create(null) as Pax, ex)
+      ex.path ??= long.path
+      ex.linkpath ??= long.linkpath
+    }
     let header: Header
     try {
-      header = new Header(buf, off, this.#ex, this.#gex)
+      header = new Header(buf, off, ex, this.#gex)
     } catch (er) {
       this.warn('TAR_ENTRY_INVALID', er as Error)
       return
@@ -376,8 +387,7 @@ export class Parser<E extends EntryData = EntryData> {
       return
     }
 
-    const ex = this.#ex
-    this.#ex = undefined
+    this.#ex = this.#long = undefined
     const entry = this.#create(header, ex, this.#gex)
     if (
       !entry.ignore &&
@@ -406,17 +416,14 @@ export class Parser<E extends EntryData = EntryData> {
       case 'GlobalExtendedHeader':
         this.#gex = Pax.parseBytes(meta, this.#gex, true)
         break
+      // The last GNU long name of each kind is the one to use.
       case 'NextFileHasLongPath':
-      case 'OldGnuLongPath': {
-        const ex = (this.#ex ??= Object.create(null) as Pax)
-        ex.path ??= cstring(meta)
+      case 'OldGnuLongPath':
+        ;(this.#long ??= {}).path = cstring(meta)
         break
-      }
       // NextFileHasLongLinkpath
-      default: {
-        const ex = (this.#ex ??= Object.create(null) as Pax)
-        ex.linkpath ??= cstring(meta)
-      }
+      default:
+        ;(this.#long ??= {}).linkpath = cstring(meta)
     }
   }
 }
