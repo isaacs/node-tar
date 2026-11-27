@@ -1,14 +1,13 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import { resolve } from 'node:path'
 import zlib from 'node:zlib'
-import { any, assert, beforeEach, describe, test, testdir } from 'ubqtest'
+import { any, assert, beforeEach, describe, test } from 'ubqtest'
 import type { HeaderData } from '../src/header.js'
 import type { Codec, CodecStream } from '../src/codec.js'
 import type { PackOptions, PackOptionsSync } from '../src/options.js'
 import { entries, entriesSync } from '../src/entries.js'
 import type { CreateFileHandle, CreateFS, CreateStats } from '../src/fs.js'
-import { Pack, PackJob, PackSync } from '../src/pack.js'
+import { PackJob } from '../src/pack.js'
 import { ReadEntry } from '../src/read-entry.js'
 import type { WarnData } from '../src/warn.js'
 import { WriteEntry } from '../src/write-entry.js'
@@ -24,11 +23,12 @@ import {
   fs,
   fsSync,
   headerAt,
-  isWindows,
   listBlocks,
   modes,
   mtime,
+  Pack,
   pack,
+  PackSync,
   packSync,
   paths,
   pin,
@@ -39,7 +39,19 @@ import {
   type Options,
   type Over,
 } from './create-helpers.js'
-import { cat, ent, EOA, file, pax, xorCodec } from './helpers.js'
+import {
+  cat,
+  ent,
+  EOA,
+  file,
+  isWindows,
+  noSymlink,
+  pax,
+  resolve,
+  rootOf,
+  testdir,
+  xorCodec,
+} from './helpers.js'
 
 /** Define the test one time for each mode. */
 const each = (
@@ -52,10 +64,7 @@ const each = (
   }
 }
 
-// On Windows, only a user with the privilege can make a symbolic
-// link.
-const noSymlink = isWindows && 'the test makes a symbolic link'
-/** Skip each test of the group on Windows. */
+/** Skip each test of the group if the user cannot make a link. */
 const needsSymlink = () =>
   beforeEach(({ skip }) => {
     if (noSymlink) skip(noSymlink)
@@ -811,8 +820,10 @@ describe('short reads', () => {
 
 describe('warnings for an absolute path', () => {
   const f = resolve(files, '512-bytes.txt')
-  const root = isWindows ? f.slice(0, 3) : '/'
-  const abs = root + root + root + f
+  const root = rootOf(f)
+  // A path of Windows has one root, the drive.
+  const extra = isWindows ? '' : '///'
+  const abs = extra + f
   const stripped = f.slice(root.length)
 
   each('the root is removed, with a warning', async mode => {
@@ -826,7 +837,7 @@ describe('warnings for an absolute path', () => {
     assert.match<unknown>(warnings, [
       [
         'TAR_ENTRY_INFO',
-        `stripping ${root.repeat(4)} from absolute path`,
+        `stripping ${extra + root} from absolute path`,
         { path: abs, entry: seen[0], code: 'TAR_ENTRY_INFO' },
       ],
     ])
@@ -1105,11 +1116,12 @@ describe('win32', () => {
   })
 
   each('not win32: a \\ is a character of the name', async mode => {
-    const data = await mode.run({}, [new WriteEntry({ path: 'a\\b' })])
+    const posix = { platform: 'posix' } as const
+    const data = await mode.run(posix, [new WriteEntry({ path: 'a\\b' })])
     assert.deepEqual(paths(data), ['a\\b'])
     // Also in a prefix, and in the target of a link.
     const link = await mode.run(
-      { cwd: files, prefix: 'pre\\fix' },
+      { ...posix, cwd: files, prefix: 'pre\\fix' },
       ['symlink'],
       {
         async: { readlink: async () => 'a\\b' },

@@ -1,18 +1,20 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import { resolve } from 'node:path'
 import zlib from 'node:zlib'
-import { assert, describe, test, testdir } from 'ubqtest'
+import { assert, describe, test } from 'ubqtest'
 import type { CreateFileHandle } from '../src/fs.js'
-import { AppendScan, replace, replaceSync } from '../src/replace.js'
-import { update, updateSync } from '../src/update.js'
+import { AppendScan } from '../src/replace.js'
 import {
   fs,
   fsSync,
   mtime as pinned,
   read,
+  replace,
+  replaceSync,
   tars,
   tracked,
+  update,
+  updateSync,
   type Options,
   type Over,
 } from './create-helpers.js'
@@ -24,6 +26,8 @@ import {
   hdr,
   longPath,
   pax,
+  resolve,
+  testdir,
   xorCodec,
   xorCompress,
 } from './helpers.js'

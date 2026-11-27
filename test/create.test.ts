@@ -1,10 +1,8 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import { resolve } from 'node:path'
 import zlib from 'node:zlib'
-import { assert, describe, test, testdir } from 'ubqtest'
+import { assert, describe, test } from 'ubqtest'
 import type { Codec, CodecStream } from '../src/codec.js'
-import { create, createSync } from '../src/create.js'
 import type {
   CreateFileHandle,
   CreateFS,
@@ -16,6 +14,8 @@ import type { WarnData } from '../src/warn.js'
 import { WriteEntry } from '../src/write-entry.js'
 import {
   collect,
+  create,
+  createSync,
   files,
   fixtures,
   fs,
@@ -29,7 +29,15 @@ import {
   type Options,
   type Over,
 } from './create-helpers.js'
-import { cat, EOA, file, xorCodec, xorCompress } from './helpers.js'
+import {
+  cat,
+  EOA,
+  file,
+  resolve,
+  testdir,
+  xorCodec,
+  xorCompress,
+} from './helpers.js'
 
 const defaults = { processUid: uid, processUname: 'isaacs' }
 

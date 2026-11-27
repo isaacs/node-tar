@@ -1,6 +1,6 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import { assert, describe, test, testdir } from 'ubqtest'
+import { assert, describe, test } from 'ubqtest'
 import { createSync } from '../src/create.js'
 import { dealias, type WithAliases } from '../src/dealias.js'
 import { extractSync } from '../src/extract.js'
@@ -10,6 +10,7 @@ import { listSync } from '../src/list.js'
 import * as server from '../src/server/index.js'
 import { replaceSync } from '../src/replace.js'
 import { updateSync } from '../src/update.js'
+import { sys, testdir } from './helpers.js'
 
 const run = dealias as (options: object) => Record<string, unknown>
 
@@ -151,16 +152,29 @@ type Point = { name: string; fs: object } & Record<
   'c' | 'x' | 't' | 'r' | 'u',
   Command
 >
+// A command of the core, with the platform of the system.
+const onSys =
+  (command: Command): Command =>
+  (options, files) =>
+    command(sys(options), files)
 const points = [
-  { name: 'core', fs: nodeFsPromises, ...core },
+  {
+    name: 'core',
+    fs: nodeFsPromises,
+    c: onSys(core.c as Command),
+    x: onSys(core.x as Command),
+    t: onSys(core.t as Command),
+    r: onSys(core.r as Command),
+    u: onSys(core.u as Command),
+  },
   {
     name: 'core, sync',
     fs: nodeFs,
-    c: createSync,
-    x: extractSync,
-    t: listSync,
-    r: replaceSync,
-    u: updateSync,
+    c: onSys(createSync as Command),
+    x: onSys(extractSync as Command),
+    t: onSys(listSync as Command),
+    r: onSys(replaceSync as Command),
+    u: onSys(updateSync as Command),
   },
   { name: 'server', fs: nodeFsPromises, ...server },
   {
@@ -241,7 +255,7 @@ describe('the commands take the aliases', () => {
     const dir = tree()
     const f = dir + '/a.tar'
     const fs = nodeFsPromises
-    const done: Promise<void> = core.c({ fs, f, C: dir }, ['src'])
+    const done: Promise<void> = core.c(sys({ fs, f, C: dir }), ['src'])
     await done
     const stream: ReadableStream<Uint8Array> = server.c({ C: dir }, [
       'src',
@@ -250,7 +264,7 @@ describe('the commands take the aliases', () => {
     const none: void = server.createSync({ f, C: dir, h: true }, ['src'])
     assert.equal(none, undefined)
     const chunks: Iterable<Uint8Array> = createSync(
-      { fs: nodeFs, C: dir },
+      sys({ fs: nodeFs, C: dir }),
       ['src/a.txt'],
     )
     assert.equal([...chunks].length, 2)

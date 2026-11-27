@@ -2,8 +2,11 @@
 import { chmodrSync } from 'chmodr'
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import { resolve } from 'node:path'
 import { Header } from '../src/header.js'
+import {
+  create as coreCreate,
+  createSync as coreCreateSync,
+} from '../src/create.js'
 import { entries, entriesSync } from '../src/entries.js'
 import type {
   CreateFileHandle,
@@ -11,14 +14,27 @@ import type {
   CreateFSSync,
   CreateStats,
 } from '../src/fs.js'
-import type { PackOptionsBase } from '../src/options.js'
-import { Pack, PackSync } from '../src/pack.js'
+import type {
+  PackOptions,
+  PackOptionsBase,
+  PackOptionsSync,
+} from '../src/options.js'
+import { Pack as CorePack, PackSync as CorePackSync } from '../src/pack.js'
 import type {
   EntryData,
   ReadEntry,
   ReadEntrySync,
 } from '../src/read-entry.js'
+import {
+  replace as coreReplace,
+  replaceSync as coreReplaceSync,
+} from '../src/replace.js'
+import {
+  update as coreUpdate,
+  updateSync as coreUpdateSync,
+} from '../src/update.js'
 import type { WriteEntry } from '../src/write-entry.js'
+import { isWindows, resolve, sys } from './helpers.js'
 
 export const fixtures = resolve(import.meta.dirname, './fixtures')
 export const files = resolve(fixtures, 'files')
@@ -29,7 +45,6 @@ export const atime = new Date('2017-04-17T00:00:00.000Z')
 export const mtime = new Date('2016-04-01T19:00:00.000Z')
 
 export const uid = process.getuid?.() ?? 0
-export const isWindows = process.platform === 'win32'
 export const fileMode = isWindows ? 0o666 : 0o644
 export const dirMode = isWindows ? 0o777 : 0o755
 
@@ -98,6 +113,34 @@ export const collect = async (
   } else for await (const part of source) parts.push(part)
   return Buffer.concat(parts)
 }
+
+/** `Pack` of the core, with the platform of the system. */
+export class Pack extends CorePack {
+  constructor(opt: PackOptions = {}) {
+    super(sys(opt))
+  }
+}
+
+/** `PackSync` of the core, with the platform of the system. */
+export class PackSync extends CorePackSync {
+  constructor(opt: PackOptionsSync = {}) {
+    super(sys(opt))
+  }
+}
+
+// Each command of the core, with the platform of the system.
+export const create = ((opt, files) =>
+  coreCreate(sys(opt), files)) as typeof coreCreate
+export const createSync = ((opt, files) =>
+  coreCreateSync(sys(opt), files)) as typeof coreCreateSync
+export const replace: typeof coreReplace = (opt, files) =>
+  coreReplace(sys(opt), files)
+export const replaceSync: typeof coreReplaceSync = (opt, files) =>
+  coreReplaceSync(sys(opt), files)
+export const update: typeof coreUpdate = (opt, files) =>
+  coreUpdate(sys(opt), files)
+export const updateSync: typeof coreUpdateSync = (opt, files) =>
+  coreUpdateSync(sys(opt), files)
 
 const defaults = { processUid: uid, processUname: 'isaacs' }
 
