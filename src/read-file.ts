@@ -13,7 +13,7 @@ const MIN_SKIP = 1024 * 1024
  * after the chunks given so far, when no consumer reads that body.
  * If it returns true, the next chunk starts after those bytes.
  */
-export const SKIP: unique symbol = Symbol('skip')
+export const SKIP: unique symbol = Symbol.for('tar.readFile.skip')
 
 /** A chunk source that can skip input. */
 export type Skip = { [SKIP](n: number): boolean }
