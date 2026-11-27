@@ -663,7 +663,7 @@ export class Unpack extends UnpackBase<ReadEntry, ExtractOptions> {
     const st = await fs.lstat(absolute).catch(() => undefined)
     if (st && this.skip(entry, st)) return
     if (st && !this.isReusable(entry, st)) {
-      if (st.isDirectory() && entry.type === 'Directory') {
+      if (st.isDirectory() && dirTypes.has(entry.type)) {
         if (
           this.chmod &&
           entry.mode &&
@@ -910,7 +910,7 @@ export class UnpackSync extends UnpackBase<
     } catch {}
     if (st && this.skip(entry, st)) return
     if (st && !this.isReusable(entry, st)) {
-      if (st.isDirectory() && entry.type === 'Directory') {
+      if (st.isDirectory() && dirTypes.has(entry.type)) {
         if (
           this.chmod &&
           entry.mode &&

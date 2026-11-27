@@ -2045,12 +2045,11 @@ describe('an existing file', () => {
     })
 
     test(`a directory entry over a file, ${mode}`, async () => {
-      const cwd = testdir({ d: 'a file', e: { sub: {} }, g: {} })
+      const cwd = testdir({ d: 'a file', e: { sub: {} }, g: 'a file' })
       const data = makeTar([
         { path: 'd', type: 'Directory' },
         // A directory that is not empty cannot be replaced.
         { path: 'e', type: 'File' },
-        // An empty directory is removed for this type.
         { path: 'g', type: 'GNUDumpDir' },
         '',
         '',
@@ -2070,9 +2069,29 @@ describe('an existing file', () => {
         ...remove,
         'mkdir',
         'rmdir',
-        'rmdir',
+        ...remove,
         'mkdir',
       ])
+    })
+
+    test(`a directory entry over a directory, ${mode}`, async () => {
+      const cwd = testdir({ d: { keep: 'd' }, g: { keep: 'g' } })
+      const data = makeTar([
+        { path: 'd', type: 'Directory' },
+        { path: 'g', type: 'GNUDumpDir' },
+        '',
+        '',
+      ])
+      const { warnings, calls } = await runExtract(
+        mode,
+        { cwd, jobs: 1 },
+        data,
+        {},
+      )
+      assert.deepEqual(warnings, [])
+      assert.equal(read(cwd + '/d/keep'), 'd')
+      assert.equal(read(cwd + '/g/keep'), 'g')
+      assert.deepEqual(ops(calls), ['mkdir', 'mkdir'])
     })
   }
 })

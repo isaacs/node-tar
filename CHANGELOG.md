@@ -146,6 +146,8 @@ A new API. See "Migration from version 7" in the README.
   entry at each depth in that directory, not only 100 levels.
 - `create()` does not write a file that has more than one link as
   a hard link to itself when its path is added two times.
+- `extract()` keeps an existing directory for a `GNUDumpDir` entry,
+  as it does for a `Directory` entry.
 
 ## 7.5
 
