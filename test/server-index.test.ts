@@ -328,6 +328,22 @@ describe('the defaults', () => {
   })
 })
 
+// The shape of `original-fs` of Electron: the module for a sync
+// command, and its `promises` object for an async command.
+// https://github.com/isaacs/node-tar/issues/402
+test('the fs option takes node:fs and its promises object', async () => {
+  const cwd = tree()
+  const file = resolve(cwd, 'a.tgz')
+  const fs = nodeFs.promises
+  await tar.create({ file, cwd, gzip: true, fs }, ['src'])
+  await tar.extract({ file, cwd: resolve(cwd, 'out'), fs })
+  assert.equal(text(cwd, 'out/src/sub/b.txt'), 'beta')
+  nodeFs.rmSync(resolve(cwd, 'out/src'), { recursive: true })
+  tar.createSync({ file, cwd, fs: nodeFs }, ['src'])
+  tar.extractSync({ file, cwd: resolve(cwd, 'out'), fs: nodeFs })
+  assert.equal(text(cwd, 'out/src/a.txt'), 'alpha')
+})
+
 // https://github.com/isaacs/node-tar/issues/462
 describe('a transform of version 7 that returns a Node.js stream', () => {
   const upper = () =>

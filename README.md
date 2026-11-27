@@ -371,6 +371,32 @@ for (const [path, node] of tree) console.log(node.type, path)
 console.log(await new Blob(tree.get('/out/docs/hello.txt').chunks).text())
 ```
 
+#### Electron and `asar` files
+
+In Electron, the `fs` module is changed: a file with a name that ends
+in `.asar` is a directory. With that module, `extract()` does not
+write an `app.asar` entry as a file, and `create()` reads the paths
+in the `asar` file and not the file. Electron has the module
+`original-fs`, which is `node:fs` with no change. Give it as the `fs`
+option.
+
+An async command needs the functions that return promises:
+`originalFs.promises`. A sync command needs `originalFs`.
+
+This example is for the main process of Electron. It is not tested,
+because the tests of this package do not run in Electron.
+
+```javascript
+import originalFs from 'original-fs'
+import { create, extract, extractSync } from 'tar'
+
+await create({ file: 'app.tgz', gzip: true, fs: originalFs.promises }, [
+  'MyApp.app',
+])
+await extract({ file: 'app.tgz', cwd: 'out', fs: originalFs.promises })
+extractSync({ file: 'app.tgz', cwd: 'out', fs: originalFs })
+```
+
 #### The process options
 
 - `cwd` The directory that `extract()` writes into, and the directory
@@ -663,6 +689,16 @@ iterator is read.
 An error from the file system, such as a path that does not exist,
 stops the command. With `file`, the archive file that is not complete
 stays on disk.
+
+`create()` writes the size that `lstat` gives for a file, and then
+reads that number of bytes. If the file has fewer bytes or more
+bytes, the command stops with an error that has the `code` `'EOF'`,
+the `path`, and a message that starts with
+`encountered unexpected EOF` or `did not encounter expected EOF`. The
+cause is a file that changed while it was read, or a file system that
+gives a wrong size, such as the `fs` module of Electron for a path in
+an `asar` file. See
+[Electron and `asar` files](#electron-and-asar-files).
 
 Options:
 

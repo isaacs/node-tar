@@ -38,6 +38,17 @@ const same = (
 
 const eof = (message: string, path: string) =>
   Object.assign(new Error(message), { path, syscall: 'read', code: 'EOF' })
+// The file does not have the number of bytes that its stat gave.
+const fewer = (path: string, size: number) =>
+  eof(
+    `encountered unexpected EOF: ${path} has fewer than the ${size} bytes of its stat`,
+    path,
+  )
+const more = (path: string, size: number) =>
+  eof(
+    `did not encounter expected EOF: ${path} has more than the ${size} bytes of its stat`,
+    path,
+  )
 const pathOf = (entry: WriteEntry) => entry.absolute ?? entry.path
 const tooLong = (entry: WriteEntry) =>
   Object.assign(new Error('writing more data than expected'), {
@@ -422,10 +433,8 @@ const fill = async (
       buf.length - off,
       pos,
     )
-    if (bytesRead <= 0) throw eof('encountered unexpected EOF', path)
-    if (bytesRead > size - pos) {
-      throw eof('did not encounter expected EOF', path)
-    }
+    if (bytesRead <= 0) throw fewer(path, size)
+    if (bytesRead > size - pos) throw more(path, size)
     off += bytesRead
     pos += bytesRead
   }
@@ -443,10 +452,8 @@ const fillSync = (
 ): number => {
   while (off < buf.length && pos < size) {
     const bytesRead = fs.readSync(fd, buf, off, buf.length - off, pos)
-    if (bytesRead <= 0) throw eof('encountered unexpected EOF', path)
-    if (bytesRead > size - pos) {
-      throw eof('did not encounter expected EOF', path)
-    }
+    if (bytesRead <= 0) throw fewer(path, size)
+    if (bytesRead > size - pos) throw more(path, size)
     off += bytesRead
     pos += bytesRead
   }

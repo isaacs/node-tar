@@ -726,14 +726,15 @@ describe('errors of the file system', () => {
     assert.equal(open.size, 0)
   })
 
+  const fsFile = (name: string) => resolve(files, name)
   for (const maxReadSize of [undefined, 100, 2]) {
     each(`read gives no bytes, maxReadSize=${maxReadSize}`, async mode => {
       const { open, over } = tracked(readOver(n => n, 0))
       await assert.rejects(
         mode.run({ cwd: files, maxReadSize }, ['1024-bytes.txt'], over),
         {
-          message: 'encountered unexpected EOF',
-          path: resolve(files, '1024-bytes.txt'),
+          message: `encountered unexpected EOF: ${fsFile('1024-bytes.txt')} has fewer than the 1024 bytes of its stat`,
+          path: fsFile('1024-bytes.txt'),
           syscall: 'read',
           code: 'EOF',
         },
@@ -752,8 +753,8 @@ describe('errors of the file system', () => {
         await assert.rejects(
           mode.run({ cwd: files, maxReadSize }, ['512-bytes.txt'], over),
           {
-            message: 'did not encounter expected EOF',
-            path: resolve(files, '512-bytes.txt'),
+            message: `did not encounter expected EOF: ${fsFile('512-bytes.txt')} has more than the 3 bytes of its stat`,
+            path: fsFile('512-bytes.txt'),
             syscall: 'read',
             code: 'EOF',
           },
@@ -2420,7 +2421,8 @@ describe('reading on demand', () => {
     const { open, over } = tracked(readOver(n => n, 0))
     const p = pack({ cwd, jobs: 6, maxReadSize: 1024 }, over.async)
     await assert.rejects(collect(p.add('d').end()), {
-      message: 'encountered unexpected EOF',
+      message:
+        /^encountered unexpected EOF: .* has fewer than the \d+ bytes of its stat$/,
     })
     assert.equal(open.size, 0)
   })

@@ -99,6 +99,8 @@ A new API. See "Migration from version 7" in the README.
   they find the place to append, and refuse an archive in any known
   compressed format.
 - Export `CwdError` and `SymlinkError`.
+- The error of `create()` for a file that has fewer or more bytes
+  than its `lstat` size names the path and the size in its message.
 - `extract()` works with a `cwd` that is a root of the file system,
   such as `/` or `c:\`.
 
