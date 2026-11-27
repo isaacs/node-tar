@@ -16,11 +16,7 @@ import type {
   PackOptionsSync,
 } from './options.js'
 import { relative, resolve } from './path.js'
-import {
-  EntryData,
-  type ReadEntry,
-  type ReadEntrySync,
-} from './read-entry.js'
+import type { ReadEntry, ReadEntrySync } from './read-entry.js'
 import { stripAbsolutePath } from './strip-absolute-path.js'
 import { toStream } from './to-stream.js'
 import { warn } from './warn.js'
@@ -45,6 +41,23 @@ const tooLong = (entry: WriteEntry) =>
   Object.assign(new Error('writing more data than expected'), {
     path: pathOf(entry),
   })
+
+// The package has more than one copy of each class: the entry points
+// `tar` and `tar/core` are separate bundles, and each has an ESM and
+// a CommonJS build. `instanceof` is false for an entry of a different
+// copy, so these checks use the shape of the item. A `PackJob` is
+// always of this copy, because only the pack makes it.
+
+// A source of entries is an iterable. An entry is not.
+const isSource = (
+  item: object,
+): item is AsyncIterable<unknown> | Iterable<unknown> =>
+  Symbol.asyncIterator in item || Symbol.iterator in item
+
+// A `WriteEntry` can encode its header. An entry of an archive
+// cannot.
+const isWriteEntry = (item: object): item is WriteEntry =>
+  typeof (item as WriteEntry).encode === 'function'
 
 /** A directory above a path, when a pack follows symbolic links. */
 export type Ancestor = { key: string; up?: Ancestor }
@@ -326,7 +339,7 @@ export abstract class PackBase<
    * `undefined` if the filter refuses an entry of another archive.
    */
   protected addedEntry(item: WriteEntry | E): WriteEntry | undefined {
-    if (item instanceof WriteEntry) return this.#finish(item, false)
+    if (isWriteEntry(item)) return this.#finish(item, false)
     const { filter } = this.opt
     if (filter && !filter(item.path, item)) return
     return this.#finish(new WriteEntry(item, item.body), false)
@@ -607,9 +620,8 @@ export class Pack
         this.#start()
         const { item } = node
         if (item instanceof PackJob) yield* this.#path(item)
-        else if (item instanceof WriteEntry || item instanceof EntryData) {
-          yield* this.#entry(item)
-        } else for await (const entry of item) yield* this.#entry(entry)
+        else if (!isSource(item)) yield* this.#entry(item)
+        else for await (const entry of item) yield* this.#entry(entry)
         this.shift()
       }
       yield new Uint8Array(1024)
@@ -801,9 +813,8 @@ export class PackSync
       if (item instanceof PackJob) {
         const jobs = [item]
         for (const job of jobs) yield* this.#path(job, jobs)
-      } else if (item instanceof WriteEntry || item instanceof EntryData) {
-        yield* this.#entry(item)
-      } else for (const entry of item) yield* this.#entry(entry)
+      } else if (!isSource(item)) yield* this.#entry(item)
+      else for (const entry of item) yield* this.#entry(entry)
     }
     this.ended = true
     yield new Uint8Array(1024)

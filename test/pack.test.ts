@@ -1,7 +1,15 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
 import zlib from 'node:zlib'
-import { any, assert, beforeEach, describe, test } from 'ubqtest'
+import {
+  any,
+  assert,
+  beforeEach,
+  describe,
+  mockImport,
+  spy,
+  test,
+} from 'ubqtest'
 import type { HeaderData } from '../src/header.js'
 import type { Codec, CodecStream } from '../src/codec.js'
 import type { PackOptions, PackOptionsSync } from '../src/options.js'
@@ -2762,4 +2770,56 @@ test('a hard link with a cwd that is a root', () => {
     ['File', 'x', undefined],
     ['Link', 'y', 'x'],
   ])
+})
+
+// The entry points `tar` and `tar/core` are separate bundles, and
+// each one has its own classes. This instance of the pack module has
+// a `WriteEntry` class that is not the one of this file.
+describe('entries of a different copy of the package', () => {
+  const tar = cat(file('r', 'read'), EOA)
+  const expect = [
+    { entry: { path: 'w' }, body: 'write' },
+    { entry: { path: 'r' }, body: 'read' },
+    { entry: { path: 'r' }, body: 'read' },
+  ]
+  const load = () =>
+    mockImport(
+      () => import('../src/pack.js'),
+      [[() => import('../src/write-entry.js'), {}]],
+    )
+
+  test('Pack', async () => {
+    const other = await load()
+    assert.notEqual(other.PackJob, PackJob)
+    const filter = spy(() => true)
+    const { value: one } = await entries(tar).next()
+    assert(one)
+    const p = new other.Pack({ filter })
+      .add(new WriteEntry({ path: 'w' }, 'write'))
+      .add(one)
+      .add(entries(tar))
+      .end()
+    assert.match(read(await collect(p)), expect)
+    // The filter is not for an entry that the caller made.
+    assert.deepEqual(
+      filter.calls.map(call => call.args[0]),
+      ['r', 'r'],
+    )
+  })
+
+  test('PackSync', async () => {
+    const other = await load()
+    const filter = spy(() => true)
+    const { value: one } = entriesSync(tar).next()
+    assert(one)
+    const p = new other.PackSync({ filter })
+      .add(new WriteEntry({ path: 'w' }, 'write'))
+      .add(one)
+      .add(entriesSync(tar))
+    assert.match(read(await collect(p)), expect)
+    assert.deepEqual(
+      filter.calls.map(call => call.args[0]),
+      ['r', 'r'],
+    )
+  })
 })
