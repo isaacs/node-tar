@@ -34,7 +34,6 @@ export const filesFilter = (opt: TarOptions, files: string[]) => {
   const MAX = 100
   const mapHas = (file: string, r: string = '', depth = 0): boolean => {
     if (depth >= MAX) {
-      map.set(file, false)
       return false
     }
     const root = r || parse(file).root || '.'
@@ -45,7 +44,6 @@ export const filesFilter = (opt: TarOptions, files: string[]) => {
       ret = m !== undefined ? m : mapHas(dirname(file), root, depth + 1)
     }
 
-    map.set(file, ret)
     return ret
   }
 

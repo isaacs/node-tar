@@ -53,14 +53,23 @@ export class PathReservations {
     paths =
       isWindows ?
         ['win32 parallelization disabled']
-      : paths.map(p => {
-          // don't need normPath, because we skip this entirely for windows
-          return stripTrailingSlashes(join(normalizeUnicode(p)))
-        })
+      : [
+          ...new Set(
+            paths.map(p => {
+              // don't need normPath, because we skip this entirely for windows
+              return stripTrailingSlashes(join(normalizeUnicode(p)))
+            }),
+          ),
+        ]
 
     const dirs = new Set<string>(
       paths.map(path => getDirs(path)).reduce((a, b) => a.concat(b)),
     )
+    // A direct reservation on a path is exclusive, so it also covers
+    // the use of that path as a parent directory of another path.
+    for (const p of paths) {
+      dirs.delete(p)
+    }
     this.#reservations.set(fn, { dirs, paths })
     for (const p of paths) {
       const q = this.#queues.get(p)
@@ -182,6 +191,7 @@ export class PathReservations {
     }
 
     this.#running.delete(fn)
+    this.#reservations.delete(fn)
     next.forEach(fn => this.#run(fn))
     return true
   }

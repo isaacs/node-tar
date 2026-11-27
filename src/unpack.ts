@@ -53,6 +53,8 @@ const CHECKED_CWD = Symbol('checkedCwd')
 const platform = process.env.TESTING_TAR_FAKE_PLATFORM || process.platform
 const isWindows = platform === 'win32'
 const DEFAULT_MAX_DEPTH = 1024
+// Longer than any path that a supported platform can create.
+const MAX_PATH_LENGTH = 32768
 
 // Unlinks on Windows are not atomic.
 //
@@ -359,6 +361,35 @@ export class Unpack extends Parser {
         maxDepth: this.maxDepth,
       })
       return false
+    }
+
+    // The path reservation system does work for each parent
+    // directory of the path and of the linkpath.
+    const { linkpath } = entry
+    if (
+      linkpath &&
+      isFinite(this.maxDepth) &&
+      normalizeWindowsPath(linkpath).split('/').length > this.maxDepth
+    ) {
+      this.warn('TAR_ENTRY_ERROR', 'linkpath excessively deep', {
+        entry,
+        path: p,
+        linkpath,
+        maxDepth: this.maxDepth,
+      })
+      return false
+    }
+    for (const field of ['path', 'linkpath'] as const) {
+      const { length } = entry[field] ?? ''
+      if (length > MAX_PATH_LENGTH) {
+        this.warn('TAR_ENTRY_ERROR', `${field} excessively long`, {
+          entry,
+          path: p,
+          length,
+          maxLength: MAX_PATH_LENGTH,
+        })
+        return false
+      }
     }
 
     if (
@@ -902,6 +933,10 @@ const callSync = <T>(
 
 export class UnpackSync extends Unpack {
   sync: true = true;
+
+  // All work is done when the parser ends, so nothing is pending.
+  // This class never calls PEND, so UNPEND must not count.
+  [UNPEND]() {}
 
   [MAKEFS](er: null | Error | undefined, entry: ReadEntry) {
     return super[MAKEFS](er, entry, () => {})

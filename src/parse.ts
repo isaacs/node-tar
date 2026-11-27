@@ -544,10 +544,17 @@ export class Parser extends EE implements Warner {
       ) {
         const ended = this[ENDED]
         this[ENDED] = false
-        this[UNZIP] =
-          this[UNZIP] === undefined ? new Unzip({})
-          : isZstd ? new ZstdDecompress({})
-          : new BrotliDecompress({})
+        try {
+          this[UNZIP] =
+            this[UNZIP] === undefined ? new Unzip({})
+            : isZstd ? new ZstdDecompress({})
+            : new BrotliDecompress({})
+        } catch (er) {
+          // For example, zstd on a Node.js version that does not have it.
+          this.abort(er as Error)
+          cb?.()
+          return false
+        }
         this[UNZIP].on('data', chunk => {
           if (this[CHECKDECOMPRESSIONRATIO](chunk)) {
             this[CONSUMECHUNK](chunk)
@@ -628,6 +635,11 @@ export class Parser extends EE implements Warner {
   }
 
   [CONSUMECHUNK](chunk?: Buffer) {
+    // The parser does not read data after the end-of-archive marker.
+    if (this[SAW_EOF]) {
+      this[BUFFER] = undefined
+      chunk = undefined
+    }
     if (this[CONSUMING] && chunk) {
       this[BUFFERCONCAT](chunk)
     } else if (!chunk && !this[BUFFER]) {
