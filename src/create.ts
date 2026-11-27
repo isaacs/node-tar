@@ -17,7 +17,12 @@ const createFileSync = (opt: TarOptionsSyncFile, files: string[]) => {
     mode: opt.mode || 0o666,
   })
   p.pipe(stream as unknown as Minipass.Writable)
-  addFilesSync(p, files)
+  try {
+    addFilesSync(p, files)
+  } catch (er) {
+    stream.end()
+    throw er
+  }
 }
 
 const createFile = (opt: TarOptionsFile, files: string[]) => {
@@ -30,7 +35,10 @@ const createFile = (opt: TarOptionsFile, files: string[]) => {
   const promise = new Promise<void>((res, rej) => {
     stream.on('error', rej)
     stream.on('close', res)
-    p.on('error', rej)
+    p.on('error', er => {
+      stream.end()
+      rej(er)
+    })
   })
 
   addFilesAsync(p, files).catch(er => p.emit('error', er))

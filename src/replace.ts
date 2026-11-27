@@ -95,7 +95,12 @@ const streamSync = (
     start: position,
   })
   p.pipe(stream as unknown as Minipass.Writable)
-  addFilesSync(p, files)
+  try {
+    addFilesSync(p, files)
+  } catch (er) {
+    stream.end()
+    throw er
+  }
 }
 
 const replaceAsync = (
@@ -150,7 +155,12 @@ const replaceAsync = (
         return cb(null, position)
       }
 
-      const h = new Header(headBuf)
+      let h: Header
+      try {
+        h = new Header(headBuf)
+      } catch (er) {
+        return cb(er as Error)
+      }
       if (!h.cksumValid) {
         return cb(null, position)
       }
@@ -194,7 +204,7 @@ const replaceAsync = (
 
         getPos(fd, st.size, (er, position) => {
           if (er) {
-            return reject(er)
+            return fs.close(fd, () => reject(er))
           }
           const stream = new WriteStream(opt.file, {
             fd: fd,
@@ -203,7 +213,10 @@ const replaceAsync = (
           p.pipe(stream as unknown as Minipass.Writable)
           stream.on('error', reject)
           stream.on('close', resolve)
-          addFilesAsync(p, files)
+          addFilesAsync(p, files).catch(er => {
+            stream.end()
+            reject(er)
+          })
         })
       })
     }
