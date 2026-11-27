@@ -33,6 +33,7 @@ import {
   cat,
   EOA,
   file,
+  fsPath,
   resolve,
   testdir,
   xorCodec,
@@ -660,7 +661,9 @@ describe('an @archive operand', () => {
       way.run({ cwd: files }, ['dir', '@nonexistent.tar', 'dir'], over),
       { code: 'ENOENT' },
     )
-    assert.match<unknown>(er, { path: resolve(files, 'nonexistent.tar') })
+    assert.match<unknown>(er, {
+      path: fsPath(resolve(files, 'nonexistent.tar')),
+    })
     assert.equal(open.size, 0)
   })
 

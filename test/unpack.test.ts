@@ -12,6 +12,7 @@ import { makeTar } from './fixtures/make-tar.js'
 import {
   extract,
   extractSync,
+  fsPath,
   hookFs,
   isWindows,
   linkTarget,
@@ -726,7 +727,7 @@ describe('fail mkdir', () => {
           {
             code: 'ENOENT',
             syscall: 'lstat',
-            path: resolve(cwd, 'dir'),
+            path: fsPath(resolve(cwd, 'dir')),
           },
         ],
       ])
@@ -2499,7 +2500,7 @@ describe('excessively deep subfolder nesting', () => {
         mkdir: thrower(new Error('no mkdir')),
       })
       assert.match<unknown>(warnings, [
-        ['TAR_ENTRY_ERROR', /^ENOENT/, { path: cwd + '/a' }],
+        ['TAR_ENTRY_ERROR', /^ENOENT/, { path: fsPath(cwd + '/a') }],
       ])
     })
   }
@@ -2514,11 +2515,10 @@ describe('ignore self-referential hardlinks', () => {
     test(mode, async () => {
       const cwd = testdir({})
       const { warnings } = await runExtract(mode, { cwd }, data)
+      const link = fsPath(cwd + '/autolink')
       assert.deepEqual(
         warnings.map(([, message]) => message),
-        [
-          `ENOENT: no such file or directory, link '${cwd}/autolink' -> '${cwd}/autolink'`,
-        ],
+        [`ENOENT: no such file or directory, link '${link}' -> '${link}'`],
       )
       assert.deepEqual(nodeFs.readdirSync(cwd), [], 'nothing extracted')
     })
@@ -2704,10 +2704,13 @@ describe('rename a file before unlink on windows', () => {
       )
       assert.deepEqual(nodeFs.readdirSync(cwd), ['x'])
       assert.equal(read(cwd + '/x'), 'new')
-      // Windows has no flag that refuses a symbolic link.
+      // Windows has no flag that refuses a symbolic link. The fs of
+      // Windows has the flag for a file mapping.
+      const { O_CREAT, O_TRUNC, O_WRONLY, UV_FS_O_FILEMAP } =
+        nodeFs.constants
       assert.deepEqual(
         calls.filter(c => c[0] === 'open').map(c => c[2]),
-        ['w'],
+        [isWindows ? UV_FS_O_FILEMAP | O_TRUNC | O_CREAT | O_WRONLY : 'w'],
       )
     })
 
@@ -2726,6 +2729,8 @@ describe('rename a file before unlink on windows', () => {
 })
 
 describe('file name that the file system refuses', () => {
+  // Windows does not find a name of this length.
+  const code = isWindows ? 'ENOENT' : 'ENAMETOOLONG'
   const name = 'x'.repeat(1000)
   const data = makeTar([
     new Pax({ path: name }).encode(),
@@ -2740,7 +2745,7 @@ describe('file name that the file system refuses', () => {
       const cwd = testdir({})
       const { warnings } = await runExtract(mode, { cwd }, data)
       assert.match<unknown>(warnings, [
-        ['TAR_ENTRY_ERROR', /^ENAMETOOLONG/, { code: 'ENAMETOOLONG' }],
+        ['TAR_ENTRY_ERROR', new RegExp('^' + code), { code }],
       ])
       assert.deepEqual(nodeFs.readdirSync(cwd), [])
     })

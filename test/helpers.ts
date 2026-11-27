@@ -61,6 +61,13 @@ export const noSymlink = ((): string | false => {
   }
 })()
 
+/**
+ * The path in the form that an error of `node:fs` has. On Windows,
+ * it has `\\` separators.
+ */
+export const fsPath = (path: string) =>
+  isWindows ? path.replaceAll('/', '\\') : path
+
 /** The root of an absolute path of the system: `/`, or `C:/`. */
 export const rootOf = (path: string) =>
   isWindows ? path.slice(0, 3) : '/'

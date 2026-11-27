@@ -44,6 +44,7 @@ import {
   ent,
   EOA,
   file,
+  fsPath,
   isWindows,
   noSymlink,
   pax,
@@ -278,7 +279,7 @@ describe('one path', () => {
   }
 
   each('a file that does not exist', async mode => {
-    const f = resolve(files, 'does not exist')
+    const f = fsPath(resolve(files, 'does not exist'))
     await assert.rejects(mode.run({ cwd: files }, ['does not exist']), {
       message: `ENOENT: no such file or directory, lstat '${f}'`,
       code: 'ENOENT',

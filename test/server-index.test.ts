@@ -541,7 +541,11 @@ describe('Windows', () => {
     if (!isWindows) assert.throws(posix, { code: 'ENOENT' })
     else {
       assert.deepEqual(
-        [...win.entriesSync(Buffer.concat(posix()))].map(e => e.path),
+        [
+          ...win.entriesSync(Buffer.concat(posix()), {
+            platform: 'posix',
+          }),
+        ].map(e => e.path),
         ['src\\a.txt'],
       )
     }
