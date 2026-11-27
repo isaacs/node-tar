@@ -361,12 +361,30 @@ describe('a failure goes to the caller, and no file stays open', () => {
   each('a path to add that does not exist', async mode => {
     const { cwd, file } = fixture(data)
     const { open, over } = tracked()
-    await assert.rejects(mode.replace({ file, cwd }, ['missing'], over), {
-      code: 'ENOENT',
-    })
+    await assert.rejects(
+      mode.replace({ file, cwd, strict: true }, ['missing'], over),
+      { code: 'ENOENT', tarCode: 'TAR_ENTRY_ERROR' },
+    )
     assert.equal(open.size, 0)
     // The archive is still complete.
     assert.deepEqual(pathsOf(file), bodyByteCounts)
+
+    // Without strict, it is a warning, and the other paths are added.
+    const warnings: string[][] = []
+    await mode.replace(
+      {
+        file,
+        cwd,
+        onwarn: (code, message) => warnings.push([code, message]),
+      },
+      ['missing', 'new.txt'],
+      over,
+    )
+    assert.equal(open.size, 0)
+    assert.match(warnings, [['TAR_ENTRY_ERROR', /^ENOENT/]])
+    assert.deepEqual(pathsOf(file).slice(bodyByteCounts.length), [
+      'new.txt',
+    ])
   })
 
   each('an @archive operand that does not exist', async mode => {

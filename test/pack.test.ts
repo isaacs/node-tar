@@ -303,14 +303,108 @@ describe('one path', () => {
     })
   }
 
-  each('a file that does not exist', async mode => {
-    const f = fsPath(resolve(files, 'does not exist'))
-    await assert.rejects(mode.run({ cwd: files }, ['does not exist']), {
-      message: `ENOENT: no such file or directory, lstat '${f}'`,
-      code: 'ENOENT',
-      path: f,
-      syscall: 'lstat',
-    })
+  // bsdtar gives a warning for a path that does not exist, and
+  // writes the other paths.
+  // https://github.com/isaacs/node-tar/issues/253
+  each('a path that does not exist is a warning', async mode => {
+    const absolute = resolve(files, 'does not exist')
+    const f = fsPath(absolute)
+    const message = `ENOENT: no such file or directory, lstat '${f}'`
+    const { warnings, onwarn } = warner()
+    const data = await mode.run({ cwd: files, onwarn }, [
+      'one-byte.txt',
+      'does not exist',
+      '512-bytes.txt',
+    ])
+    assert.deepEqual(paths(data), ['one-byte.txt', '512-bytes.txt'])
+    assert.match<unknown>(warnings, [
+      [
+        'TAR_ENTRY_ERROR',
+        message,
+        {
+          name: 'Error',
+          message,
+          code: 'ENOENT',
+          tarCode: 'TAR_ENTRY_ERROR',
+          syscall: 'lstat',
+          path: 'does not exist',
+          absolute,
+        },
+      ],
+    ])
+    assert.equal(warnings.length, 1)
+
+    // No warning function: the path is skipped.
+    assert.deepEqual(
+      paths(await mode.run({ cwd: files }, ['does not exist'])),
+      [],
+    )
+  })
+
+  each(
+    'a path that does not exist is an error with strict',
+    async mode => {
+      const absolute = resolve(files, 'does not exist')
+      await assert.rejects(
+        mode.run({ cwd: files, strict: true }, [
+          'one-byte.txt',
+          'does not exist',
+        ]),
+        {
+          message: `ENOENT: no such file or directory, lstat '${fsPath(absolute)}'`,
+          code: 'ENOENT',
+          tarCode: 'TAR_ENTRY_ERROR',
+          syscall: 'lstat',
+          path: 'does not exist',
+          absolute,
+        },
+      )
+    },
+  )
+
+  each('a path that is gone after readdir is a warning', async mode => {
+    const dir = resolve(files, 'dir')
+    const names = ['gone', 'x']
+    const { warnings, onwarn } = warner()
+    for (const follow of [false, true]) {
+      const data = await mode.run(
+        { cwd: files, onwarn, follow },
+        ['dir'],
+        {
+          async: { readdir: async () => names },
+          sync: { readdirSync: () => names },
+        },
+      )
+      assert.deepEqual(paths(data), ['dir/', 'dir/x'])
+    }
+    assert.match<unknown>(warnings, [
+      [
+        'TAR_ENTRY_ERROR',
+        /^ENOENT/,
+        { syscall: 'lstat', path: 'dir/gone', absolute: dir + '/gone' },
+      ],
+      [
+        'TAR_ENTRY_ERROR',
+        /^ENOENT/,
+        { syscall: 'stat', path: 'dir/gone', absolute: dir + '/gone' },
+      ],
+    ])
+    assert.equal(warnings.length, 2)
+  })
+
+  each('each other error of lstat stops the pack', async mode => {
+    const denied = Object.assign(new Error('EACCES'), { code: 'EACCES' })
+    const { warnings, onwarn } = warner()
+    const er = await assert.rejects(
+      mode.run(
+        { cwd: files, onwarn },
+        ['one-byte.txt'],
+        failing('lstat', denied),
+      ),
+      { code: 'EACCES' },
+    )
+    assert.equal(er, denied)
+    assert.deepEqual(warnings, [])
   })
 
   // GNU tar skips a socket with a warning. Version 7 did not end.
@@ -3046,7 +3140,7 @@ describe('compression', () => {
   test('an error of the pack goes through the compression', async () => {
     const { open, over } = tracked()
     for (const opt of [{ gzip: true }, { codecs, brotli: true }]) {
-      const p = pack({ cwd: files, ...opt }, over.async)
+      const p = pack({ cwd: files, strict: true, ...opt }, over.async)
       await assert.rejects(
         collect(p.add('dir').add('does-not-exist').end()),
         { code: 'ENOENT' },

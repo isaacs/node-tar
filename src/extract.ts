@@ -12,7 +12,8 @@ const noInput = () => new TypeError('extract needs input or file')
  * in the directories that it lists.
  *
  * A problem with one entry is a warning for `opt.onwarn`, and the
- * extraction continues. With `opt.strict`, it is an error.
+ * extraction continues. A listed path that no entry matches is a
+ * warning when the archive ends. With `opt.strict`, each is an error.
  */
 export const extract = async (
   options: WithAliases<ExtractOptions>,
@@ -23,8 +24,11 @@ export const extract = async (
     opt.input ??
     (opt.file ? readFile(opt.fs, opt.file, opt.maxReadSize) : undefined)
   if (!source) throw noInput()
-  if (files?.length) opt.filter = filesFilter(files, opt.filter)
+  const [filter, report] =
+    files?.length ? filesFilter(files, opt.filter) : []
+  if (filter) opt.filter = filter
   await new Unpack(opt).extract(source)
+  report?.(opt)
 }
 
 /** The sync form of `extract`. */
@@ -39,6 +43,9 @@ export const extractSync = (
       readFileSync(opt.fs, opt.file, opt.maxReadSize)
     : undefined)
   if (!source) throw noInput()
-  if (files?.length) opt.filter = filesFilter(files, opt.filter)
+  const [filter, report] =
+    files?.length ? filesFilter(files, opt.filter) : []
+  if (filter) opt.filter = filter
   new UnpackSync(opt).extract(source)
+  report?.(opt)
 }

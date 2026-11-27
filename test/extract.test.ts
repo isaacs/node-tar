@@ -165,6 +165,75 @@ describe('file list and filter', () => {
   })
 })
 
+// `tar xf file.tar not-found` gives a warning.
+// https://github.com/isaacs/node-tar/issues/253
+describe('a listed path that no entry matches', () => {
+  const input = makeTar([
+    { path: 'a.txt', type: 'File', size: 1 },
+    'a',
+    { path: 'd/x.txt', type: 'File', size: 1 },
+    'x',
+    '',
+    '',
+  ])
+  const names = ['missing', 'd/', 'd/none']
+  const run = async (
+    mode: 'async' | 'sync',
+    opt: { strict?: boolean },
+    files?: string[],
+  ) => {
+    const cwd = testdir({})
+    const warnings: unknown[][] = []
+    const onwarn = (...w: unknown[]) => warnings.push(w)
+    const done =
+      mode === 'sync' ?
+        (async () =>
+          extractSync({ ...opt, cwd, input, onwarn, fs: fsSync }, files))()
+      : extract({ ...opt, cwd, input, onwarn, fs }, files)
+    return { cwd, warnings, done }
+  }
+
+  for (const mode of ['async', 'sync'] as const) {
+    test(`one warning for each path, ${mode}`, async () => {
+      const { cwd, warnings, done } = await run(mode, {}, names)
+      await done
+      assert.deepEqual(nodeFs.readdirSync(cwd), ['d'])
+      assert.deepEqual(nodeFs.readdirSync(cwd + '/d'), ['x.txt'])
+      assert.match<unknown>(warnings, [
+        [
+          'TAR_ENTRY_ERROR',
+          'missing: not found in archive',
+          { path: 'missing', tarCode: 'TAR_ENTRY_ERROR' },
+        ],
+        [
+          'TAR_ENTRY_ERROR',
+          'd/none: not found in archive',
+          { path: 'd/none' },
+        ],
+      ])
+      assert.equal(warnings.length, 2)
+    })
+
+    test(`an error with strict, after the extraction, ${mode}`, async () => {
+      const { cwd, done } = await run(mode, { strict: true }, names)
+      await assert.rejects(done, {
+        message: 'TAR_ENTRY_ERROR: missing: not found in archive',
+        tarCode: 'TAR_ENTRY_ERROR',
+        path: 'missing',
+      })
+      assert.deepEqual(nodeFs.readdirSync(cwd + '/d'), ['x.txt'])
+    })
+
+    test(`no warning when each path matches, ${mode}`, async () => {
+      for (const files of [['a.txt', 'd'], [], undefined]) {
+        const { warnings, done } = await run(mode, { strict: true }, files)
+        await done
+        assert.deepEqual(warnings, [])
+      }
+    })
+  }
+})
+
 describe('the body of an entry that is not extracted is not read', () => {
   const big = new Uint8Array(3 * 1024 * 1024).map((_, i) => i % 251)
   const data = makeTar([

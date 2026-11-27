@@ -337,6 +337,18 @@ export abstract class PackBase<
     })
   }
 
+  /**
+   * Report a path that does not exist, and skip it. Each other error
+   * of the stat is thrown.
+   */
+  protected missing(job: PackJob, er: unknown): undefined {
+    if ((er as { code?: unknown })?.code !== 'ENOENT') throw er
+    warn(this.opt, 'TAR_ENTRY_ERROR', er as Error, {
+      path: job.path,
+      absolute: job.absolute,
+    })
+  }
+
   /** Report a path that is a different object after its `lstat`. */
   protected changed(job: PackJob, type: EntryTypeName): void {
     warn(
@@ -692,10 +704,13 @@ export class Pack
       stat.catch(noop)
       const planned = this.#planned
         .then(() => stat)
-        .then(([st, id]) => {
-          const type = this.plan(job, st, id)
-          return type && { load: this.#load(fs, job, st, id, type) }
-        })
+        .then(
+          ([st, id]) => {
+            const type = this.plan(job, st, id)
+            return type && { load: this.#load(fs, job, st, id, type) }
+          },
+          er => this.missing(job, er),
+        )
       this.#planned = planned.catch(noop)
       job.ready = planned.then(p => p?.load)
       job.ready.catch(noop)
@@ -891,7 +906,12 @@ export class PackSync
     const fs = this.fs as CreateFSSync
     const { absolute } = job
     const { follow, noDirRecurse } = this.opt
-    const stat = follow ? fs.statSync(absolute) : fs.lstatSync(absolute)
+    let stat: CreateStats
+    try {
+      stat = follow ? fs.statSync(absolute) : fs.lstatSync(absolute)
+    } catch (er) {
+      return this.missing(job, er)
+    }
     const id: FileId =
       !lossy(stat) ? stat
       : follow ? fs.statSync(absolute, BIG)

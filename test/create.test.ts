@@ -765,6 +765,7 @@ describe('the archive file', () => {
             {
               file: out,
               cwd: files,
+              strict: true,
               fs: (name === 'async' ?
                 over.async
               : over.sync) as CreateFSSync,

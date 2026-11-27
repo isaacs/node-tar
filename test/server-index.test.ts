@@ -294,7 +294,7 @@ describe('the defaults', () => {
     // the `\` as a separator.
     if (!isWindows) {
       await assert.rejects(
-        collect(tar.create({ cwd: dir }, ['src\\a.txt'])),
+        collect(tar.create({ cwd: dir, strict: true }, ['src\\a.txt'])),
         { code: 'ENOENT' },
       )
     }
@@ -606,7 +606,9 @@ describe('Windows', () => {
     // character of the name, and no file has that name. On Windows,
     // the cwd of the test is not an absolute path for 'posix'.
     const posix = () => [
-      ...win.createSync({ cwd: dir, platform: 'posix' }, ['src\\a.txt']),
+      ...win.createSync({ cwd: dir, platform: 'posix', strict: true }, [
+        'src\\a.txt',
+      ]),
     ]
     assert.throws(
       posix,

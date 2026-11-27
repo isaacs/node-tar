@@ -764,7 +764,7 @@ describe('limit to specific files', () => {
   })
 
   test('filesFilter', () => {
-    const filter = filesFilter(['x', 'd/e/', '/abs/dir', '.'])
+    const [filter] = filesFilter(['x', 'd/e/', '/abs/dir', '.'])
     const pass = (path: string) => filter(path, undefined)
     assert.deepEqual(
       ['x', 'x/', 'x/y', 'x/y/z/', 'd/e', 'd/e/f', '/abs/dir/f'].filter(
@@ -790,7 +790,7 @@ describe('limit to specific files', () => {
   })
 
   test('files filter looks at each parent directory', async () => {
-    const filter = filesFilter(['x', '/abs/dir', 'p//q'])
+    const [filter] = filesFilter(['x', '/abs/dir', 'p//q'])
     assert.equal(filter('x/y', undefined), true)
     const deep = 'a/'.repeat(150) + 'b'
     assert.equal(filter('x/' + deep, undefined), true)
@@ -814,8 +814,108 @@ describe('limit to specific files', () => {
     assert.deepEqual(found, ['x/' + deep, 'x/' + deep])
   })
 
+  // `tar tf file.tar not-found` gives a warning.
+  // https://github.com/isaacs/node-tar/issues/253
+  describe('a listed path that no entry matches', () => {
+    const input = cat(
+      file('a.txt', 'a'),
+      file('d/x.txt', 'x'),
+      file('d/sub/y.txt', 'y'),
+      file('e/z.txt', 'z'),
+      EOA,
+    )
+    const names = ['missing', 'a.txt', 'd', 'd/sub/', 'e/none', 'also/']
+    const expect = ['a.txt', 'd/x.txt', 'd/sub/y.txt']
+    const notFound = ['missing', 'e/none', 'also'].map(path => [
+      'TAR_ENTRY_ERROR',
+      `${path}: not found in archive`,
+      { path, tarCode: 'TAR_ENTRY_ERROR', code: 'TAR_ENTRY_ERROR' },
+    ])
+    const run = async (
+      mode: 'async' | 'sync',
+      opt: {
+        strict?: boolean
+        filter?: (path: string) => boolean
+        onEntry?: (entry: { path: string }) => unknown
+      },
+      files?: string[],
+    ) => {
+      const found: string[] = []
+      const warnings: unknown[][] = []
+      const all = {
+        input,
+        onEntry: (entry: { path: string }) => found.push(entry.path),
+        onwarn: (...w: unknown[]) => warnings.push(w),
+        ...opt,
+      }
+      if (mode === 'sync') listSync(all, files)
+      else await list(all, files)
+      return { found, warnings }
+    }
+
+    for (const mode of ['async', 'sync'] as const) {
+      test(`one warning for each path, after the entries, ${mode}`, async () => {
+        const { found, warnings } = await run(mode, {}, names)
+        assert.deepEqual(found, expect)
+        assert.match<unknown>(warnings, notFound)
+        assert.equal(warnings.length, 3)
+      })
+
+      test(`an error with strict, after the entries, ${mode}`, async () => {
+        const found: string[] = []
+        await assert.rejects(
+          run(
+            mode,
+            { strict: true, onEntry: entry => found.push(entry.path) },
+            names,
+          ),
+          {
+            message: 'TAR_ENTRY_ERROR: missing: not found in archive',
+            tarCode: 'TAR_ENTRY_ERROR',
+            path: 'missing',
+          },
+        )
+        assert.deepEqual(found, expect)
+      })
+
+      test(`no warning when each path matches, ${mode}`, async () => {
+        for (const files of [
+          ['a.txt', 'd', 'd/sub', 'e/'],
+          [],
+          undefined,
+        ]) {
+          const { warnings } = await run(mode, { strict: true }, files)
+          assert.deepEqual(warnings, [])
+        }
+      })
+
+      test(`an entry that the filter refuses matches its path, ${mode}`, async () => {
+        const { found, warnings } = await run(
+          mode,
+          { filter: path => path !== 'a.txt' },
+          ['a.txt', 'e'],
+        )
+        assert.deepEqual(found, ['e/z.txt'])
+        assert.deepEqual(warnings, [])
+      })
+    }
+
+    test('the state is the list of paths', () => {
+      const [filter, report] = filesFilter(['a', 'b/c'])
+      const warnings: string[] = []
+      const onwarn = (_: string, message: string) => warnings.push(message)
+      for (let i = 0; i < 1000; i++) filter(`x/${i}`, undefined)
+      filter('b/c/d', undefined)
+      report({ onwarn })
+      assert.deepEqual(warnings, ['a: not found in archive'])
+      filter('a', undefined)
+      report({ onwarn })
+      assert.equal(warnings.length, 1)
+    })
+  })
+
   test('files filter of a very long path is fast', () => {
-    const filter = filesFilter(['x'])
+    const [filter] = filesFilter(['x'])
     const long = 'a/'.repeat(500_000)
     assert.equal(filter('x/' + long + 'b', undefined), true)
     assert.equal(filter('y/' + long + 'b', undefined), false)

@@ -56,6 +56,13 @@ A new API. See "Migration from version 7" in the README.
   path left, as GNU tar and bsdtar do. Before, a directory entry such
   as `package/` with `strip: 1` set its mode, owner, and times on
   the extraction directory.
+- In `create()`, `replace()`, and `update()`, a path that does not
+  exist is a `TAR_ENTRY_ERROR` warning, as it is for bsdtar. The
+  other paths are added. Before, it was an error that stopped the
+  command. Set `strict` to get the error.
+- `extract()` and `list()` give a `TAR_ENTRY_ERROR` warning for each
+  path in `files` that no entry of the archive matches. With
+  `strict`, it is an error after the archive is read.
 - The readers detect the compression format. The `brotli` and `zstd`
   options are only for `create()`.
 - Remove the subpath exports (`tar/create`, `tar/extract`,

@@ -657,7 +657,9 @@ Each command is `command(options, files)`. The aliases `c`, `x`, `t`,
 These options are common to each command:
 
 - `strict` Make each warning an error. See
-  [Warnings and errors](#warnings-and-errors).
+  [Warnings and errors](#warnings-and-errors). For example, a path of
+  `create()` that does not exist, and a path in `files` of `extract()`
+  or `list()` that is not in the archive, are warnings without it.
 - `onwarn` A function `(code, message, data)`. It gets each warning
   when `strict` is not set.
 - `file` The path of the archive file.
@@ -705,9 +707,14 @@ iterator is read.
 
 `create()` throws a `TypeError` when `files` is empty.
 
-An error from the file system, such as a path that does not exist,
-stops the command. With `file`, the archive file that is not complete
-stays on disk.
+A path that does not exist is a `TAR_ENTRY_ERROR` warning, as it is
+for bsdtar. The warning has the `ENOENT` error of the file system, and
+the other paths are added. This is also true for a path in a directory
+that is removed after the directory is read. With `strict`, it is an
+error.
+
+Each other error from the file system stops the command. With `file`,
+the archive file that is not complete stays on disk.
 
 `create()` writes the size that `lstat` gives for a file, and then
 reads that number of bytes. If the file has fewer bytes or more
@@ -799,6 +806,10 @@ directories that it lists. The result is a `Promise<void>`. It
 resolves when all the file system work is done.
 
 A problem with one entry is a warning, and the extraction continues.
+A path in `files` that no entry of the archive matches is a
+`TAR_ENTRY_ERROR` warning when the archive ends, as it is for
+`tar xf archive.tar not-found`. With `strict`, it is an error, and the
+entries that match are extracted first.
 See [Warnings and errors](#warnings-and-errors). See
 [Security](#security) before you extract an archive that you do not
 trust.
@@ -936,6 +947,12 @@ console.log(paths)
 A path in `files` matches an entry if it is the path of the entry, or
 the path of one of its parent directories. Trailing slashes are
 ignored.
+
+A path in `files` that no entry matches is a `TAR_ENTRY_ERROR` warning
+when the archive ends. The message is `<path>: not found in archive`,
+and `data.path` is the path. An entry that `filter` refuses still
+matches its path. With `strict`, the warning is an error, after
+`onEntry` got the entries that match.
 
 ### `replace(options, files)`
 
@@ -1332,9 +1349,10 @@ await list({
   added. In an extraction: an error of the file system, a path with
   `..`, a path or a link target that goes out of the extraction
   directory, a path that goes through a symbolic link, or a path that
-  is too deep or too long. In `create()`: a file or a directory that
-  changed while it was read, or with `follow`, a directory that is in
-  itself.
+  is too deep or too long. In `create()`: a path that does not exist,
+  a file or a directory that changed while it was read, or with
+  `follow`, a directory that is in itself. In `extract()` and
+  `list()`: a path in `files` that no entry of the archive matches.
 - `TAR_ENTRY_UNSUPPORTED` The type of the entry is not supported, and
   the entry is skipped. `extract()` reports devices and FIFOs.
   `create()` reports each path that is not a file, a directory, or a
@@ -1397,7 +1415,8 @@ Some problems are an error also when `strict` is not set:
 - The archive cannot be read, or cannot be decompressed.
 - `TAR_BAD_ARCHIVE` in `extract()`.
 - `onEntry` or `filter` throws.
-- In `create()`, a path cannot be read.
+- In `create()`, a path cannot be read, for a cause other than that
+  it does not exist.
 
 ## Security
 
