@@ -1,5 +1,125 @@
 # Changelog
 
+## 8.0
+
+A new API. See "Migration from version 7" in the README.
+
+### Breaking changes
+
+- Drop support for node <22
+- `tar` is now the runtime-neutral core. It uses no Node.js module,
+  and it needs the `fs` and `cwd` options for work on files.
+  `tar/node` has the defaults for a server-side runtime (`node:fs`,
+  `node:zlib`, the working directory, the platform, and the user of
+  the process).
+- Remove callbacks and Node.js streams. Each command returns a
+  promise. `create()` with no `file` returns a web `ReadableStream`.
+  `list()` and `extract()` read the `input` option, or a `file`.
+- Remove the `sync` option. Use `createSync`, `extractSync`,
+  `listSync`, `replaceSync`, and `updateSync` from `tar/node`.
+- Remove `onReadEntry` and `onentry`. Use `onEntry`, which is
+  awaited.
+- Remove the option aliases (`C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`,
+  `L`, `h`, `strip-components`, `keep-newer`, `keep-existing`,
+  `no-mtime`, and their camelCase forms).
+- Remove the options `noChmod`, `noResume`, `ondone`, `dirCache`,
+  `linkCache`, `readdirCache`, and `statCache`.
+- `ReadEntry` and `WriteEntry` are not streams. A `ReadEntry` has
+  the shape of a `Response`: `body`, `bytes()`, `arrayBuffer()`,
+  `text()`, and `blob()`. A `WriteEntry` is metadata and a `body`.
+- `Parser`, `Pack`, and `Unpack` are not streams. `Parser` is a
+  state machine with `push()` and `next()`. `Pack` is an async
+  iterator of chunks. `Unpack` has an `extract(input)` method.
+- Remove `WriteEntrySync` and `WriteEntryTar`. `PackSync` and
+  `UnpackSync` are exported from `tar/node` only.
+- Use `Uint8Array`, not `Buffer`. `Header#block` and the result of
+  `Pax#encode()` are a `Uint8Array`.
+- `transform` returns a `TransformStream`. In `extractSync()`, it
+  returns a function that changes a chunk.
+- In strict mode, extraction stops at the first error.
+- An entry that comes after a lone null block gives a
+  `TAR_BAD_ARCHIVE` warning, and is still read and extracted. In
+  strict mode it is an error.
+- `update()` does not add a file again when its time differs from
+  the entry only by a part of a second.
+- The readers detect the compression format. The `brotli` and `zstd`
+  options are only for `create()`.
+- Remove the subpath exports (`tar/create`, `tar/extract`,
+  `tar/parse`, and the others). The exports are `tar`, `tar/node`,
+  `tar/raw`, and `tar/node/raw`.
+- Remove all runtime dependencies: `minipass`, `minizlib`,
+  `@isaacs/fs-minipass`, `chownr`, and `yallist`.
+
+### New features
+
+- Run in a browser, a worker, or another runtime with web streams.
+  The core bundle has no Node.js code.
+- Add the `fs` option. All file system work goes through it, so a
+  caller can give another file system.
+- Add the `input` option, and `entries()` and `entriesSync()`, which
+  read a `Uint8Array`, an `ArrayBuffer`, a `Blob`, a
+  `ReadableStream`, or an iterable of chunks.
+- Add entries from memory to an archive: the file list of `create()`,
+  `replace()`, and `update()` takes `WriteEntry` objects, `ReadEntry`
+  objects, and iterables of entries.
+- Add the `Codec` type and the `codecs` option, to add a compression
+  format. The core has gzip. `tar/node` has gzip, brotli, and zstd
+  from `node:zlib`.
+- The options `platform`, `processUid`, `processGid`, `processUname`,
+  and `processUmask` give the facts of the process to the core.
+- Nothing is read before the consumer asks for it: the readers read
+  input, and `create()` reads files, only on demand.
+- The async extraction writes up to 16 entries at one time (the
+  `jobs` option).
+- `replace()` and `update()` read PAX and GNU long name headers when
+  they find the place to append, and refuse an archive in any known
+  compressed format.
+- Export `CwdError` and `SymlinkError`.
+
+### Security fixes
+
+- Refuse symbolic link targets that can resolve outside of the
+  extraction directory: a `..` after a named part, an entry path
+  that ends in `/.`, and a backslash in a directory name.
+  (GHSA-3wwj-8j6r-q339, GHSA-mhqm-9wj8-w7r4, GHSA-6wwr-g865-f46r,
+  GHSA-276f-qhr9-5cp8, GHSA-4pf9-5fpx-xmr6, GHSA-gvrf-jx37-rjv5,
+  GHSA-7p36-m9mf-cxv7, GHSA-jmj2-9c5q-vw73, GHSA-wq85-w9p7-pgrm,
+  GHSA-hqgx-p3r3-2cfg)
+- Read archives in the same way as other tar programs: PAX records
+  are read by their length, PAX fields are applied one time and only
+  to the entry that they describe, PAX numbers must be decimal safe
+  integers, a PAX path wins over a GNU long name, and a NUL ends a
+  name. (GHSA-jc4p-66g7-qw5h, GHSA-p96f-8xj2-g85p,
+  GHSA-gfqm-vh67-375f, GHSA-5x5g-4v8m-wwwm, GHSA-xgqw-r6hj-48hf,
+  GHSA-qv2w-fc3h-pm27, GHSA-ffhw-4r4q-5cwv, GHSA-rgjp-p5j7-w36x,
+  GHSA-mpg7-vg3p-wc3m, GHSA-xv7h-rgq8-7m7v, GHSA-wpwg-r92p-fjjh,
+  GHSA-wcpc-xj6c-qvf9, GHSA-vw2x-rj6h-gpcw, GHSA-345f-p9f6-2h8c)
+- Remove the setuid, setgid, and sticky bits from the mode of each
+  extracted entry, also with `chmod: true`. (GHSA-3482-qrvx-gvgq,
+  GHSA-m6rr-3gqh-4f88)
+- Limit the work that a small archive can cause: `maxDepth` applies
+  to link targets, a path or link target of more than 32768
+  characters is refused, a link whose target is a parent or child of
+  its path does not block the extraction, and data after the end of
+  the archive is dropped. (GHSA-343g-5v7x-x325, GHSA-5qxq-cgm8-6j7r,
+  GHSA-xm6h-2993-3ch9, GHSA-7c32-79xj-j3jp, GHSA-98v3-7xjr-fg83,
+  GHSA-25mm-r35j-6hgm, GHSA-72fp-85cc-g945, GHSA-9239-v992-p74f)
+- Harden extraction against local races and bad state: a file
+  descriptor is not used after it is closed, the times and the owner
+  of a directory are set with `lutimes` and `lchown`, and options
+  cannot come from a changed `Object.prototype`.
+  (GHSA-m6rr-3gqh-4f88, GHSA-5x73-x9rx-m7x2, GHSA-qf42-f7hw-qxrq)
+- `create()` skips a file or directory that changes between `lstat`
+  and `open` or `readdir`, and does not read it through a symbolic
+  link. (GHSA-xj5v-fr6h-vw74)
+- `create()` and `replace()` report each error to the caller and
+  close the archive file. (GHSA-8h4g-6p7x-m3c9)
+- The decompression ratio limit stops after about the permitted
+  number of bytes, for each codec, and `replace()` and `update()`
+  skip an entry by its PAX size and ignore a PAX or GNU header that
+  has no entry after it. (GHSA-p7rf-cx2m-qgrr, GHSA-9239-v992-p74f,
+  GHSA-9hmx-4f52-v64x, GHSA-8h4g-6p7x-m3c9)
+
 ## 7.5
 
 - Added `zstd` compression support.
