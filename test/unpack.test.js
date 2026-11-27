@@ -1609,6 +1609,41 @@ describe('transform error', () => {
   }
 })
 
+test('an entry settles one time when its transform fails', async () => {
+  const poop = new Error('poop')
+  const data = makeTar([
+    { path: 'x', type: 'File', size: 1024 },
+    'a'.repeat(512),
+    'b'.repeat(512),
+    { path: 'y', type: 'File', size: 1 },
+    'y',
+    '',
+    '',
+  ])
+  // This transform fails for each chunk, and then it ends.
+  const transform = entry => {
+    if (entry.path !== 'x') return undefined
+    const tx = new Minipass()
+    tx.write = () => tx.emit('error', poop)
+    tx.resume()
+    return tx
+  }
+  const cwd = testdir({})
+  const warnings = []
+  const unpack = new Unpack({
+    cwd,
+    transform,
+    onwarn: (code, _, er) => warnings.push([code, er]),
+  })
+  const closed = emits(unpack)
+  // The body of x arrives in two chunks.
+  unpack.write(data.subarray(0, 1024))
+  unpack.end(data.subarray(1024))
+  await closed
+  assert.deepEqual(warnings, [['TAR_ENTRY_ERROR', poop]])
+  assert.equal(fs.readFileSync(cwd + '/y', 'utf8'), 'y')
+})
+
 describe('futimes/fchown failures', () => {
   const archive = path.resolve(tars, 'utf8.tar')
   const tardata = fs.readFileSync(archive)

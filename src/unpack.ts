@@ -547,6 +547,20 @@ export class Unpack extends Parser {
       mode: mode,
       autoClose: false,
     })
+    // The entry is settled one time only. A transform stream can
+    // emit an error and then end, which also ends the file stream.
+    let settled = false
+    const settle = (er?: null | Error) => {
+      if (settled) return
+      settled = true
+      if (er) {
+        this[ONERROR](er, entry)
+      } else {
+        this[UNPEND]()
+      }
+      fullyDone()
+    }
+
     stream.on('error', (er: Error) => {
       if (stream.fd) {
         fs.close(stream.fd, () => {})
@@ -556,8 +570,7 @@ export class Unpack extends Parser {
       // if the error wasn't actually fatal.  otherwise the parse
       // is blocked, and we never proceed.
       stream.write = () => true
-      this[ONERROR](er, entry)
-      fullyDone()
+      settle(er)
     })
 
     let actions = 1
@@ -568,21 +581,13 @@ export class Unpack extends Parser {
           fs.close(stream.fd, () => {})
         }
 
-        this[ONERROR](er, entry)
-        fullyDone()
+        settle(er)
         return
       }
 
       if (--actions === 0) {
         if (stream.fd !== undefined) {
-          fs.close(stream.fd, er => {
-            if (er) {
-              this[ONERROR](er, entry)
-            } else {
-              this[UNPEND]()
-            }
-            fullyDone()
-          })
+          fs.close(stream.fd, er => settle(er))
         }
       }
     }
@@ -621,10 +626,7 @@ export class Unpack extends Parser {
 
     const tx = this.transform ? this.transform(entry) || entry : entry
     if (tx !== entry) {
-      tx.on('error', er => {
-        this[ONERROR](er as Error, entry)
-        fullyDone()
-      })
+      tx.on('error', er => settle(er as Error))
       entry.pipe(tx)
     }
     tx.pipe(stream)
