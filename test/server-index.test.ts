@@ -1,6 +1,7 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
+import { Duplex, Transform } from 'node:stream'
 import zlib from 'node:zlib'
 import {
   assert,
@@ -325,6 +326,40 @@ describe('the defaults', () => {
     assert.equal((await listed({ input: data })).length, 1)
     assert.deepEqual(used, ['compress', 'decompress'])
   })
+})
+
+// https://github.com/isaacs/node-tar/issues/462
+describe('a transform of version 7 that returns a Node.js stream', () => {
+  const upper = () =>
+    new Transform({
+      transform: (chunk, _, done) =>
+        done(null, String(chunk).toUpperCase()),
+    })
+  const ways = {
+    zlibStream: () => tar.zlibStream(upper()),
+    // The stream types of `node:stream/web` and of the DOM library
+    // are not the same types.
+    'Duplex.toWeb': () =>
+      Duplex.toWeb(upper()) as unknown as tar.CodecStream,
+  }
+  for (const [name, wrap] of Object.entries(ways)) {
+    test(name, async () => {
+      const cwd = testdir()
+      await tar.extract({
+        cwd,
+        input: tar.create({}, [
+          new tar.WriteEntry({ path: 'a.txt' }, 'alpha'),
+          new tar.WriteEntry({ path: 'b.md' }, 'beta'),
+          new tar.WriteEntry({ path: 'c.txt' }, 'c'.repeat(100_000)),
+        ]),
+        transform: entry =>
+          entry.path.endsWith('.txt') ? wrap() : undefined,
+      })
+      assert.equal(text(cwd, 'a.txt'), 'ALPHA')
+      assert.equal(text(cwd, 'b.md'), 'beta')
+      assert.equal(text(cwd, 'c.txt'), 'C'.repeat(100_000))
+    })
+  }
 })
 
 describe('compression', () => {

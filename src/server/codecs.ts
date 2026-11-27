@@ -32,7 +32,9 @@ type Options = Record<string, unknown>
 const CHUNK = 64 * 1024
 
 /**
- * Make the two web streams of a `node:zlib` stream.
+ * Make the two web streams of a `node:zlib` stream, or of another
+ * `Transform` stream of `node:stream`. The result fits the
+ * `transform` option of `extract`.
  *
  * As with a `TransformStream`, a write is complete only when the
  * reader asks for more output than the stream has. The zlib stream

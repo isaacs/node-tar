@@ -30,8 +30,10 @@ A new API. See "Migration from version 7" in the README.
 - Remove `WriteEntrySync` and `WriteEntryTar`.
 - Use `Uint8Array`, not `Buffer`. `Header#block` and the result of
   `Pax#encode()` are a `Uint8Array`.
-- `transform` returns a `TransformStream`. In `extractSync()`, it
-  returns a function that changes a chunk.
+- `transform` returns a `TransformStream`, or an object with a
+  `readable` and a `writable` web stream. In `extractSync()`, it
+  returns a function that changes a chunk. For a Node.js `Transform`
+  stream, return `zlibStream(stream)`.
 - In strict mode, extraction stops at the first error.
 - The first null block is the end of the archive, as it is for
   bsdtar. Data after it is dropped with no warning, also when no
