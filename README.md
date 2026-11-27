@@ -375,8 +375,9 @@ console.log(await new Blob(tree.get('/out/docs/hello.txt').chunks).text())
 
 - `cwd` The directory that `extract()` writes into, and the directory
   that the paths of `create()` are relative to. In `tar/core` it must
-  be an absolute path. `extract()` needs it. `create()` needs it only to
-  add a path.
+  be an absolute path, by the rules of `platform`. A path that is not
+  absolute is a `TypeError`. `extract()` needs it. `create()` needs it
+  only to add a path.
 - `platform` `'posix'` (default) or `'win32'`. With `'win32'`: each
   `\` in a path is a separator, and the path rules of Windows apply.
   `extract()` changes the characters `<|>?:` in a name to private-use

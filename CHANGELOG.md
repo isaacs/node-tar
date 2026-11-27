@@ -86,6 +86,9 @@ A new API. See "Migration from version 7" in the README.
   `[codec, options]`, and writes the archive with that codec.
 - The options `platform`, `processUid`, `processGid`, `processUname`,
   and `processUmask` give the facts of the process to `tar/core`.
+- In `tar/core`, the `cwd` of `create()` and of `extract()` must be
+  an absolute path. A path that is not absolute is a `TypeError`.
+  The `tar` entry point makes a relative `cwd` absolute first.
 - Nothing is read before the consumer asks for it: the readers read
   input, and `create()` reads files, only on demand.
 - The async extraction writes up to 16 entries at one time (the

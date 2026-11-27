@@ -17,12 +17,12 @@ import {
   type PackOptionsBase,
   type PackOptionsSync,
 } from './options.js'
-import { relative, resolve } from './path.js'
+import { isAbsolute, relative, resolve } from './path.js'
 import type { ReadEntry, ReadEntrySync } from './read-entry.js'
 import { stripAbsolutePath } from './strip-absolute-path.js'
 import { toStream } from './to-stream.js'
 import { warn } from './warn.js'
-import { win32Resolve } from './win32-path.js'
+import { win32IsAbsolute, win32Resolve } from './win32-path.js'
 import { WriteEntry, type EncodeOptions } from './write-entry.js'
 
 const MAX_READ = 16 * 1024 * 1024
@@ -147,6 +147,10 @@ export abstract class PackBase<
       noPax,
     }
     const cwd = opt.cwd && (this.win32 ? slashes(opt.cwd) : opt.cwd)
+    // This code has no working directory to make a path absolute.
+    if (cwd && !(this.win32 ? win32IsAbsolute : isAbsolute)(cwd)) {
+      throw new TypeError('cwd must be an absolute path')
+    }
     this.cwd = cwd && this.#resolve(cwd, '')
 
     const set = opt as Record<string, unknown>

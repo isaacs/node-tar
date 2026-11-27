@@ -15,7 +15,15 @@ import type { Codec, CodecStream } from '../src/codec.js'
 import type { PackOptions, PackOptionsSync } from '../src/options.js'
 import { entries, entriesSync } from '../src/entries.js'
 import type { CreateFileHandle, CreateFS, CreateStats } from '../src/fs.js'
-import { PackJob } from '../src/pack.js'
+import {
+  create as coreCreate,
+  createSync as coreCreateSync,
+} from '../src/create.js'
+import {
+  Pack as CorePack,
+  PackJob,
+  PackSync as CorePackSync,
+} from '../src/pack.js'
 import { ReadEntry } from '../src/read-entry.js'
 import type { WarnData } from '../src/warn.js'
 import { WriteEntry } from '../src/write-entry.js'
@@ -2897,4 +2905,71 @@ describe('the jobs and maxReadSize options', () => {
       assert.match(read(data), [{ entry: { path: '1024-bytes.txt' } }])
     }
   })
+})
+
+describe('the cwd must be an absolute path', () => {
+  const expect = {
+    name: 'TypeError',
+    message: 'cwd must be an absolute path',
+  }
+  const cases: [cwd: string, platform: 'posix' | 'win32', ok: boolean][] =
+    [
+      ['/x', 'posix', true],
+      ['x', 'posix', false],
+      ['./x', 'posix', false],
+      // Not absolute with the rules of the default platform.
+      ['c:\\x', 'posix', false],
+      ['c:\\x', 'win32', true],
+      ['c:/x', 'win32', true],
+      ['x\\y', 'win32', false],
+      // A path on a drive with no root is relative to a directory
+      // that this code does not know.
+      ['c:x', 'win32', false],
+    ]
+  for (const [cwd, platform, ok] of cases) {
+    test(`${JSON.stringify(cwd)} on ${platform}`, () => {
+      const opt = { cwd, platform }
+      if (ok) {
+        assert.equal(typeof new CorePack(opt).cwd, 'string')
+        assert.equal(typeof new CorePackSync(opt).cwd, 'string')
+      } else {
+        assert.throws(() => new CorePack(opt), expect)
+        assert.throws(() => new CorePackSync(opt), expect)
+      }
+    })
+  }
+
+  test('a pack of entries in memory needs no cwd', () => {
+    const pack = new CorePackSync()
+    pack.add(new WriteEntry({ path: 'a' }, 'x')).end()
+    assert.equal(pack.cwd, undefined)
+    assert.deepEqual(
+      [...entriesSync([...pack])].map(e => e.path),
+      ['a'],
+    )
+  })
+})
+
+test('create refuses a cwd that is not absolute', async () => {
+  const expect = {
+    name: 'TypeError',
+    message: 'cwd must be an absolute path',
+  }
+  const entry = new WriteEntry({ path: 'a' }, 'x')
+  // With no file, create returns a stream, so it throws.
+  assert.throws(() => coreCreate({ cwd: 'x' }, [entry]), expect)
+  assert.throws(() => coreCreateSync({ cwd: 'x' }, [entry]), expect)
+  // With a file, it returns a promise, so it rejects.
+  const dir = testdir({})
+  const opt = { cwd: 'x', file: resolve(dir, 'a.tar') }
+  await assert.rejects(
+    coreCreate({ ...opt, fs: nodeFsPromises }, [entry]),
+    expect,
+  )
+  assert.throws(
+    () => coreCreateSync({ ...opt, fs: nodeFs }, [entry]),
+    expect,
+  )
+  // No archive file is made.
+  assert.deepEqual(nodeFs.readdirSync(dir), [])
 })

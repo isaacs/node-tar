@@ -274,7 +274,8 @@ export type ExtractOptionsSync = ReadOptionsSync &
 export type PackOptionsBase<E extends EntryData> = WarnOptions & {
   /**
    * The absolute path of the directory that the paths to add are
-   * relative to. A pack needs it, and `fs`, to add a path.
+   * relative to. A pack needs it, and `fs`, to add a path. A path
+   * that is not absolute is a `TypeError`.
    */
   cwd?: string
   /** A directory to put before the path of each entry. */
