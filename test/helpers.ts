@@ -1,6 +1,8 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import { beforeEach } from 'ubqtest'
+import { tmpdir } from 'node:os'
+import { resolve as nodeResolve } from 'node:path'
+import { testdir as ubqTestdir } from 'ubqtest'
 import { Header, type HeaderData } from '../src/header.js'
 import type { Codec } from '../src/codec.js'
 import type {
@@ -9,9 +11,21 @@ import type {
   TarFS,
   TarFSSync,
 } from '../src/fs.js'
-import { extract, extractSync } from '../src/extract.js'
-import type { ParserOptions } from '../src/options.js'
-import type { UnpackOptions } from '../src/options.js'
+import type { WithAliases } from '../src/dealias.js'
+import {
+  extract as coreExtract,
+  extractSync as coreExtractSync,
+} from '../src/extract.js'
+import type {
+  ExtractOptions,
+  ExtractOptionsSync,
+  ParserOptions,
+  UnpackOptions,
+} from '../src/options.js'
+import {
+  Unpack as CoreUnpack,
+  UnpackSync as CoreUnpackSync,
+} from '../src/unpack.js'
 import type { WarnData, WarnOptions } from '../src/warn.js'
 import { Parser } from '../src/parser.js'
 import type { EntryData } from '../src/read-entry.js'
@@ -21,18 +35,89 @@ export const isDeno = 'Deno' in globalThis
 export const isWindows = process.platform === 'win32'
 
 /**
- * Skip each test of the file on Windows. A test file calls it one
- * time, at its top level.
- *
- * The core has the platform 'posix' unless an option sets it. The
- * tests of the extraction give it the paths of the system and no
- * platform. On Windows, a path such as `C:\dir` is then not an
- * absolute path, and the tests compare the modes of POSIX.
+ * The path with `/` separators on Windows. The core gives this form
+ * of a path with the platform 'win32'.
  */
-export const posixOnly = () =>
-  beforeEach(({ skip }) => {
-    if (isWindows) skip('the test extracts with the platform posix')
-  })
+export const slash = (path: string) =>
+  isWindows ? path.replaceAll('\\', '/') : path
+
+/** `resolve` of `node:path`, with `/` separators on each system. */
+export const resolve = (...parts: string[]) => slash(nodeResolve(...parts))
+
+/**
+ * The reason to skip a test that makes a symbolic link, or false. On
+ * Windows, only a user with the privilege can make one.
+ */
+export const noSymlink = ((): string | false => {
+  if (!isWindows) return false
+  const dir = nodeFs.mkdtempSync(nodeResolve(tmpdir(), 'tar-symlink-'))
+  try {
+    nodeFs.symlinkSync('target', nodeResolve(dir, 'link'))
+    return false
+  } catch {
+    return 'the user cannot make a symbolic link'
+  } finally {
+    nodeFs.rmSync(dir, { recursive: true, force: true })
+  }
+})()
+
+/** The root of an absolute path of the system: `/`, or `C:/`. */
+export const rootOf = (path: string) =>
+  isWindows ? path.slice(0, 3) : '/'
+
+/**
+ * The mode that `lstat` gives for a file or a directory that was
+ * made with `mode`. Windows keeps only the write permission.
+ */
+export const statMode = (mode: number) =>
+  !isWindows ? mode
+  : mode & 0o200 ? 0o666
+  : 0o444
+
+/**
+ * The target that `readlink` gives for a symbolic link that was made
+ * with `target`. Windows keeps a relative target with `\` separators.
+ */
+export const linkTarget = (target: string) =>
+  isWindows ? target.replaceAll('/', '\\') : target
+
+/** `testdir` of ubqtest. The path has `/` separators on each system. */
+export const testdir = (files?: Parameters<typeof ubqTestdir>[0]) =>
+  slash(ubqTestdir(files))
+
+/**
+ * The options, with the platform of the system when they set no
+ * platform. The core has the platform 'posix' unless an option sets
+ * it, and then a path such as `C:/dir` is not an absolute path.
+ */
+export const sys = <T extends object>(opt: T): T =>
+  isWindows ? { platform: 'win32', ...opt } : opt
+
+/** `extract` of the core, with the platform of the system. */
+export const extract = (
+  opt: WithAliases<ExtractOptions>,
+  files?: string[],
+) => coreExtract(sys(opt), files)
+
+/** `extractSync` of the core, with the platform of the system. */
+export const extractSync = (
+  opt: WithAliases<ExtractOptionsSync>,
+  files?: string[],
+) => coreExtractSync(sys(opt), files)
+
+/** `Unpack` of the core, with the platform of the system. */
+export class Unpack extends CoreUnpack {
+  constructor(opt: ExtractOptions) {
+    super(sys(opt))
+  }
+}
+
+/** `UnpackSync` of the core, with the platform of the system. */
+export class UnpackSync extends CoreUnpackSync {
+  constructor(opt: ExtractOptionsSync) {
+    super(sys(opt))
+  }
+}
 
 export const hdr = (h: HeaderData) => {
   const block = new Uint8Array(512)

@@ -1,10 +1,8 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import path from 'node:path'
 import zlib from 'node:zlib'
-import { assert, describe, test, testdir } from 'ubqtest'
+import { assert, describe, test } from 'ubqtest'
 import { gzip, type Codec } from '../src/codec.js'
-import { extract, extractSync } from '../src/extract.js'
 import type {
   ExtractFS,
   ExtractFSSync,
@@ -13,16 +11,20 @@ import type {
 } from '../src/fs.js'
 import { Pax } from '../src/pax.js'
 import { makeTar } from './fixtures/make-tar.js'
-import { hookFs, posixOnly } from './helpers.js'
-
-posixOnly()
+import {
+  extract,
+  extractSync,
+  hookFs,
+  resolve,
+  testdir,
+} from './helpers.js'
 
 // The modules of Node fit the adapter types as they are.
 const fs: ExtractFS & TarFS = nodeFsPromises
 const fsSync: ExtractFSSync & TarFSSync = nodeFs
 
-const fixtures = path.resolve(import.meta.dirname, './fixtures')
-const tars = path.resolve(fixtures, 'tars')
+const fixtures = resolve(import.meta.dirname, './fixtures')
+const tars = resolve(fixtures, 'tars')
 
 // Gzip for the sync reader, which has no codec of its own.
 const gunzip: Codec = {
@@ -50,7 +52,7 @@ const longPath =
 const oneToTen = ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9']
 
 describe('basic extracting', () => {
-  const file = path.resolve(tars, 'utf8.tar')
+  const file = resolve(tars, 'utf8.tar')
 
   const check = (dir: string) => {
     assert(nodeFs.lstatSync(dir + '/Ω.txt').isFile())
@@ -101,7 +103,7 @@ describe('basic extracting', () => {
 })
 
 describe('an input that arrives slowly is read to its end', () => {
-  const data = nodeFs.readFileSync(path.resolve(tars, 'long-paths.tar'))
+  const data = nodeFs.readFileSync(resolve(tars, 'long-paths.tar'))
 
   test('a stream of small chunks', async () => {
     const cwd = testdir({})
@@ -130,7 +132,7 @@ describe('an input that arrives slowly is read to its end', () => {
 })
 
 describe('file list and filter', () => {
-  const file = path.resolve(tars, 'utf8.tar')
+  const file = resolve(tars, 'utf8.tar')
 
   const check = (dir: string) => {
     assert(nodeFs.lstatSync(dir + '/Ω.txt').isFile())
@@ -232,7 +234,7 @@ describe('the body of an entry that is not extracted is not read', () => {
 })
 
 describe('no file list', () => {
-  const file = path.resolve(tars, 'body-byte-counts.tar')
+  const file = resolve(tars, 'body-byte-counts.tar')
   const check = (dir: string) => {
     for (const [name, size] of [
       ['1024-bytes.txt', 1024],
@@ -240,11 +242,7 @@ describe('no file list', () => {
       ['one-byte.txt', 1],
       ['zero-byte.txt', 0],
     ] as const) {
-      assert.equal(
-        nodeFs.lstatSync(path.resolve(dir, name)).size,
-        size,
-        name,
-      )
+      assert.equal(nodeFs.lstatSync(resolve(dir, name)).size, size, name)
     }
   }
 
@@ -324,7 +322,7 @@ test('read fail', async () => {
 })
 
 test('sync gzip error edge case test', () => {
-  const file = path.resolve(fixtures, 'sync-gzip-fail.tgz')
+  const file = resolve(fixtures, 'sync-gzip-fail.tgz')
   const cwd = testdir({ x: {} })
   extractSync({
     file,
@@ -372,7 +370,7 @@ test('an error that onwarn throws stops the extraction', async () => {
 
 describe('max decompression ratio', () => {
   const bombFile = () =>
-    path.resolve(testdir({ 'bomb.tgz': makeCompressedBomb() }), 'bomb.tgz')
+    resolve(testdir({ 'bomb.tgz': makeCompressedBomb() }), 'bomb.tgz')
   const expect = {
     tarCode: 'TAR_ABORT',
     recoverable: false,
@@ -394,7 +392,7 @@ describe('max decompression ratio', () => {
     const cwd = testdir({})
     await extract({ file, cwd, fs, maxDecompressionRatio: Infinity })
     assert.equal(
-      nodeFs.statSync(path.resolve(cwd, 'bomb')).size,
+      nodeFs.statSync(resolve(cwd, 'bomb')).size,
       8 * 1024 * 1024,
     )
   })
@@ -402,7 +400,7 @@ describe('max decompression ratio', () => {
 
 test('a file that is not an archive', async () => {
   const cwd = testdir({ 'example.unknown': '' })
-  const file = path.resolve(cwd, 'example.unknown')
+  const file = resolve(cwd, 'example.unknown')
   const expect = {
     message: 'TAR_BAD_ARCHIVE: Unrecognized archive format',
     file,
@@ -444,7 +442,7 @@ describe('a codec for the file name ending', () => {
 
 describe('verify long linkname is not a problem', () => {
   // See: https://github.com/isaacs/node-tar/issues/312
-  const file = path.resolve(fixtures, 'long-linkname.tar')
+  const file = resolve(fixtures, 'long-linkname.tar')
   test('sync', () => {
     const cwd = testdir({})
     extractSync({ strict: true, file, cwd, fs: fsSync })

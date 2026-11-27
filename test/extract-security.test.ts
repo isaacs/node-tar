@@ -1,10 +1,8 @@
 // The security rules of the extraction. Each group names the reports
 // that it covers.
 import * as nodeFs from 'node:fs'
-import { resolve } from 'node:path'
-import { assert, cleanup, describe, test, testdir } from 'ubqtest'
+import { assert, cleanup, describe, test } from 'ubqtest'
 import { Header, type HeaderData } from '../src/header.js'
-import { extract, extractSync } from '../src/extract.js'
 import type { ExtractFS, ExtractFSSync } from '../src/fs.js'
 import { normalizeUnicode } from '../src/normalize-unicode.js'
 import { EntryData } from '../src/read-entry.js'
@@ -13,16 +11,21 @@ import {
   cat,
   ent,
   EOA,
+  extract,
+  extractSync,
   hdr,
   hookFs,
+  isWindows,
+  linkTarget,
   longLink,
   longPath,
-  posixOnly,
+  resolve,
+  rootOf,
   runExtract,
   SKIP,
+  statMode,
+  testdir,
 } from './helpers.js'
-
-posixOnly()
 
 const modes = ['async', 'sync'] as const
 const MTIME = new Date('2001-02-03T04:05:06Z')
@@ -205,9 +208,18 @@ describe('symlink targets that can leave the cwd', () => {
         link('a/b/n', '../b'),
       ])
       assert.deepEqual(warnings, [])
-      assert.equal(nodeFs.readlinkSync(resolve(cwd, 'a/b/l')), '../../f')
-      assert.equal(nodeFs.readlinkSync(resolve(cwd, 'a/m')), './b/./')
-      assert.equal(nodeFs.readlinkSync(resolve(cwd, 'a/b/n')), '../b')
+      assert.equal(
+        nodeFs.readlinkSync(resolve(cwd, 'a/b/l')),
+        linkTarget('../../f'),
+      )
+      assert.equal(
+        nodeFs.readlinkSync(resolve(cwd, 'a/m')),
+        linkTarget('./b/./'),
+      )
+      assert.equal(
+        nodeFs.readlinkSync(resolve(cwd, 'a/b/n')),
+        linkTarget('../b'),
+      )
       assert.equal(
         nodeFs.realpathSync(resolve(cwd, 'a/b/l')),
         nodeFs.realpathSync(resolve(cwd, 'f')),
@@ -244,7 +256,10 @@ describe('hard link and symlink targets with absolute paths', () => {
           message?.replace(/, link .*$/, ', link'),
         ]),
         [
-          ['TAR_ENTRY_INFO', 'stripping / from absolute linkpath'],
+          [
+            'TAR_ENTRY_INFO',
+            `stripping ${rootOf(root)} from absolute linkpath`,
+          ],
           ['TAR_ENTRY_ERROR', 'ENOENT: no such file or directory, link'],
           ['TAR_ENTRY_ERROR', "linkpath contains '..'"],
           ['TAR_ENTRY_INFO', 'stripping / from absolute linkpath'],
@@ -268,14 +283,14 @@ describe('hard link and symlink targets with absolute paths', () => {
       // The root of an absolute symlink target is removed.
       assert.equal(
         nodeFs.readlinkSync(resolve(out, 'exploit_sym')),
-        'some/absolute/path',
+        linkTarget('some/absolute/path'),
       )
       assert.throws(() => nodeFs.lstatSync(resolve(out, 'secret.txt')), {
         code: 'ENOENT',
       })
       assert.equal(
         nodeFs.readlinkSync(resolve(out, 'a/link')),
-        '../a/target',
+        linkTarget('../a/target'),
       )
       assert.equal(
         nodeFs.readlinkSync(resolve(out, 'a/winrootdotslink')),
@@ -377,8 +392,11 @@ describe('names that can be the same file', () => {
       ops.filter(op => !op.endsWith('other')),
       ['open ﬁ', 'close ﬁ', 'open FI', 'close FI', 'open fi', 'close fi'],
     )
-    // An entry with a different name does not wait.
-    assert.lessThan(ops.indexOf('open other'), ops.indexOf('open FI'))
+    // An entry with a different name does not wait. With the platform
+    // 'win32', one entry is extracted at a time.
+    if (!isWindows) {
+      assert.lessThan(ops.indexOf('open other'), ops.indexOf('open FI'))
+    }
   })
 })
 
@@ -541,7 +559,10 @@ describe('hardening', () => {
           ['chmod', 0o777],
         ],
       )
-      assert.equal(nodeFs.statSync(resolve(cwd, 'd')).mode & 0o7777, 0o777)
+      assert.equal(
+        nodeFs.statSync(resolve(cwd, 'd')).mode & 0o7777,
+        statMode(0o777),
+      )
       assert.equal(nodeFs.statSync(resolve(cwd, 'f')).mode & 0o7000, 0)
     })
   }
@@ -609,7 +630,7 @@ describe('hardening', () => {
       assert(nodeFs.lstatSync(cwd).isDirectory())
       assert.equal(read(cwd, 'keep'), 'keep')
       // A directory entry can set the mode of the directory.
-      assert.equal(nodeFs.statSync(cwd).mode & 0o777, 0o700)
+      assert.equal(nodeFs.statSync(cwd).mode & 0o777, statMode(0o700))
       assert.deepEqual(
         calls.map(c => c[0]),
         ['stat', 'lstat', 'chmod', 'stat'],

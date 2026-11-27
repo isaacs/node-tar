@@ -1,27 +1,37 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
-import path from 'node:path'
+import { basename } from 'node:path'
 import zlib from 'node:zlib'
-import { any, assert, describe, test, testdir } from 'ubqtest'
+import { any, assert, describe, test } from 'ubqtest'
 import { Header, type HeaderData } from '../src/header.js'
 import { gzip, type Codec } from '../src/codec.js'
-import { extract, extractSync } from '../src/extract.js'
 import type { ExtractFS, ExtractFSSync } from '../src/fs.js'
 import { ReadEntry, ReadEntrySync } from '../src/read-entry.js'
-import { Unpack, UnpackSync } from '../src/unpack.js'
 import { Pax } from '../src/pax.js'
 import { makeTar } from './fixtures/make-tar.js'
-import { hookFs, posixOnly, runExtract, SKIP } from './helpers.js'
-
-posixOnly()
+import {
+  extract,
+  extractSync,
+  hookFs,
+  isWindows,
+  linkTarget,
+  resolve,
+  rootOf,
+  runExtract,
+  SKIP,
+  statMode,
+  testdir,
+  Unpack,
+  UnpackSync,
+} from './helpers.js'
 
 // The modules of Node fit the adapter types as they are.
 const fs: ExtractFS = nodeFsPromises
 const fsSync: ExtractFSSync = nodeFs
 
-const fixtures = path.resolve(import.meta.dirname, './fixtures')
-const tars = path.resolve(fixtures, 'tars')
-const parses = path.resolve(fixtures, 'parse')
+const fixtures = resolve(import.meta.dirname, './fixtures')
+const tars = resolve(fixtures, 'tars')
+const parses = resolve(fixtures, 'parse')
 
 const modes = ['async', 'sync'] as const
 
@@ -102,7 +112,7 @@ describe('basic file unpack tests', () => {
   }
 
   for (const [tarfile, expect] of Object.entries(cases)) {
-    const tf = path.resolve(tars, tarfile)
+    const tf = resolve(tars, tarfile)
     for (const mode of modes) {
       for (const strict of [true, false]) {
         const name = `${tarfile} ${mode} ${strict ? 'strict' : 'loose'}`
@@ -119,7 +129,7 @@ describe('basic file unpack tests', () => {
             await extract({ cwd, strict, fs: nodeFsPromises, file: tf })
           }
           for (const [file, content] of Object.entries(expect)) {
-            assert.equal(read(path.resolve(dir, file)), content, file)
+            assert.equal(read(resolve(dir, file)), content, file)
           }
         })
       }
@@ -335,8 +345,8 @@ describe('symlink in dir path', () => {
     test(`no clobbering, ${mode}`, async () => {
       const cwd = testdir({})
       const { warnings } = await runExtract(mode, { cwd }, data)
-      assert.equal(modeOf(cwd + '/d/i'), 0o755)
-      assert.equal(modeOf(cwd + '/d/i/r/dir'), 0o751)
+      assert.equal(modeOf(cwd + '/d/i'), statMode(0o755))
+      assert.equal(modeOf(cwd + '/d/i/r/dir'), statMode(0o751))
       assert(isFile(cwd + '/d/i/r/file'), 'got file')
       assert(isSymlink(cwd + '/d/i/r/symlink'), 'got symlink')
       assert.throws(() => nodeFs.statSync(cwd + '/d/i/r/symlink/x'), Error)
@@ -348,7 +358,7 @@ describe('symlink in dir path', () => {
       const opt = { cwd, preservePaths: true }
       const { warnings } = await runExtract(mode, opt, data)
       assert.deepEqual(warnings, [])
-      assert.equal(modeOf(cwd + '/d/i/r/dir'), 0o751)
+      assert.equal(modeOf(cwd + '/d/i/r/dir'), statMode(0o751))
       assert(isFile(cwd + '/d/i/r/file'), 'got file')
       assert(isSymlink(cwd + '/d/i/r/symlink'), 'got symlink')
       assert(isFile(cwd + '/d/i/r/dir/x'), 'x thru link')
@@ -360,7 +370,7 @@ describe('symlink in dir path', () => {
       const opt = { cwd, unlink: true }
       const { warnings } = await runExtract(mode, opt, data)
       assert.deepEqual(warnings, [])
-      assert.equal(modeOf(cwd + '/d/i/r/dir'), 0o751)
+      assert.equal(modeOf(cwd + '/d/i/r/dir'), statMode(0o751))
       assert(isFile(cwd + '/d/i/r/file'), 'got file')
       assert(!isSymlink(cwd + '/d/i/r/symlink'), 'no link')
       assert(
@@ -388,7 +398,7 @@ describe('symlink in dir path', () => {
       })
       const opt = { cwd, chmod: true, processUmask: 0o22 }
       const { warnings } = await runExtract(mode, opt, data)
-      assert.equal(modeOf(cwd + '/d/i/r/dir'), 0o751)
+      assert.equal(modeOf(cwd + '/d/i/r/dir'), statMode(0o751))
       assert(isFile(cwd + '/d/i/r/file'), 'got file')
       assert(isSymlink(cwd + '/d/i/r/symlink'), 'got symlink')
       assert.throws(() => nodeFs.statSync(cwd + '/d/i/r/symlink/x'), Error)
@@ -514,17 +524,17 @@ for (const mode of modes) {
       '',
     ])
     await runExtract(mode, { umask: 0o027, cwd }, data)
-    assert.equal(modeOf(cwd + '/d/i/r'), 0o750)
-    assert.equal(modeOf(cwd + '/d/i/r/dir'), 0o751)
-    assert.equal(modeOf(cwd + '/d/i/r/f'), 0o640)
+    assert.equal(modeOf(cwd + '/d/i/r'), statMode(0o750))
+    assert.equal(modeOf(cwd + '/d/i/r/dir'), statMode(0o751))
+    assert.equal(modeOf(cwd + '/d/i/r/f'), statMode(0o640))
   })
 
   test(`dmode and fmode options, ${mode}`, async () => {
     const cwd = testdir({})
     const data = makeTar([{ path: 'd/f', type: 'File' }, '', ''])
     await runExtract(mode, { dmode: 0o700, fmode: 0o600, cwd }, data)
-    assert.equal(modeOf(cwd + '/d'), 0o700)
-    assert.equal(modeOf(cwd + '/d/f'), 0o600)
+    assert.equal(modeOf(cwd + '/d'), statMode(0o700))
+    assert.equal(modeOf(cwd + '/d/f'), statMode(0o600))
   })
 }
 
@@ -535,25 +545,28 @@ const oneFileTar = (path: string, content: string) =>
 describe('absolute paths', () => {
   const setup = () => {
     const dir = testdir({})
-    const absolute = path.resolve(dir, 'd/i/r/absolute')
-    const extraAbsolute = '///' + absolute
-    const relative = absolute.slice(1)
-    return { dir, absolute, extraAbsolute, relative }
+    const absolute = resolve(dir, 'd/i/r/absolute')
+    const root = rootOf(absolute)
+    // A path of Windows has one root, the drive.
+    const extra = isWindows ? '' : '///'
+    const extraAbsolute = extra + absolute
+    const relative = absolute.slice(root.length)
+    return { dir, absolute, extraAbsolute, relative, root: extra + root }
   }
 
   for (const mode of modes) {
     test(`warn and correct, ${mode}`, async () => {
-      const { dir, extraAbsolute, relative } = setup()
+      const { dir, extraAbsolute, relative, root } = setup()
       const data = oneFileTar(extraAbsolute, 'a')
       const { warnings } = await runExtract(mode, { cwd: dir }, data)
       assert.match<unknown>(warnings, [
         [
           'TAR_ENTRY_INFO',
-          `stripping //// from absolute path`,
+          `stripping ${root} from absolute path`,
           { path: extraAbsolute, code: 'TAR_ENTRY_INFO' },
         ],
       ])
-      assert(isFile(path.resolve(dir, relative)), 'is file')
+      assert(isFile(resolve(dir, relative)), 'is file')
     })
 
     test(`preserve absolute path, ${mode}`, async () => {
@@ -592,12 +605,12 @@ describe('.. paths', () => {
 
     test(`preserve dotted path, ${mode}`, async () => {
       const dir = testdir({})
-      const resolved = path.resolve(dir, dotted)
+      const resolved = resolve(dir, dotted)
       const opt = { fmode, preservePaths: true, cwd: dir }
       const { warnings } = await runExtract(mode, opt, data)
       assert.deepEqual(warnings, [])
       assert(isFile(resolved), 'is file')
-      assert.equal(modeOf(resolved), fmode)
+      assert.equal(modeOf(resolved), statMode(fmode))
     })
   }
 })
@@ -713,7 +726,7 @@ describe('fail mkdir', () => {
           {
             code: 'ENOENT',
             syscall: 'lstat',
-            path: path.resolve(cwd, 'dir'),
+            path: resolve(cwd, 'dir'),
           },
         ],
       ])
@@ -1079,7 +1092,7 @@ describe('unpack when dir is not writable', () => {
     test(mode, async () => {
       const dir = testdir({})
       await runExtract(mode, { cwd: dir, strict: true }, data)
-      assert.equal(modeOf(dir + '/a'), 0o744)
+      assert.equal(modeOf(dir + '/a'), statMode(0o744))
       assert.equal(read(dir + '/a/b'), 'a')
     })
   }
@@ -1101,7 +1114,7 @@ describe('transmute chars on windows', () => {
       const dir = testdir({})
       await runExtract(mode, { cwd: dir, platform: 'win32' }, data)
       assert.deepEqual(nodeFs.readdirSync(dir), [uglyName])
-      assert.equal(read(path.resolve(dir, uglyName)), '<|>?:')
+      assert.equal(read(resolve(dir, uglyName)), '<|>?:')
     })
 
     test(`safely, with absolutes, ${mode}`, async () => {
@@ -1152,7 +1165,7 @@ describe('explicit chmod', () => {
       const cwd = testdir({})
       const opt = { cwd, chmod: true, processUmask: 0o22 }
       const { calls } = await runExtract(mode, opt, data, {})
-      assert.equal(modeOf(cwd + '/x/y/z'), 0o775)
+      assert.equal(modeOf(cwd + '/x/y/z'), statMode(0o775))
       assert.deepEqual(chmods(calls), [['chmod', cwd + '/x/y/z', 0o775]])
     })
 
@@ -1164,7 +1177,7 @@ describe('explicit chmod', () => {
         data,
         {},
       )
-      assert.equal(modeOf(cwd + '/x/y'), 0o755)
+      assert.equal(modeOf(cwd + '/x/y'), statMode(0o755))
       assert.deepEqual(chmods(calls), [['chmod', cwd + '/x/y/z', 0o775]])
     })
 
@@ -1172,7 +1185,7 @@ describe('explicit chmod', () => {
       const cwd = testdir({})
       const opt = { cwd, processUmask: 0o22 }
       const { calls } = await runExtract(mode, opt, data, {})
-      assert.equal(modeOf(cwd + '/x/y/z'), 0o755)
+      assert.equal(modeOf(cwd + '/x/y/z'), statMode(0o755))
       assert.deepEqual(chmods(calls), [])
     })
 
@@ -1182,10 +1195,10 @@ describe('explicit chmod', () => {
       nodeFs.chmodSync(cwd, 0o700)
       const opt = { cwd, chmod: true, processUmask: 0o22, dmode: 0o775 }
       const { calls } = await runExtract(mode, opt, data, {})
-      assert.equal(modeOf(cwd), 0o775)
+      assert.equal(modeOf(cwd), statMode(0o775))
       // Only the last directory of a path that is made gets the mode.
-      assert.equal(modeOf(cwd + '/x'), 0o755)
-      assert.equal(modeOf(cwd + '/x/y'), 0o775)
+      assert.equal(modeOf(cwd + '/x'), statMode(0o755))
+      assert.equal(modeOf(cwd + '/x/y'), statMode(0o775))
       assert.equal(chmods(calls)[0]?.[1], cwd)
     })
   }
@@ -1396,7 +1409,7 @@ describe('transform', () => {
       '1024-bytes.txt',
       '512-bytes.txt',
       'Ω.txt',
-    ].includes(path.basename(entry.path))
+    ].includes(basename(entry.path))
   const transform = (entry: ReadEntry) =>
     wanted(entry) ?
       new TransformStream<Uint8Array, Uint8Array>({
@@ -1407,7 +1420,7 @@ describe('transform', () => {
     wanted(entry) ? brace : undefined
 
   for (const [tarfile, expect] of Object.entries(cases)) {
-    const input = nodeFs.readFileSync(path.resolve(tars, tarfile))
+    const input = nodeFs.readFileSync(resolve(tars, tarfile))
     for (const mode of modes) {
       for (const strict of [true, false]) {
         const name = `${tarfile} ${mode} ${strict ? 'strict' : 'loose'}`
@@ -1420,7 +1433,7 @@ describe('transform', () => {
             await extract({ cwd, strict, transform, fs, input })
           }
           for (const [file, content] of Object.entries(expect)) {
-            assert.equal(read(path.resolve(cwd, file)), content, file)
+            assert.equal(read(resolve(cwd, file)), content, file)
           }
         })
       }
@@ -1450,9 +1463,7 @@ describe('transform', () => {
 })
 
 describe('transform error', () => {
-  const input = nodeFs.readFileSync(
-    path.resolve(tars, 'body-byte-counts.tar'),
-  )
+  const input = nodeFs.readFileSync(resolve(tars, 'body-byte-counts.tar'))
   const poop = new Error('poop')
   const transform = () =>
     new TransformStream<Uint8Array, Uint8Array>({
@@ -1794,7 +1805,7 @@ describe('content that arrives in more than one chunk', () => {
 })
 
 describe('futimes/fchown failures', () => {
-  const tardata = nodeFs.readFileSync(path.resolve(tars, 'utf8.tar'))
+  const tardata = nodeFs.readFileSync(resolve(tars, 'utf8.tar'))
   const poop = new Error('poop')
   const second = new Error('second error')
 
@@ -1988,12 +1999,16 @@ describe('an existing file', () => {
   ])
   const ops = (calls: unknown[][]) =>
     calls.map(c => c[0]).filter(op => op !== 'stat' && op !== 'lstat')
+  // With the platform 'win32', a file is renamed before it is
+  // removed, and an entry is never written into an existing file.
+  const remove = isWindows ? ['rename', 'unlink'] : ['unlink']
+  const reuse = isWindows ? remove : []
 
   for (const mode of modes) {
     test(`is written in place, ${mode}`, async () => {
       const cwd = testdir({ f: 'old content' })
       const { calls } = await runExtract(mode, { cwd }, data, {})
-      assert.deepEqual(ops(calls), ['open', 'write', 'close'])
+      assert.deepEqual(ops(calls), [...reuse, 'open', 'write', 'close'])
       assert.equal(read(cwd + '/f'), 'new')
     })
 
@@ -2001,7 +2016,7 @@ describe('an existing file', () => {
       const cwd = testdir({ f: 'old content' })
       const opt = { cwd, unlink: true }
       const { calls } = await runExtract(mode, opt, data, {})
-      assert.deepEqual(ops(calls), ['unlink', 'open', 'write', 'close'])
+      assert.deepEqual(ops(calls), [...remove, 'open', 'write', 'close'])
       assert.equal(read(cwd + '/f'), 'new')
     })
 
@@ -2014,7 +2029,7 @@ describe('an existing file', () => {
         '',
       ])
       const { calls } = await runExtract(mode, { cwd }, data, {})
-      assert.deepEqual(ops(calls), ['unlink', 'open', 'write', 'close'])
+      assert.deepEqual(ops(calls), [...remove, 'open', 'write', 'close'])
       assert.equal(read(cwd + '/f'), 'new')
     })
 
@@ -2051,7 +2066,7 @@ describe('an existing file', () => {
       assert(nodeFs.statSync(cwd + '/d').isDirectory())
       assert(nodeFs.statSync(cwd + '/g').isDirectory())
       assert.deepEqual(ops(calls), [
-        'unlink',
+        ...remove,
         'mkdir',
         'rmdir',
         'rmdir',
@@ -2189,7 +2204,7 @@ describe('max decompression ratio', () => {
       }
       await runExtract(mode, opt, data)
       assert.equal(
-        nodeFs.statSync(path.resolve(cwd, 'bomb')).size,
+        nodeFs.statSync(resolve(cwd, 'bomb')).size,
         8 * 1024 * 1024,
       )
     })
@@ -2436,7 +2451,7 @@ describe('recognize C:.. as a dot path part', () => {
 
 describe('excessively deep subfolder nesting', () => {
   const data = nodeFs.readFileSync(
-    path.resolve(fixtures, 'excessively-deep.tar'),
+    resolve(fixtures, 'excessively-deep.tar'),
   )
 
   // Each case: the name, the option, and the limit that it gives.
@@ -2537,7 +2552,7 @@ for (const mode of modes) {
     assert(isSymlink(dir + '/bar/link.txt'))
     assert.equal(
       nodeFs.readlinkSync(dir + '/bar/link.txt'),
-      '../foo/file.txt',
+      linkTarget('../foo/file.txt'),
     )
     assert.equal(read(dir + '/bar/link.txt'), 'hello world')
     assert.throws(() => nodeFs.lstatSync(dir + '/bar/badlink.txt'), Error)
@@ -2676,7 +2691,7 @@ describe('rename a file before unlink on windows', () => {
         {},
       )
       assert.deepEqual(warnings, [])
-      const file = path.resolve(cwd, 'x')
+      const file = resolve(cwd, 'x')
       const renames = calls.filter(c => c[0] === 'rename')
       assert.match<unknown>(renames, [
         ['rename', file, /\/x\.DELETE\.[0-9a-f]{32}$/],
@@ -2757,22 +2772,19 @@ describe('an error of the times or the owner of a directory is ignored', () => {
 
 describe('the write flag', () => {
   const data = makeTar([{ type: 'File', path: 'x', size: 1 }, 'x', '', ''])
-  const { O_CREAT, O_TRUNC, O_WRONLY, O_NOFOLLOW } = nodeFs.constants
+  const { O_CREAT, O_TRUNC, O_WRONLY, O_NOFOLLOW, UV_FS_O_FILEMAP } =
+    nodeFs.constants
+  // Windows has no O_NOFOLLOW. It writes a small file through a file
+  // mapping.
+  const flag = isWindows ? UV_FS_O_FILEMAP : O_NOFOLLOW
 
   for (const mode of modes) {
-    test(`O_NOFOLLOW from the constants of the fs, ${mode}`, async () => {
+    test(`the flag from the constants of the fs, ${mode}`, async () => {
       const cwd = testdir({})
       const { calls } = await runExtract(mode, { cwd }, data, {})
       assert.deepEqual(
         calls.filter(c => c[0] === 'open'),
-        [
-          [
-            'open',
-            cwd + '/x',
-            O_NOFOLLOW | O_TRUNC | O_CREAT | O_WRONLY,
-            0o666,
-          ],
-        ],
+        [['open', cwd + '/x', flag | O_TRUNC | O_CREAT | O_WRONLY, 0o666]],
       )
     })
 
@@ -2802,10 +2814,11 @@ describe('jobs option', () => {
     '',
   ])
 
+  // With the platform 'win32', one entry is extracted at a time.
   for (const [jobs, expect] of [
     [1, 1],
-    [2, 2],
-    [undefined, 5],
+    [2, isWindows ? 1 : 2],
+    [undefined, isWindows ? 1 : 5],
   ] as const) {
     test(`jobs=${jobs}`, async () => {
       const cwd = testdir({})

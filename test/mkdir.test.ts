@@ -1,9 +1,7 @@
 import * as nodeFs from 'node:fs'
-import { assert, describe, test, testdir } from 'ubqtest'
+import { assert, describe, test } from 'ubqtest'
 import { mkdir, mkdirSync, type MkdirOptions } from '../src/mkdir.js'
-import { hookFs, posixOnly, SKIP, type FsOp } from './helpers.js'
-
-posixOnly()
+import { hookFs, SKIP, statMode, testdir, type FsOp } from './helpers.js'
 
 const modes = ['async', 'sync'] as const
 
@@ -38,7 +36,10 @@ for (const mode of modes) {
         ['mkdir', cwd + '/a/b', { mode: 0o750 }],
         ['mkdir', cwd + '/a/b/c', { mode: 0o750 }],
       ])
-      assert.equal(nodeFs.statSync(cwd + '/a/b/c').mode & 0o777, 0o750)
+      assert.equal(
+        nodeFs.statSync(cwd + '/a/b/c').mode & 0o777,
+        statMode(0o750),
+      )
     })
 
     test('the extraction directory must be a directory', async () => {
@@ -73,7 +74,10 @@ for (const mode of modes) {
       const opt = { cwd, mode: 0o775, umask: 0o22 }
       const calls = await run(mode, cwd + '/a/b', opt)
       assert.deepEqual(calls.slice(2), [['chmod', cwd + '/a/b', 0o775]])
-      assert.equal(nodeFs.statSync(cwd + '/a/b').mode & 0o777, 0o775)
+      assert.equal(
+        nodeFs.statSync(cwd + '/a/b').mode & 0o777,
+        statMode(0o775),
+      )
     })
 
     test('a symbolic link in the path is an error', async () => {
