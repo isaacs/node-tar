@@ -404,7 +404,7 @@ describe('skipBody', () => {
     assert.deepEqual(warnings, [
       [
         'TAR_BAD_ARCHIVE',
-        'Truncated input (needed 1436 more bytes, only 0 available)',
+        'Truncated input (needed 1536 more bytes, only 100 available)',
       ],
     ])
   })
@@ -530,28 +530,41 @@ describe('truncated input', () => {
     assert.equal(ends, 1)
   })
 
-  test('the numbers are the same as in the old parser', () => {
+  test('the numbers do not depend on the chunks', () => {
     const big = cat(
       hdr({ path: 'big', type: 'File', size: 2048 }),
       new Uint8Array(1000).fill(0x61),
     )
-    // The old parser reads body data only when it has a block or
-    // more, so the numbers depend on the chunks.
-    for (const [cuts, need, have] of [
-      [[], 1048, 0],
-      [[1112, 1212], 1448, 400],
-      [[1024], 1536, 488],
-      [[600, 1100], 1460, 412],
-    ] as const) {
+    // The body has one complete block, and 488 bytes of the next
+    // block. The body needs 1536 bytes from the start of that block.
+    for (const cuts of [
+      [],
+      [512],
+      [1024],
+      [612, 1112],
+      [1112, 1212],
+      [600, 1100],
+      [100, 700, 701, 1300],
+    ]) {
       const chunks = [...cuts, big.length].map((end, i) =>
         big.subarray(cuts[i - 1] ?? 0, end),
       )
       assert.deepEqual(
         parse(chunks).warnings,
-        [['TAR_BAD_ARCHIVE', message(need, have)]],
+        [['TAR_BAD_ARCHIVE', message(1536, 488)]],
         `cuts ${cuts}`,
       )
     }
+  })
+
+  test('a body that ends at a block boundary, in small chunks', () => {
+    const big = cat(
+      hdr({ path: 'big', type: 'File', size: 2048 }),
+      new Uint8Array(1024),
+    )
+    assert.deepEqual(parse(chunked(big, 100)).warnings, [
+      ['TAR_BAD_ARCHIVE', message(1024, 0)],
+    ])
   })
 
   test('in strict mode, the entry ends after the error', () => {

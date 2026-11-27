@@ -95,8 +95,6 @@ export class Parser<E extends EntryData = EntryData> {
   // body bytes to come, without and with the padding
   #remain: number = 0
   #blockRemain: number = 0
-  // body bytes at the end of the input that are less than a block
-  #held: number = 0
   #ex?: Pax
   // the names of the GNU long name headers for the next entry
   #long?: { path?: string; linkpath?: string }
@@ -170,7 +168,7 @@ export class Parser<E extends EntryData = EntryData> {
   skipBody(): void {
     this.#entryEnd = this.#state === BODY
     this.offset += this.#blockRemain
-    this.#remain = this.#blockRemain = this.#held = 0
+    this.#remain = this.#blockRemain = 0
     this.#endBody()
   }
 
@@ -227,8 +225,6 @@ export class Parser<E extends EntryData = EntryData> {
       this.#blockRemain = blockRemain - n
       this.#remain = remain - len
       const last = n === blockRemain
-      // The message of a truncated archive has this number.
-      this.#held = last || this.#held + n >= 512 ? 0 : this.#held + n
 
       if (state === META) {
         const meta = this.#meta as Uint8Array
@@ -271,7 +267,10 @@ export class Parser<E extends EntryData = EntryData> {
     if (state > HEADER) {
       // The body of the last entry is not complete.
       const entry = this.#entry
-      const held = this.#held
+      // The bytes of the last block of the input, which is not
+      // complete, and the bytes from the start of that block to the
+      // end of the body. The chunks of the input do not change them.
+      const held = (512 - (this.#blockRemain % 512)) % 512
       const need = this.#blockRemain + held
       this.#entry = undefined
       this.#meta = undefined
@@ -372,7 +371,6 @@ export class Parser<E extends EntryData = EntryData> {
     this.#header = header
     this.#remain = size
     this.#blockRemain = 512 * Math.ceil(size / 512)
-    this.#held = 0
     // A meta entry or an ignored entry is valid tar also.
     if (!size) this.#sawValid = true
 
