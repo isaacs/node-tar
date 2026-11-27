@@ -1,6 +1,17 @@
+import * as nodeFs from 'node:fs'
+import * as nodeFsPromises from 'node:fs/promises'
 import { Header, type HeaderData } from '../../src/header.js'
 import type { Codec } from '../../src/next/codec.js'
+import type {
+  ExtractFS,
+  ExtractFSSync,
+  TarFS,
+  TarFSSync,
+} from '../../src/next/fs.js'
+import { extract, extractSync } from '../../src/next/extract.js'
 import type { ParserOptions } from '../../src/next/options.js'
+import type { UnpackOptions } from '../../src/next/options.js'
+import type { WarnData, WarnOptions } from '../../src/next/warn.js'
 import { Parser } from '../../src/next/parser.js'
 import type { EntryData } from '../../src/next/read-entry.js'
 
@@ -163,4 +174,184 @@ export const xorCodec: Codec = {
     return xor(data.subarray(XOR_MAGIC.length))
   },
   compressSync: xorCompress,
+}
+
+/** A hook returns this so that the real operation does not run. */
+export const SKIP = Symbol('skip')
+
+/** The operations that `hookFs` can change. */
+export type FsOp =
+  | 'open'
+  | 'read'
+  | 'write'
+  | 'futimes'
+  | 'fchown'
+  | 'close'
+  | 'stat'
+  | 'lstat'
+  | 'mkdir'
+  | 'chmod'
+  | 'chown'
+  | 'lchown'
+  | 'utimes'
+  | 'lutimes'
+  | 'rmdir'
+  | 'unlink'
+  | 'rename'
+  | 'link'
+  | 'symlink'
+type PathOp = Exclude<
+  FsOp,
+  'open' | 'read' | 'write' | 'futimes' | 'fchown' | 'close'
+>
+type Fn = (...args: unknown[]) => unknown
+
+/**
+ * The fs modules of Node, with a hook before each operation. A hook
+ * gets the arguments of the operation. It can throw, or return `SKIP`.
+ * For an operation on an open file, the first argument is the path of
+ * the file, and the `close` hook runs after the file is closed.
+ *
+ * `calls` has the name and the arguments of each operation.
+ */
+export const hookFs = (hooks: Partial<Record<FsOp, Fn>> = {}) => {
+  const calls: unknown[][] = []
+  const before = (op: FsOp, ...args: unknown[]) => {
+    calls.push([op, ...args])
+    return hooks[op]?.(...args) === SKIP
+  }
+  const a = <K extends PathOp>(op: K) =>
+    (async (...args: unknown[]) =>
+      before(op, ...args) ? undefined : (
+        (nodeFsPromises[op] as Fn)(...args)
+      )) as (typeof nodeFsPromises)[K]
+  const s = <K extends PathOp>(op: K) =>
+    ((...args: unknown[]) =>
+      before(op, ...args) ? undefined : (
+        (nodeFs[`${op}Sync`] as Fn)(...args)
+      )) as (typeof nodeFs)[`${K}Sync`]
+
+  const fs: ExtractFS & TarFS = {
+    constants: nodeFs.constants,
+    open: async (path: string, flags: string | number, mode?: number) => {
+      before('open', path, flags, mode)
+      const h = await nodeFsPromises.open(path, flags, mode)
+      return {
+        stat: () => h.stat(),
+        read: async (buf, off, len, pos) => {
+          before('read', path, buf, off, len, pos)
+          return h.read(buf, off, len, pos)
+        },
+        write: async data => {
+          if (!before('write', path, data)) await h.write(data)
+        },
+        utimes: async (atime, mtime) => {
+          if (!before('futimes', path, atime, mtime)) {
+            await h.utimes(atime, mtime)
+          }
+        },
+        chown: async (uid, gid) => {
+          if (!before('fchown', path, uid, gid)) await h.chown(uid, gid)
+        },
+        close: async () => {
+          await h.close()
+          before('close', path)
+        },
+      }
+    },
+    stat: a('stat'),
+    lstat: a('lstat'),
+    mkdir: a('mkdir'),
+    chmod: a('chmod'),
+    chown: a('chown'),
+    lchown: a('lchown'),
+    utimes: a('utimes'),
+    lutimes: a('lutimes'),
+    rmdir: a('rmdir'),
+    unlink: a('unlink'),
+    rename: a('rename'),
+    link: a('link'),
+    symlink: a('symlink'),
+  }
+
+  const paths = new Map<number, string>()
+  const fsSync: ExtractFSSync & TarFSSync = {
+    constants: nodeFs.constants,
+    openSync: (path: string, flags: string | number, mode?: number) => {
+      before('open', path, flags, mode)
+      const fd = nodeFs.openSync(path, flags, mode)
+      paths.set(fd, path)
+      return fd
+    },
+    fstatSync: fd => nodeFs.fstatSync(fd),
+    readSync: (fd, buf, off, len, pos) => {
+      before('read', paths.get(fd), buf, off, len, pos)
+      return nodeFs.readSync(fd, buf, off, len, pos)
+    },
+    writeSync: (fd, data) =>
+      before('write', paths.get(fd), data) ? 0 : (
+        nodeFs.writeSync(fd, data)
+      ),
+    futimesSync: (fd, atime, mtime) => {
+      if (!before('futimes', paths.get(fd), atime, mtime)) {
+        nodeFs.futimesSync(fd, atime, mtime)
+      }
+    },
+    fchownSync: (fd, uid, gid) => {
+      if (!before('fchown', paths.get(fd), uid, gid)) {
+        nodeFs.fchownSync(fd, uid, gid)
+      }
+    },
+    closeSync: fd => {
+      nodeFs.closeSync(fd)
+      before('close', paths.get(fd))
+    },
+    statSync: s('stat'),
+    lstatSync: s('lstat'),
+    mkdirSync: s('mkdir'),
+    chmodSync: s('chmod'),
+    chownSync: s('chown'),
+    lchownSync: s('lchown'),
+    utimesSync: s('utimes'),
+    lutimesSync: s('lutimes'),
+    rmdirSync: s('rmdir'),
+    unlinkSync: s('unlink'),
+    renameSync: s('rename'),
+    linkSync: s('link'),
+    symlinkSync: s('symlink'),
+  }
+  return { fs, fsSync, calls }
+}
+
+/** The options that `runExtract` passes on. */
+export type RunExtractOptions = UnpackOptions &
+  WarnOptions & {
+    maxDecompressionRatio?: number
+    codecs?: Codec[]
+    jobs?: number
+  }
+
+/**
+ * Extract the archive data with `extract` ('async') or `extractSync`
+ * ('sync'). With `hooks`, the file system is the one of `hookFs`.
+ * Returns each warning as [code, message, data], and the calls of
+ * the hooked file system.
+ */
+export const runExtract = async (
+  mode: 'async' | 'sync',
+  opt: RunExtractOptions,
+  input: Uint8Array | Uint8Array[],
+  hooks?: Partial<Record<FsOp, Fn>>,
+) => {
+  const warnings: [code: string, message: string, data: WarnData][] = []
+  const onwarn = (code: string, message: string, data: WarnData) => {
+    warnings.push([code, message, data])
+  }
+  const { fs, fsSync, calls } =
+    hooks ?
+      hookFs(hooks)
+    : { fs: nodeFsPromises, fsSync: nodeFs, calls: [] }
+  if (mode === 'sync') extractSync({ onwarn, ...opt, fs: fsSync, input })
+  else await extract({ onwarn, ...opt, fs, input })
+  return { warnings, calls }
 }

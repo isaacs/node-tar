@@ -52,11 +52,31 @@ export type Codec = {
 /**
  * Gzip with the `DecompressionStream` and `CompressionStream` of the
  * runtime. The async readers always have it, after `opt.codecs`.
+ * The option `portable` of `compress` makes output that does not
+ * name the system.
  */
 export const gzip: Codec = {
   name: 'gzip',
   headLength: 2,
   detect: head => head[0] === 0x1f && head[1] === 0x8b,
   decompress: () => new DecompressionStream('gzip') as CodecStream,
-  compress: () => new CompressionStream('gzip') as CodecStream,
+  compress: options => {
+    const stream = new CompressionStream('gzip') as CodecStream
+    if (!options?.portable) return stream
+    // Byte 9 of a gzip stream names the system that made it. Set it
+    // to 255, "unknown", so that each system makes the same bytes.
+    let pos = 0
+    return {
+      writable: stream.writable,
+      readable: stream.readable.pipeThrough(
+        new TransformStream<Uint8Array, Uint8Array>({
+          transform: (chunk, controller) => {
+            if (pos <= 9 && pos + chunk.length > 9) chunk[9 - pos] = 255
+            pos += chunk.length
+            controller.enqueue(chunk)
+          },
+        }),
+      ),
+    }
+  },
 }
