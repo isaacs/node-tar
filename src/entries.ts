@@ -1,3 +1,9 @@
+import {
+  isArrayBuffer,
+  isBlob,
+  isReadableStream,
+  isUint8Array,
+} from './bytes.js'
 import { Header } from './header.js'
 import { gzip, type Codec } from './codec.js'
 import { concat } from './concat.js'
@@ -131,10 +137,10 @@ const skipBody = <E extends EntryData>(
 }
 
 const toSource = (input: TarInput): Source => {
-  if (input instanceof Uint8Array) return [input].values()
-  if (input instanceof ArrayBuffer) return [new Uint8Array(input)].values()
-  if (input instanceof Blob) input = input.stream()
-  if (input instanceof ReadableStream) {
+  if (isUint8Array(input)) return [input].values()
+  if (isArrayBuffer(input)) return [new Uint8Array(input)].values()
+  if (isBlob(input)) input = input.stream()
+  if (isReadableStream(input)) {
     const reader = input.getReader()
     return { next: () => reader.read(), return: () => reader.cancel() }
   }
@@ -312,8 +318,8 @@ export class TarReaderSync
     this.#cursor = new EntryCursor(this.parser)
     this.#opt = opt
     this.#input =
-      input instanceof Uint8Array ? [input].values()
-      : input instanceof ArrayBuffer ? [new Uint8Array(input)].values()
+      isUint8Array(input) ? [input].values()
+      : isArrayBuffer(input) ? [new Uint8Array(input)].values()
       : input[Symbol.iterator]()
   }
 

@@ -6,6 +6,7 @@
 import {
   decodeUtf8,
   encodeUtf8Into,
+  isUint8Array,
   utf8Length,
   writeAscii,
 } from './bytes.js'
@@ -74,7 +75,7 @@ export class Header implements HeaderData {
     ex?: HeaderData,
     gex?: HeaderData,
   ) {
-    if (data instanceof Uint8Array) {
+    if (isUint8Array(data)) {
       this.decode(data, off || 0, ex, gex)
     } else if (data) {
       this.#slurp(data)

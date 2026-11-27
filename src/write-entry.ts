@@ -1,3 +1,4 @@
+import { isBlob, isUint8Array } from './bytes.js'
 import { Header } from './header.js'
 import { Pax } from './pax.js'
 import { stripTrailingSlashes } from './strip-trailing-slashes.js'
@@ -105,16 +106,16 @@ export class WriteEntry {
     if (
       data.size === undefined &&
       body !== undefined &&
-      !(body instanceof Uint8Array) &&
-      !(body instanceof Blob)
+      !isUint8Array(body) &&
+      !isBlob(body)
     ) {
       // The header comes before the content, and it has the size.
       throw new TypeError('a stream body needs the size option')
     }
     this.size =
       data.size ??
-      (body instanceof Uint8Array ? body.length
-      : body instanceof Blob ? body.size
+      (isUint8Array(body) ? body.length
+      : isBlob(body) ? body.size
       : 0)
     this.mtime = data.mtime
     this.atime = data.atime

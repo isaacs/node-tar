@@ -109,7 +109,7 @@ export class Pax implements HeaderData {
       return ''
     }
     const r = this[field]
-    const v = r instanceof Date ? r.getTime() / 1000 : r
+    const v = typeof r === 'object' ? r.getTime() / 1000 : r
     const s =
       ' ' +
       (field === 'dev' || field === 'ino' || field === 'nlink' ?

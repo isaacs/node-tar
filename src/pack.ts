@@ -1,3 +1,4 @@
+import { isBlob, isReadableStream, isUint8Array } from './bytes.js'
 import { modeFix } from './mode-fix.js'
 import type { EntryTypeName } from './types.js'
 import * as winchars from './winchars.js'
@@ -428,12 +429,9 @@ const fillSync = (
 async function* chunks(
   body: WriteEntry['body'],
 ): AsyncGenerator<Uint8Array, void, void> {
-  if (body instanceof Uint8Array) yield body
-  else if (body instanceof Blob || body instanceof ReadableStream) {
-    const reader = (
-      body instanceof Blob ?
-        body.stream()
-      : body).getReader()
+  if (isUint8Array(body)) yield body
+  else if (isBlob(body) || isReadableStream(body)) {
+    const reader = (isBlob(body) ? body.stream() : body).getReader()
     try {
       for (;;) {
         const res = await reader.read()
@@ -449,7 +447,7 @@ async function* chunks(
 function* chunksSync(
   body: WriteEntry['body'],
 ): Generator<Uint8Array, void, void> {
-  if (body instanceof Uint8Array) yield body
+  if (isUint8Array(body)) yield body
   else if (body && Symbol.iterator in body) yield* body
   else if (body) {
     throw new TypeError(

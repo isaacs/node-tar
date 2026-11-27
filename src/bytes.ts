@@ -1,5 +1,30 @@
 // Text and byte helpers that work on a plain Uint8Array in any
-// JavaScript runtime.
+// JavaScript runtime, and type checks for the input of a caller.
+//
+// A check with `instanceof` is false for an object that a different
+// realm made, such as a Node.js `Buffer` in a `node:vm` context, or a
+// `Blob` of a different window. These checks are true for an object
+// of each realm.
+
+/** True for a `Uint8Array`, and for a subclass such as `Buffer`. */
+export const isUint8Array = (x: unknown): x is Uint8Array =>
+  ArrayBuffer.isView(x) &&
+  (x as Uint8Array)[Symbol.toStringTag] === 'Uint8Array'
+
+/** True for an `ArrayBuffer`. */
+export const isArrayBuffer = (x: unknown): x is ArrayBuffer =>
+  Object.prototype.toString.call(x) === '[object ArrayBuffer]'
+
+/** True for an object that has the size and the stream of a `Blob`. */
+export const isBlob = (x: unknown): x is Blob =>
+  typeof (x as Blob | undefined)?.size === 'number' &&
+  typeof (x as Blob).stream === 'function'
+
+/** True for an object that has the reader of a `ReadableStream`. */
+export const isReadableStream = (
+  x: unknown,
+): x is ReadableStream<Uint8Array> =>
+  typeof (x as ReadableStream | undefined)?.getReader === 'function'
 
 // A name can start with U+FEFF. The decoder must keep it.
 const decoder = new TextDecoder('utf-8', { ignoreBOM: true })
