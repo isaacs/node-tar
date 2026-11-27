@@ -133,6 +133,11 @@ A new API. See "Migration from version 7" in the README.
   has no entry after it. (GHSA-p7rf-cx2m-qgrr, GHSA-9239-v992-p74f,
   GHSA-9hmx-4f52-v64x, GHSA-8h4g-6p7x-m3c9)
 
+### Bug fixes
+
+- On Windows, `extract()` with `preservePaths` sets the owner of
+  each directory that it makes, not only of the last one.
+
 ## 7.5
 
 - Added `zstd` compression support.

@@ -129,6 +129,38 @@ for (const mode of modes) {
       ])
     })
 
+    test('preserve: the first directory that the fs gives', async () => {
+      const dir = 'C:/x/a/b/c'
+      const options = {
+        cwd: 'C:/x',
+        umask: 0,
+        preserve: true,
+        unlink: false,
+        mode: 0o755,
+        uid: 1,
+        gid: 2,
+      }
+      // The directories that get the owner.
+      const made = async (first: string) => {
+        const { fs, fsSync, calls } = hookFs({ lchown: () => SKIP })
+        if (mode === 'sync') {
+          mkdirSync({ ...fsSync, mkdirSync: () => first }, dir, options)
+        } else {
+          await mkdir({ ...fs, mkdir: async () => first }, dir, options)
+        }
+        return calls.map(c => c[1])
+      }
+      // Node.js on Windows gives this form of `C:/x/a`.
+      assert.deepEqual(await made('\\\\?\\C:\\x\\a'), [
+        dir,
+        'C:/x/a/b',
+        'C:/x/a',
+      ])
+      assert.deepEqual(await made(dir), [dir])
+      // A path that is not above the directory.
+      assert.deepEqual(await made('D:/y'), [dir])
+    })
+
     test('the owner of each directory that is made', async () => {
       const cwd = testdir({ a: {} })
       const opt = { cwd, uid: 1, gid: 2, processUid: 1, processGid: 3 }

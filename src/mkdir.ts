@@ -46,15 +46,16 @@ const child = (dir: string, name: string) =>
   dir.endsWith('/') ? dir + name : dir + '/' + name
 
 // The directories that a recursive mkdir made: `dir`, and its parents
-// up to `first`, the one that was made first. Only the length of
-// `first` is used, because its separators can differ from `dir`.
+// up to `first`, the one that was made first. On Windows, Node.js
+// gives `first` with `\` separators, after the prefix `\\?\`. So
+// `first` is the parent that it ends with. If it ends with none of
+// them, only `dir` is known.
 const chain = (first: string, dir: string) => {
+  const end = first.replaceAll('\\', '/')
   const made = [dir]
-  for (
-    let i = dir.lastIndexOf('/');
-    i >= first.length;
+  for (let i = dir.length; !end.endsWith(dir.slice(0, i)); ) {
     i = dir.lastIndexOf('/', i - 1)
-  ) {
+    if (i <= 0) return [dir]
     made.push(dir.slice(0, i))
   }
   return made
