@@ -44,11 +44,66 @@ if (!existsSync(resolve(baselineDir, 'package'))) {
   ).trim()
   execFileSync('tar', ['xzf', tgz], { cwd: baselineDir })
 }
-const load = async dir =>
-  import(String(pathToFileURL(resolve(dir, 'dist/esm/index.min.js'))))
+const baseline = await import(
+  String(
+    pathToFileURL(resolve(baselineDir, 'package/dist/esm/index.min.js')),
+  )
+)
+const current = await import(
+  String(pathToFileURL(resolve(root, 'dist/esm/node/index.min.js')))
+)
+
+// Each build has one function for each case. A function gets the
+// fixture directory and an empty output directory.
 const builds = {
-  baseline: await load(resolve(baselineDir, 'package')),
-  current: await load(root),
+  baseline: {
+    'create async': (fx, out) =>
+      baseline.c({ cwd: fx, file: `${out}/a.tar` }, ['tree']),
+    'create sync': (fx, out) =>
+      baseline.c({ cwd: fx, file: `${out}/a.tar`, sync: true }, ['tree']),
+    'create gzip async': (fx, out) =>
+      baseline.c({ cwd: fx, file: `${out}/a.tgz`, gzip: true }, ['tree']),
+    'list async': fx => baseline.t({ file: `${fx}/a.tar` }),
+    'list sync': fx => baseline.t({ file: `${fx}/a.tar`, sync: true }),
+    'list gzip async': fx => baseline.t({ file: `${fx}/a.tgz` }),
+    'parse in memory': fx =>
+      new Promise((res, rej) => {
+        const p = new baseline.Parser()
+        p.on('entry', e => e.resume())
+        p.on('end', res)
+        p.on('error', rej)
+        p.end(archives[fx])
+      }),
+    'extract async': (fx, out) =>
+      baseline.x({ cwd: out, file: `${fx}/a.tar` }),
+    'extract sync': (fx, out) =>
+      baseline.x({ cwd: out, file: `${fx}/a.tar`, sync: true }),
+    'extract gzip async': (fx, out) =>
+      baseline.x({ cwd: out, file: `${fx}/a.tgz` }),
+  },
+  current: {
+    'create async': (fx, out) =>
+      current.create({ cwd: fx, file: `${out}/a.tar` }, ['tree']),
+    'create sync': (fx, out) =>
+      current.createSync({ cwd: fx, file: `${out}/a.tar` }, ['tree']),
+    'create gzip async': (fx, out) =>
+      current.create({ cwd: fx, file: `${out}/a.tgz`, gzip: true }, [
+        'tree',
+      ]),
+    'list async': fx => current.list({ file: `${fx}/a.tar` }),
+    'list sync': fx => current.listSync({ file: `${fx}/a.tar` }),
+    'list gzip async': fx => current.list({ file: `${fx}/a.tgz` }),
+    'parse in memory': fx => {
+      // The body of each entry is skipped, as in the baseline case.
+      for (const entry of current.entriesSync(archives[fx])) void entry
+    },
+    'extract async': (fx, out) =>
+      current.extract({ cwd: out, file: `${fx}/a.tar` }),
+    'extract sync': (fx, out) =>
+      current.extractSync({ cwd: out, file: `${fx}/a.tar` }),
+    'extract gzip async': (fx, out) =>
+      current.extract({ cwd: out, file: `${fx}/a.tgz` }),
+  },
 }
 
 // Fixtures are the same on each run. The content compresses about as
@@ -85,53 +140,22 @@ const fixtures = {
   large: fixture('large', 2, 2, () => 16 * 1024 * 1024),
 }
 
-// Each case gets the tar module, the fixture directory, and an empty
-// output directory. The setup archives come from the baseline build.
-const cases = {
-  'create async': (tar, fx, out) =>
-    tar.c({ cwd: fx, file: `${out}/a.tar` }, ['tree']),
-  'create sync': (tar, fx, out) =>
-    tar.c({ cwd: fx, file: `${out}/a.tar`, sync: true }, ['tree']),
-  'create gzip async': (tar, fx, out) =>
-    tar.c({ cwd: fx, file: `${out}/a.tgz`, gzip: true }, ['tree']),
-  'list async': (tar, fx) => tar.t({ file: `${fx}/a.tar` }),
-  'list sync': (tar, fx) => tar.t({ file: `${fx}/a.tar`, sync: true }),
-  'list gzip async': (tar, fx) => tar.t({ file: `${fx}/a.tgz` }),
-  'parse in memory': (tar, fx) =>
-    new Promise((res, rej) => {
-      const p = new tar.Parser()
-      p.on('entry', e => e.resume())
-      p.on('end', res)
-      p.on('error', rej)
-      p.end(archives[fx])
-    }),
-  'extract async': (tar, fx, out) =>
-    tar.x({ cwd: out, file: `${fx}/a.tar` }),
-  'extract sync': (tar, fx, out) =>
-    tar.x({ cwd: out, file: `${fx}/a.tar`, sync: true }),
-  'extract gzip async': (tar, fx, out) =>
-    tar.x({ cwd: out, file: `${fx}/a.tgz` }),
-}
-
 const archives = {}
 for (const fx of Object.values(fixtures)) {
   if (!existsSync(`${fx}/a.tgz`)) {
-    builds.baseline.c({ cwd: fx, file: `${fx}/a.tar`, sync: true }, [
+    baseline.c({ cwd: fx, file: `${fx}/a.tar`, sync: true }, ['tree'])
+    baseline.c({ cwd: fx, file: `${fx}/a.tgz`, sync: true, gzip: true }, [
       'tree',
     ])
-    builds.baseline.c(
-      { cwd: fx, file: `${fx}/a.tgz`, sync: true, gzip: true },
-      ['tree'],
-    )
   }
   archives[fx] = readFileSync(`${fx}/a.tar`)
 }
 
-const time = async (fn, tar, fx) => {
+const time = async (fn, fx) => {
   const out = mkdtempSync(resolve(work, 'out-'))
   try {
     const start = process.hrtime.bigint()
-    await fn(tar, fx, out)
+    await fn(fx, out)
     return Number(process.hrtime.bigint() - start) / 1e6
   } finally {
     rmSync(out, { recursive: true, force: true })
@@ -145,7 +169,7 @@ const median = list => {
 
 const rows = []
 for (const [fxName, fx] of Object.entries(fixtures)) {
-  for (const [caseName, fn] of Object.entries(cases)) {
+  for (const caseName of Object.keys(builds.baseline)) {
     const name = `${fxName}: ${caseName}`
     if (!name.includes(filter)) continue
     const times = { baseline: [], current: [] }
@@ -154,7 +178,7 @@ for (const [fxName, fx] of Object.entries(fixtures)) {
       const order =
         r % 2 ? ['baseline', 'current'] : ['current', 'baseline']
       for (const b of order) {
-        const ms = await time(fn, builds[b], fx)
+        const ms = await time(builds[b][caseName], fx)
         if (r > 0) times[b].push(ms)
       }
     }

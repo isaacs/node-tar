@@ -1,736 +1,347 @@
-// turn tar(1) style args like `C` into the more verbose things like `cwd`
-
-import { type GzipOptions, type ZlibOptions } from 'minizlib'
-import { type Stats } from 'node:fs'
-import { type ReadEntry } from './read-entry.js'
-import { type WarnData } from './warn-method.js'
+import type { Codec } from './codec.js'
+import type { EntryData, ReadEntry, ReadEntrySync } from './read-entry.js'
+import type { ExtractFS, ExtractFSSync, TarFS, TarFSSync } from './fs.js'
+import type { WarnOptions } from './warn.js'
+import type {
+  CreateFS,
+  CreateFSSync,
+  CreateStats,
+  ReplaceFS,
+  ReplaceFSSync,
+} from './fs.js'
 import type { WriteEntry } from './write-entry.js'
 
-const argmap = new Map<keyof TarOptionsWithAliases, keyof TarOptions>([
-  ['C', 'cwd'],
-  ['f', 'file'],
-  ['z', 'gzip'],
-  ['P', 'preservePaths'],
-  ['U', 'unlink'],
-  ['strip-components', 'strip'],
-  ['stripComponents', 'strip'],
-  ['keep-newer', 'newer'],
-  ['keepNewer', 'newer'],
-  ['keep-newer-files', 'newer'],
-  ['keepNewerFiles', 'newer'],
-  ['k', 'keep'],
-  ['keep-existing', 'keep'],
-  ['keepExisting', 'keep'],
-  ['m', 'noMtime'],
-  ['no-mtime', 'noMtime'],
-  ['p', 'preserveOwner'],
-  ['L', 'follow'],
-  ['h', 'follow'],
-  ['onentry', 'onReadEntry'],
-])
+/** The options of a `Parser`. */
+export type ParserOptions<E extends EntryData = EntryData> =
+  WarnOptions & {
+    /**
+     * Called with each entry that is an object of the file system.
+     * If it returns false, the entry is ignored.
+     */
+    filter?: (path: string, entry: E) => boolean
+    /**
+     * The largest PAX or GNU long name entry to read, in bytes. A
+     * larger one is skipped. Default 1 MiB.
+     */
+    maxMetaEntrySize?: number
+    /** With `'win32'`, each `\` in a path is changed to `/`. */
+    platform?: 'win32' | 'posix'
+  }
+
+/** The options of the readers. */
+export type ReadOptions<E extends EntryData = ReadEntry> =
+  ParserOptions<E> & {
+    /**
+     * Stop with an error when the decompressed size is more than this
+     * many times the compressed size. Default 1000.
+     */
+    maxDecompressionRatio?: number
+    /**
+     * Compression formats, tried in order before the gzip support of
+     * the runtime.
+     */
+    codecs?: Codec[]
+  }
+
+/** The options of `entriesSync`. */
+export type ReadOptionsSync = ReadOptions<ReadEntrySync>
+
+/** The archive data that `entries` reads. */
+export type TarInput =
+  | Uint8Array
+  | ArrayBuffer
+  | Blob
+  | ReadableStream<Uint8Array>
+  | AsyncIterable<Uint8Array>
+  | Iterable<Uint8Array>
+
+/** The archive data that `entriesSync` reads. */
+export type TarInputSync = Uint8Array | ArrayBuffer | Iterable<Uint8Array>
+
+/** The options of `list`. Set `input`, or `file` and `fs`. */
+export type ListOptions = ReadOptions & {
+  input?: TarInput
+  /** The path of the archive file. */
+  file?: string
+  fs?: TarFS
+  /** The most bytes to read from the file at one time. Default 16 MiB. */
+  maxReadSize?: number
+  /** Called with each entry. A promise is awaited before the next entry. */
+  onEntry?: (entry: ReadEntry) => unknown
+}
+
+/** The options of `listSync`. Set `input`, or `file` and `fs`. */
+export type ListOptionsSync = ReadOptionsSync & {
+  input?: TarInputSync
+  /** The path of the archive file. */
+  file?: string
+  fs?: TarFSSync
+  /** The most bytes to read from the file at one time. Default 16 MiB. */
+  maxReadSize?: number
+  /** Called with each entry. */
+  onEntry?: (entry: ReadEntrySync) => unknown
+}
 
 /**
- * The options that can be provided to tar commands.
- *
- * Note that some of these are only relevant for certain commands, since
- * they are specific to reading or writing.
- *
- * Aliases are provided in the {@link TarOptionsWithAliases} type.
+ * The options of the extraction that are not about the archive data
+ * or the file system functions.
  */
-export interface TarOptions {
-  //////////////////////////
-  // shared options
-
+export type UnpackOptions = {
+  /** The absolute path of the directory to extract into. */
+  cwd: string
   /**
-   * Perform all I/O operations synchronously. If the stream is ended
-   * immediately, then it will be processed entirely synchronously.
+   * With `'win32'`: the path rules of Windows, the characters `<|>?:`
+   * in a name are changed to private-use characters, a file is
+   * renamed before it is removed, and one entry is extracted at a
+   * time.
    */
-  sync?: boolean
-
+  platform?: 'win32' | 'posix'
+  /** Remove this number of leading parts from each path. */
+  strip?: number
   /**
-   * The tar file to be read and/or written. When this is set, a stream
-   * is not returned. Asynchronous commands will return a promise indicating
-   * when the operation is completed, and synchronous commands will return
-   * immediately.
-   */
-  file?: string
-
-  /**
-   * Treat warnings as crash-worthy errors. Defaults false.
-   */
-  strict?: boolean
-
-  /**
-   * The effective current working directory for this tar command
-   */
-  cwd?: string
-
-  /**
-   * When creating a tar archive, this can be used to compress it as well.
-   * Set to `true` to use the default gzip options, or customize them as
-   * needed.
-   *
-   * When reading, if this is unset, then the compression status will be
-   * inferred from the archive data. This is generally best, unless you are
-   * sure of the compression settings in use to create the archive, and want to
-   * fail if the archive doesn't match expectations.
-   */
-  gzip?: boolean | GzipOptions
-
-  /**
-   * When creating archives, preserve absolute and `..` paths in the archive,
-   * rather than sanitizing them under the cwd.
-   *
-   * When extracting, allow absolute paths, paths containing `..`, and
-   * extracting through symbolic links. By default, the root `/` is stripped
-   * from absolute paths (eg, turning `/x/y/z` into `x/y/z`), paths containing
-   * `..` are not extracted, and any file whose location would be modified by a
-   * symbolic link is not extracted.
-   *
-   * **WARNING** This is almost always unsafe, and must NEVER be used on
-   * archives from untrusted sources, such as user input, and every entry must
-   * be validated to ensure it is safe to write. Even if the input is not
-   * malicious, mistakes can cause a lot of damage!
+   * Permit absolute paths, `..` in paths, and extraction through
+   * symbolic links. This is not safe with an archive that is not
+   * trusted.
    */
   preservePaths?: boolean
-
   /**
-   * When extracting, do not set the `mtime` value for extracted entries to
-   * match the `mtime` in the archive.
-   *
-   * When creating archives, do not store the `mtime` value in the entry. Note
-   * that this prevents properly using other mtime-based features (such as
-   * `tar.update` or the `newer` option) with the resulting archive.
-   */
-  noMtime?: boolean
-
-  /**
-   * Set to `true` or an object with settings for `zlib.BrotliCompress()` to
-   * create a brotli-compressed archive
-   *
-   * When extracting, this will cause the archive to be treated as a
-   * brotli-compressed file if set to `true` or a ZlibOptions object.
-   *
-   * If set `false`, then brotli options will not be used.
-   *
-   * If this, the `gzip`, and `zstd` options are left `undefined`, then tar
-   * will attempt to infer the brotli compression status, but can only do so
-   * based on the filename. If the filename ends in `.tbr` or `.tar.br`, and
-   * the first 512 bytes are not a valid tar header, then brotli decompression
-   * will be attempted.
-   */
-  brotli?: boolean | ZlibOptions
-
-  /**
-   * Set to `true` or an object with settings for `zstd.compress()` to
-   * create a zstd-compressed archive
-   *
-   * When extracting, this will cause the archive to be treated as a
-   * zstd-compressed file if set to `true` or a ZlibOptions object.
-   *
-   * If set `false`, then zstd options will not be used.
-   *
-   * If this, the `gzip`, and `brotli` options are left `undefined`, then tar
-   * will attempt to infer the zstd compression status, but can only do so
-   * based on the filename. If the filename ends in `.tzst` or `.tar.zst`, and
-   * the first 512 bytes are not a valid tar header, then zstd decompression
-   * will be attempted.
-   */
-  zstd?: boolean | ZlibOptions
-
-  /**
-   * A function that is called with `(path, stat)` when creating an archive, or
-   * `(path, entry)` when extracting. Return true to process the file/entry, or
-   * false to exclude it.
-   */
-  filter?: (path: string, entry: Stats | ReadEntry) => boolean
-
-  /**
-   * A function that gets called for any warning encountered.
-   *
-   * Note: if `strict` is set, then the warning will throw, and this method
-   * will not be called.
-   */
-  onwarn?: (code: string, message: string, data: WarnData) => unknown
-
-  /**
-   * The maximum allowed ratio of decompressed bytes to compressed bytes when
-   * reading gzip, brotli, or zstd-compressed archives.
-   *
-   * This defaults to `1000` and aborts extraction or parsing when exceeded.
-   * Set to `Infinity` to disable the limit.
-   */
-  maxDecompressionRatio?: number
-
-  //////////////////////////
-  // extraction options
-
-  /**
-   * When extracting, unlink files before creating them. Without this option,
-   * tar overwrites existing files, which preserves existing hardlinks. With
-   * this option, existing hardlinks will be broken, as will any symlink that
-   * would affect the location of an extracted file.
+   * Remove a file before the entry is written, in place of a write
+   * into the existing file. Also remove a symbolic link in the path
+   * to an entry.
    */
   unlink?: boolean
-
-  /**
-   * When extracting, strip the specified number of path portions from the
-   * entry path. For example, with `{strip: 2}`, the entry `a/b/c/d` would be
-   * extracted to `{cwd}/c/d`.
-   *
-   * Any entry whose entire path is stripped will be excluded.
-   */
-  strip?: number
-
-  /**
-   * When extracting, keep the existing file on disk if it's newer than the
-   * file in the archive.
-   */
-  newer?: boolean
-
-  /**
-   * When extracting, do not overwrite existing files at all.
-   */
+  /** Do not write over an existing file. */
   keep?: boolean
-
+  /** Do not write over a file that is newer than the entry. */
+  newer?: boolean
+  /** Do not set the times of the entries. */
+  noMtime?: boolean
   /**
-   * When extracting, set the `uid` and `gid` of extracted entries to the `uid`
-   * and `gid` fields in the archive. Defaults to true when run as root, and
-   * false otherwise.
-   *
-   * If false, then files and directories will be set with the owner and group
-   * of the user running the process. This is similar to `-p` in `tar(1)`, but
-   * ACLs and other system-specific data is never unpacked in this
-   * implementation, and modes are set by default already.
+   * Set the owner of each entry to the `uid` and `gid` in the
+   * archive. Default: true if `processUid` is 0 and `uid` is not set.
    */
   preserveOwner?: boolean
-
-  /**
-   * The maximum depth of subfolders to extract into. This defaults to 1024.
-   * Anything deeper than the limit will raise a warning and skip the entry.
-   * Set to `Infinity` to remove the limitation.
-   */
-  maxDepth?: number
-
-  /**
-   * When extracting, force all created files and directories, and all
-   * implicitly created directories, to be owned by the specified user id,
-   * regardless of the `uid` field in the archive.
-   *
-   * Cannot be used along with `preserveOwner`. Requires also setting the `gid`
-   * option.
-   */
+  /** Set the owner of each entry to this user. Needs `gid`. */
   uid?: number
-
-  /**
-   * When extracting, force all created files and directories, and all
-   * implicitly created directories, to be owned by the specified group id,
-   * regardless of the `gid` field in the archive.
-   *
-   * Cannot be used along with `preserveOwner`. Requires also setting the `uid`
-   * option.
-   */
+  /** Set the owner of each entry to this group. Needs `uid`. */
   gid?: number
-
+  /** Set the owner of each entry, also when it is the process owner. */
+  forceChown?: boolean
   /**
-   * When extracting, provide a function that takes an `entry` object, and
-   * returns a stream, or any falsey value. If a stream is provided, then that
-   * stream's data will be written instead of the contents of the archive
-   * entry. If a falsey value is provided, then the entry is written to disk as
-   * normal.
-   *
-   * To exclude items from extraction, use the `filter` option.
-   *
-   * Note that using an asynchronous stream type with the `transform` option
-   * will cause undefined behavior in synchronous extractions.
-   * [MiniPass](http://npm.im/minipass)-based streams are designed for this use
-   * case.
-   */
-  transform?: (
-    entry: ReadEntry,
-  ) => ReadEntry | null | undefined | false | 0 | ''
-
-  /**
-   * Call `chmod()` to ensure that extracted files match the entry's mode
-   * field. Without this field set, all mode fields in archive entries are a
-   * best effort attempt only.
-   *
-   * Setting this necessitates a call to the deprecated `process.umask()`
-   * method to determine the default umask value, unless a `processUmask`
-   * config is provided as well.
-   *
-   * If not set, tar will attempt to create file system entries with whatever
-   * mode is provided, and let the implicit process `umask` apply normally, but
-   * if a file already exists to be written to, then its existing mode will not
-   * be modified.
-   *
-   * When setting `chmod: true`, it is highly recommend to set the
-   * {@link TarOptions#processUmask} option as well, to avoid the call to the
-   * deprecated (and thread-unsafe) `process.umask()` method.
+   * Set the mode of each directory with `chmod`, so that the umask of
+   * the process does not change it.
    */
   chmod?: boolean
-
   /**
-   * When setting the {@link TarOptions#chmod} option to `true`, you may
-   * provide a value here to avoid having to call the deprecated and
-   * thread-unsafe `process.umask()` method.
-   *
-   * This has no effect with `chmod` is not set to true, as mode values are not
-   * set explicitly anyway. If `chmod` is set to `true`, and a value is not
-   * provided here, then `process.umask()` must be called, which will result in
-   * deprecation warnings.
-   *
-   * The most common values for this are `0o22` (resulting in directories
-   * created with mode `0o755` and files with `0o644` by default) and `0o2`
-   * (resulting in directores created with mode `0o775` and files `0o664`, so
-   * they are group-writable).
+   * The umask of the process. Only used with `chmod`. Default 0o22.
    */
   processUmask?: number
-
-  //////////////////////////
-  // archive creation options
-
+  /** The user ID of the process. */
+  processUid?: number
+  /** The group ID of the process. */
+  processGid?: number
+  /** Sets the default of `dmode` and `fmode`. Default: `processUmask`. */
+  umask?: number
+  /** The mode of a directory that has no mode in the archive. */
+  dmode?: number
+  /** The mode of a file that has no mode in the archive. */
+  fmode?: number
   /**
-   * When parsing/listing archives, `entry` streams are by default resumed
-   * (set into "flowing" mode) immediately after the call to `onReadEntry()`.
-   * Set `noResume: true` to suppress this behavior.
-   *
-   * Note that when this is set, the stream will never complete until the
-   * data is consumed somehow.
-   *
-   * Set automatically in extract operations, since the entry is piped to
-   * a file system entry right away. Only relevant when parsing.
+   * The most parts that a path or a link target can have. Default
+   * 1024. `Infinity` removes the limit.
    */
-  noResume?: boolean
+  maxDepth?: number
+}
 
+/**
+ * The options of `extract`. Set `input`, or `file`. With `file`, the
+ * `fs` must also have the functions of `TarFS`.
+ */
+export type ExtractOptions = ReadOptions &
+  UnpackOptions & {
+    /** The most bytes to read from the file at one time. Default 16 MiB. */
+    maxReadSize?: number
+    /**
+     * Called with each entry before it is extracted. A promise is
+     * awaited before the entry is extracted.
+     */
+    onEntry?: (entry: ReadEntry) => unknown
+    /**
+     * Return a stream that changes the content of a file entry, or
+     * `undefined` to write the content as it is.
+     */
+    transform?: (
+      entry: ReadEntry,
+    ) => TransformStream<Uint8Array, Uint8Array> | undefined
+    /** The most entries to extract at one time. Default 16. */
+    jobs?: number
+  } & (
+    | {
+        /**
+         * The archive data. A chunk must not change after the source
+         * gives it.
+         */
+        input: TarInput
+        /** The name of the archive, for warnings. */
+        file?: string
+        fs: ExtractFS
+      }
+    | {
+        input?: undefined
+        /** The path of the archive file. */
+        file: string
+        fs: ExtractFS & TarFS
+      }
+  )
+
+/** The options of `extractSync`. Set `input`, or `file`. */
+export type ExtractOptionsSync = ReadOptionsSync &
+  UnpackOptions & {
+    /** The most bytes to read from the file at one time. Default 16 MiB. */
+    maxReadSize?: number
+    /** Called with each entry before it is extracted. */
+    onEntry?: (entry: ReadEntrySync) => unknown
+    /**
+     * Return a function that changes each chunk of the content of a
+     * file entry, or `undefined` to write the content as it is.
+     */
+    transform?: (
+      entry: ReadEntrySync,
+    ) => ((chunk: Uint8Array) => Uint8Array) | undefined
+  } & (
+    | {
+        input: TarInputSync
+        /** The name of the archive, for warnings. */
+        file?: string
+        fs: ExtractFSSync
+      }
+    | {
+        input?: undefined
+        /** The path of the archive file. */
+        file: string
+        fs: ExtractFSSync & TarFSSync
+      }
+  )
+
+/** The options that `Pack` and `PackSync` share. */
+export type PackOptionsBase<E extends EntryData> = WarnOptions & {
   /**
-   * When creating, updating, or replacing within archives, this method will
-   * be called with each WriteEntry that is created.
+   * The absolute path of the directory that the paths to add are
+   * relative to. A pack needs it, and `fs`, to add a path.
    */
-  onWriteEntry?: (entry: WriteEntry) => unknown
-
+  cwd?: string
+  /** A directory to put before the path of each entry. */
+  prefix?: string
   /**
-   * When extracting or listing archives, this method will be called with
-   * each entry that is not excluded by a `filter`.
-   *
-   * Important when listing archives synchronously from a file, because there
-   * is otherwise no way to interact with the data!
-   */
-  onReadEntry?: (entry: ReadEntry) => unknown
-
-  /**
-   * Pack the targets of symbolic links rather than the link itself.
-   */
-  follow?: boolean
-
-  /**
-   * When creating archives, omit any metadata that is system-specific:
-   * `ctime`, `atime`, `uid`, `gid`, `uname`, `gname`, `dev`, `ino`, and
-   * `nlink`. Note that `mtime` is still included, because this is necessary
-   * for other time-based operations such as `tar.update`. Additionally, `mode`
-   * is set to a "reasonable default" for mose unix systems, based on an
-   * effective `umask` of `0o22`.
-   *
-   * This also defaults the `portable` option in the gzip configs when creating
-   * a compressed archive, in order to produce deterministic archives that are
-   * not operating-system specific.
+   * Leave out the data that is specific to one system: `uid`, `gid`,
+   * `uname`, `gname`, `atime`, `ctime`, `dev`, `ino`, `nlink`, and
+   * the `mtime` of a directory. Remove the write permission of the
+   * group and of others.
    */
   portable?: boolean
-
-  /**
-   * When creating archives, do not recursively archive the contents of
-   * directories. By default, archiving a directory archives all of its
-   * contents as well.
-   */
-  noDirRecurse?: boolean
-
-  /**
-   * Suppress Pax extended headers when creating archives. Note that this means
-   * long paths and linkpaths will be truncated, and large or negative numeric
-   * values may be interpreted incorrectly.
-   */
+  /** Write no PAX header for a field that does not fit the header. */
   noPax?: boolean
-
-  /**
-   * Set to a `Date` object to force a specific `mtime` value for everything
-   * written to an archive.
-   *
-   * This is useful when creating archives that are intended to be
-   * deterministic based on their contents, irrespective of the file's last
-   * modification time.
-   *
-   * Overridden by `noMtime`.
-   */
+  /** Add the target of a symbolic link, not the link. */
+  follow?: boolean
+  /** Add a directory without the entries in it. */
+  noDirRecurse?: boolean
+  /** Write no `mtime`. */
+  noMtime?: boolean
+  /** The `mtime` of each entry. */
   mtime?: Date
-
+  /** Keep a root at the start of a path, such as `/`. */
+  preservePaths?: boolean
   /**
-   * A path portion to prefix onto the entries added to an archive.
+   * Called with each path and its `lstat` result (its `stat` result
+   * with `follow`), and with each entry of another archive. If it
+   * returns false, the path or the entry is not added.
    */
-  prefix?: string
-
+  filter?: (path: string, entry: CreateStats | E) => boolean
   /**
-   * The mode to set on any created file archive, defaults to 0o666
-   * masked by the process umask, often resulting in 0o644.
-   *
-   * This does *not* affect the mode fields of individual entries, or the
-   * mode status of extracted entries on the filesystem.
-   */
-  mode?: number
-
-  //////////////////////////
-  // internal options
-
-  /**
-   * A cache of mtime values, to avoid having to stat the same file repeatedly.
-   *
-   * @internal
-   */
-  mtimeCache?: Map<string, Date>
-
-  /**
-   * maximum buffer size for `fs.read()` operations.
-   *
-   * @internal
+   * The most bytes to read from a file at one time. Default 16 MiB.
+   * A larger file is not read before the pack comes to it.
    */
   maxReadSize?: number
-
   /**
-   * Filter modes of entries being unpacked, like `process.umask()`
-   *
-   * @internal
+   * With `'win32'`, each `\` in a path is changed to `/`, and the
+   * characters that `winchars` encodes are decoded.
    */
-  umask?: number
-
+  platform?: 'win32' | 'posix'
+  /** The user ID of the process. */
+  processUid?: number
+  /** The `uname` of each file that `processUid` owns. */
+  processUname?: string
   /**
-   * Default mode for directories. Used for all implicitly created directories,
-   * and any directories in the archive that do not have a mode field.
-   *
-   * @internal
+   * Called with each entry before its header is written. It can
+   * change the fields of the entry.
    */
-  dmode?: number
-
+  onWriteEntry?: (entry: WriteEntry) => unknown
   /**
-   * default mode for files
-   *
-   * @internal
+   * Compression formats, before the gzip support of the runtime. An
+   * option with the name of a codec selects it, and the value of the
+   * option, if it is an object, is given to its `compress` function.
    */
-  fmode?: number
+  codecs?: Codec[]
+  /** Compress with the codec named `gzip`. */
+  gzip?: boolean | Record<string, unknown>
+  /** Compress with the codec named `brotli` in `codecs`. */
+  brotli?: boolean | Record<string, unknown>
+  /** Compress with the codec named `zstd` in `codecs`. */
+  zstd?: boolean | Record<string, unknown>
+}
 
+/** The options of `Pack`. */
+export type PackOptions = PackOptionsBase<ReadEntry> & {
+  fs?: CreateFS
   /**
-   * Map that tracks which directories already exist, for extraction
-   *
-   * @internal
-   */
-  dirCache?: Map<string, boolean>
-  /**
-   * maximum supported size of meta entries. Defaults to 1MB
-   *
-   * @internal
-   */
-  maxMetaEntrySize?: number
-
-  /**
-   * A Map object containing the device and inode value for any file whose
-   * `nlink` value is greater than 1, to identify hard links when creating
-   * archives.
-   *
-   * @internal
-   */
-  linkCache?: Map<LinkCacheKey, string>
-
-  /**
-   * A map object containing the results of `fs.readdir()` calls.
-   *
-   * @internal
-   */
-  readdirCache?: Map<string, string[]>
-
-  /**
-   * A cache of all `lstat` results, for use in creating archives.
-   *
-   * @internal
-   */
-  statCache?: Map<string, Stats>
-
-  /**
-   * Number of concurrent jobs to run when creating archives.
-   *
-   * Defaults to 4.
-   *
-   * @internal
+   * The number of paths at the start of the queue that are read
+   * before the pack writes them. Default 4.
    */
   jobs?: number
-
-  /**
-   * Automatically set to true on Windows systems.
-   *
-   * When extracting, causes behavior where filenames containing `<|>?:`
-   * characters are converted to windows-compatible escape sequences in the
-   * created filesystem entries.
-   *
-   * When packing, causes behavior where paths replace `\` with `/`, and
-   * filenames containing the windows-compatible escaped forms of `<|>?:` are
-   * converted to actual `<|>?:` characters in the archive.
-   *
-   * @internal
-   */
-  win32?: boolean
-
-  /**
-   * For `WriteEntry` objects, the absolute path to the entry on the
-   * filesystem. By default, this is `resolve(cwd, entry.path)`, but it can be
-   * overridden explicitly.
-   *
-   * @internal
-   */
-  absolute?: string
-
-  /**
-   * Used with Parser stream interface, to attach and take over when the
-   * stream is completely parsed. If this is set, then the prefinish,
-   * finish, and end events will not fire, and are the responsibility of
-   * the ondone method to emit properly.
-   *
-   * @internal
-   */
-  ondone?: () => void
-
-  /**
-   * Mostly for testing, but potentially useful in some cases.
-   * Forcibly trigger a chown on every entry, no matter what.
-   */
-  forceChown?: boolean
-
-  /**
-   * ambiguous deprecated name for {@link onReadEntry}
-   *
-   * @deprecated
-   */
-  onentry?: (entry: ReadEntry) => unknown
 }
 
-export type TarOptionsSync = TarOptions & { sync: true }
-export type TarOptionsAsync = TarOptions & { sync?: false }
-export type TarOptionsFile = TarOptions & { file: string }
-export type TarOptionsNoFile = TarOptions & { file?: undefined }
-export type TarOptionsSyncFile = TarOptionsSync & TarOptionsFile
-export type TarOptionsAsyncFile = TarOptionsAsync & TarOptionsFile
-export type TarOptionsSyncNoFile = TarOptionsSync & TarOptionsNoFile
-export type TarOptionsAsyncNoFile = TarOptionsAsync & TarOptionsNoFile
-
-export type LinkCacheKey = `${number}:${number}`
-
-export interface TarOptionsWithAliases extends TarOptions {
-  /**
-   * The effective current working directory for this tar command
-   */
-  C?: TarOptions['cwd']
-  /**
-   * The tar file to be read and/or written. When this is set, a stream
-   * is not returned. Asynchronous commands will return a promise indicating
-   * when the operation is completed, and synchronous commands will return
-   * immediately.
-   */
-  f?: TarOptions['file']
-  /**
-   * When creating a tar archive, this can be used to compress it as well.
-   * Set to `true` to use the default gzip options, or customize them as
-   * needed.
-   *
-   * When reading, if this is unset, then the compression status will be
-   * inferred from the archive data. This is generally best, unless you are
-   * sure of the compression settings in use to create the archive, and want to
-   * fail if the archive doesn't match expectations.
-   */
-  z?: TarOptions['gzip']
-  /**
-   * When creating archives, preserve absolute and `..` paths in the archive,
-   * rather than sanitizing them under the cwd.
-   *
-   * When extracting, allow absolute paths, paths containing `..`, and
-   * extracting through symbolic links. By default, the root `/` is stripped
-   * from absolute paths (eg, turning `/x/y/z` into `x/y/z`), paths containing
-   * `..` are not extracted, and any file whose location would be modified by a
-   * symbolic link is not extracted.
-   *
-   * **WARNING** This is almost always unsafe, and must NEVER be used on
-   * archives from untrusted sources, such as user input, and every entry must
-   * be validated to ensure it is safe to write. Even if the input is not
-   * malicious, mistakes can cause a lot of damage!
-   */
-  P?: TarOptions['preservePaths']
-  /**
-   * When extracting, unlink files before creating them. Without this option,
-   * tar overwrites existing files, which preserves existing hardlinks. With
-   * this option, existing hardlinks will be broken, as will any symlink that
-   * would affect the location of an extracted file.
-   */
-  U?: TarOptions['unlink']
-  /**
-   * When extracting, strip the specified number of path portions from the
-   * entry path. For example, with `{strip: 2}`, the entry `a/b/c/d` would be
-   * extracted to `{cwd}/c/d`.
-   */
-  'strip-components'?: TarOptions['strip']
-  /**
-   * When extracting, strip the specified number of path portions from the
-   * entry path. For example, with `{strip: 2}`, the entry `a/b/c/d` would be
-   * extracted to `{cwd}/c/d`.
-   */
-  stripComponents?: TarOptions['strip']
-  /**
-   * When extracting, keep the existing file on disk if it's newer than the
-   * file in the archive.
-   */
-  'keep-newer'?: TarOptions['newer']
-  /**
-   * When extracting, keep the existing file on disk if it's newer than the
-   * file in the archive.
-   */
-  keepNewer?: TarOptions['newer']
-  /**
-   * When extracting, keep the existing file on disk if it's newer than the
-   * file in the archive.
-   */
-  'keep-newer-files'?: TarOptions['newer']
-  /**
-   * When extracting, keep the existing file on disk if it's newer than the
-   * file in the archive.
-   */
-  keepNewerFiles?: TarOptions['newer']
-  /**
-   * When extracting, do not overwrite existing files at all.
-   */
-  k?: TarOptions['keep']
-  /**
-   * When extracting, do not overwrite existing files at all.
-   */
-  'keep-existing'?: TarOptions['keep']
-  /**
-   * When extracting, do not overwrite existing files at all.
-   */
-  keepExisting?: TarOptions['keep']
-  /**
-   * When extracting, do not set the `mtime` value for extracted entries to
-   * match the `mtime` in the archive.
-   *
-   * When creating archives, do not store the `mtime` value in the entry. Note
-   * that this prevents properly using other mtime-based features (such as
-   * `tar.update` or the `newer` option) with the resulting archive.
-   */
-  m?: TarOptions['noMtime']
-  /**
-   * When extracting, do not set the `mtime` value for extracted entries to
-   * match the `mtime` in the archive.
-   *
-   * When creating archives, do not store the `mtime` value in the entry. Note
-   * that this prevents properly using other mtime-based features (such as
-   * `tar.update` or the `newer` option) with the resulting archive.
-   */
-  'no-mtime'?: TarOptions['noMtime']
-  /**
-   * When extracting, set the `uid` and `gid` of extracted entries to the `uid`
-   * and `gid` fields in the archive. Defaults to true when run as root, and
-   * false otherwise.
-   *
-   * If false, then files and directories will be set with the owner and group
-   * of the user running the process. This is similar to `-p` in `tar(1)`, but
-   * ACLs and other system-specific data is never unpacked in this
-   * implementation, and modes are set by default already.
-   */
-  p?: TarOptions['preserveOwner']
-  /**
-   * Pack the targets of symbolic links rather than the link itself.
-   */
-  L?: TarOptions['follow']
-  /**
-   * Pack the targets of symbolic links rather than the link itself.
-   */
-  h?: TarOptions['follow']
-
-  /**
-   * Deprecated option. Set explicitly false to set `chmod: true`. Ignored
-   * if {@link TarOptions#chmod} is set to any boolean value.
-   *
-   * @deprecated
-   */
-  noChmod?: boolean
+/** The options of `PackSync`. */
+export type PackOptionsSync = PackOptionsBase<ReadEntrySync> & {
+  fs?: CreateFSSync
 }
 
-export type TarOptionsWithAliasesSync = TarOptionsWithAliases & {
-  sync: true
-}
-export type TarOptionsWithAliasesAsync = TarOptionsWithAliases & {
-  sync?: false
-}
-export type TarOptionsWithAliasesFile =
-  | (TarOptionsWithAliases & {
-      file: string
-    })
-  | (TarOptionsWithAliases & { f: string })
-export type TarOptionsWithAliasesSyncFile = TarOptionsWithAliasesSync &
-  TarOptionsWithAliasesFile
-export type TarOptionsWithAliasesAsyncFile = TarOptionsWithAliasesAsync &
-  TarOptionsWithAliasesFile
-
-export type TarOptionsWithAliasesNoFile = TarOptionsWithAliases & {
-  f?: undefined
-  file?: undefined
+/**
+ * The options of `create`. With `file`, the archive is written to
+ * that path through `fs`.
+ */
+export type CreateOptions = PackOptions & {
+  /** The mode of the archive file. Default 0o666. */
+  mode?: number
 }
 
-export type TarOptionsWithAliasesSyncNoFile = TarOptionsWithAliasesSync &
-  TarOptionsWithAliasesNoFile
-export type TarOptionsWithAliasesAsyncNoFile = TarOptionsWithAliasesAsync &
-  TarOptionsWithAliasesNoFile
-
-export const isSyncFile = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsSyncFile => !!o.sync && !!o.file
-export const isAsyncFile = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsAsyncFile => !o.sync && !!o.file
-export const isSyncNoFile = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsSyncNoFile => !!o.sync && !o.file
-export const isAsyncNoFile = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsAsyncNoFile => !o.sync && !o.file
-export const isSync = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsSync => !!o.sync
-export const isAsync = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsAsync => !o.sync
-export const isFile = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsFile => !!o.file
-export const isNoFile = <O extends TarOptions>(
-  o: O,
-): o is O & TarOptionsNoFile => !o.file
-
-const dealiasKey = (k: keyof TarOptionsWithAliases): keyof TarOptions => {
-  const d = argmap.get(k)
-  if (d) return d
-  return k as keyof TarOptions
+/** The options of `createSync`. */
+export type CreateOptionsSync = PackOptionsSync & {
+  /** The mode of the archive file. Default 0o666. */
+  mode?: number
 }
 
-export const dealias = (opt: TarOptionsWithAliases = {}): TarOptions => {
-  // The result has no prototype, so that an option that is not set
-  // does not get a value from Object.prototype.
-  const result: Record<string, unknown> = Object.create(null)
-  if (!opt) return result as TarOptions
-  for (const [key, v] of Object.entries(opt) as [
-    keyof TarOptionsWithAliases,
-    unknown,
-  ][]) {
-    // TS doesn't know that aliases are going to always be the same type
-    const k = dealiasKey(key)
-    result[k] = v
-  }
-  // affordance for deprecated noChmod -> chmod
-  if (result.chmod === undefined && result.noChmod === false) {
-    result.chmod = true
-  }
-  delete result.noChmod
-  return result as TarOptions
+/** The options of `replace` and `update`. */
+export type ReplaceOptions = CreateOptions & {
+  /** The path of the archive file. It is made if it does not exist. */
+  file: string
+  fs: ReplaceFS
+  /**
+   * Gets the path and the `mtime` of each entry that the archive
+   * has. `update` adds a path only if it is not older than the
+   * `mtime` here.
+   */
+  mtimeCache?: Map<string, Date>
+}
+
+/** The options of `replaceSync` and `updateSync`. */
+export type ReplaceOptionsSync = CreateOptionsSync & {
+  /** The path of the archive file. It is made if it does not exist. */
+  file: string
+  fs: ReplaceFSSync
+  /**
+   * Gets the path and the `mtime` of each entry that the archive
+   * has. `updateSync` adds a path only if it is not older than the
+   * `mtime` here.
+   */
+  mtimeCache?: Map<string, Date>
 }

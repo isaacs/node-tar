@@ -1,395 +1,593 @@
-import type { Stats } from 'fs'
-import fs, { readFileSync } from 'fs'
-import { resolve } from 'path'
-import {
-  assert,
-  describe,
-  mockImport,
-  spyOn,
-  test,
-  testdir,
-} from 'ubqtest'
-import { filesFilter, list } from '../src/list.js'
-import type { TarOptions } from '../src/options.js'
-import { Parser } from '../src/parse.js'
-import type { ReadEntry } from '../src/read-entry.js'
-import { makeTar } from './fixtures/make-tar.js'
+import * as nodeFs from 'node:fs'
+import * as nodeFsPromises from 'node:fs/promises'
+import { resolve } from 'node:path'
+import zlib from 'node:zlib'
+import { assert, describe, test, testdir } from 'ubqtest'
+import type { TarFileHandle, TarFS, TarFSSync } from '../src/fs.js'
+import { filesFilter, list, listSync } from '../src/list.js'
+import { readFile, readFileSync } from '../src/read-file.js'
+import { cat, EOA, file, xorCodec, xorCompress } from './helpers.js'
 
-const __filename = import.meta.filename
-const __dirname = import.meta.dirname
+// The modules of Node fit the adapter types as they are.
+const fs: TarFS = nodeFsPromises
+const fsSync: TarFSSync = nodeFs
+
+const fixtures = resolve(import.meta.dirname, './fixtures')
+const longPaths = resolve(fixtures, 'tars/long-paths.tar')
+const expectLong = (
+  JSON.parse(
+    nodeFs.readFileSync(
+      resolve(fixtures, 'parse/long-paths.json'),
+      'utf8',
+    ),
+  ) as [string, { path: string }][]
+)
+  .filter(e => e[0] === 'entry')
+  .map(e => e[1].path)
 
 const poop = new Error('poop')
-const cbFail = (...args: any[]) =>
-  (args[args.length - 1] as Function)(poop)
-const syncFail = () => {
-  throw poop
+
+// An fs that records its calls, with some functions replaced.
+const mockFs = (over: Partial<TarFileHandle> = {}) => {
+  const calls: string[] = []
+  const mock: TarFS = {
+    open: async (path, flags) => {
+      calls.push(`open ${flags}`)
+      const handle: TarFileHandle = await nodeFsPromises.open(path, flags)
+      return {
+        stat: () => {
+          calls.push('stat')
+          return over.stat ? over.stat() : handle.stat()
+        },
+        read: (buf, off, len, pos) => {
+          calls.push(`read ${len} ${pos}`)
+          return over.read ?
+              over.read(buf, off, len, pos)
+            : handle.read(buf, off, len, pos)
+        },
+        close: async () => {
+          calls.push('close')
+          await handle.close()
+          await over.close?.()
+        },
+      }
+    },
+  }
+  return { calls, mock }
+}
+const mockFsSync = (over: Partial<TarFSSync> = {}) => {
+  const calls: string[] = []
+  const mock: TarFSSync = {
+    openSync: (path, flags) => (
+      calls.push(`open ${flags}`),
+      (over.openSync ?? nodeFs.openSync)(path, flags)
+    ),
+    fstatSync: fd => (
+      calls.push('stat'),
+      (over.fstatSync ?? nodeFs.fstatSync)(fd)
+    ),
+    readSync: (fd, buf, off, len, pos) => (
+      calls.push(`read ${len} ${pos}`),
+      (over.readSync ?? nodeFs.readSync)(fd, buf, off, len, pos)
+    ),
+    closeSync: fd => {
+      calls.push('close')
+      nodeFs.closeSync(fd)
+      over.closeSync?.(fd)
+    },
+  }
+  return { calls, mock }
 }
 
-// A copy of the fs module with some methods replaced.
-const mockFs = (overrides: Record<string, unknown>) => {
-  const mocked = { ...fs, ...overrides }
-  return { ...mocked, default: mocked } as unknown as typeof fs
-}
-
-// Load a new instance of list() that uses the mocked fs methods. The
-// file streams of @isaacs/fs-minipass use the same mocked fs.
-const mockedList = async (overrides: Record<string, unknown>) => {
-  const mocked = mockFs(overrides)
-  const fsm = await mockImport(
-    () => import('@isaacs/fs-minipass'),
-    [[() => import('node:fs'), mocked]],
-  )
-  const { list } = await mockImport(
-    () => import('../src/list.js'),
-    [
-      [() => import('node:fs'), mocked],
-      [() => import('@isaacs/fs-minipass'), fsm],
-    ],
-  )
-  return list
-}
-
-const lp = JSON.parse(
-  readFileSync(__dirname + '/fixtures/parse/long-paths.json', 'utf8'),
-) as (
-  | ['meta', string]
-  | ['entry', Record<string, any>]
-  | ['nullBlock' | 'eof' | 'end']
-)[]
-
-describe('basic', () => {
-  const file = resolve(__dirname, 'fixtures/tars/long-paths.tar')
-  const expect = lp
-    .filter(e => e[0] === 'entry')
-    .map(e => e[1].path as string)
-
+describe('file', () => {
   for (const maxReadSize of [1000, undefined]) {
-    describe('file maxReadSize=' + maxReadSize, () => {
-      test('sync', () => {
-        const actual: string[] = []
-        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
-        list({ file, sync: true, onReadEntry, maxReadSize })
-        assert.deepEqual(actual, expect)
+    test(`async, maxReadSize=${maxReadSize}`, async () => {
+      const actual: string[] = []
+      const res = await list({
+        file: longPaths,
+        fs,
+        maxReadSize,
+        onEntry: entry => actual.push(entry.path),
       })
+      assert.equal(res, undefined)
+      assert.deepEqual(actual, expectLong)
+    })
 
-      test('async promise', async () => {
-        const actual: string[] = []
-        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
-        await list({ file, onReadEntry, maxReadSize })
-        assert.deepEqual(actual, expect)
+    test(`sync, maxReadSize=${maxReadSize}`, () => {
+      const actual: string[] = []
+      const res = listSync({
+        file: longPaths,
+        fs: fsSync,
+        maxReadSize,
+        onEntry: entry => actual.push(entry.path),
       })
-
-      test('async cb', async () => {
-        const actual: string[] = []
-        const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
-        const er = await new Promise<Error | undefined>(cb =>
-          list({ file, onReadEntry, maxReadSize }, cb),
-        )
-        assert.equal(er, undefined)
-        assert.deepEqual(actual, expect)
-      })
+      assert.equal(res, undefined)
+      assert.deepEqual(actual, expectLong)
     })
   }
 
-  describe('stream', () => {
-    test('sync', () => {
-      const actual: string[] = []
-      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
-      const l = list({ sync: true, onReadEntry })
-      l.end(fs.readFileSync(file))
-      assert.deepEqual(actual, expect)
-    })
-
-    test('async', async () => {
-      const actual: string[] = []
-      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
-      const l = list()
-      l.on('entry', onReadEntry)
-      const end = new Promise<void>(res => l.on('end', res))
-      fs.createReadStream(file).pipe(l)
-      await end
-      assert.deepEqual(actual, expect)
-    })
+  test('the file is read in chunks of maxReadSize, then closed', async () => {
+    const { size } = nodeFs.statSync(longPaths)
+    const reads = [
+      `read 10000 0`,
+      `read 10000 10000`,
+      `read ${size - 20000} 20000`,
+    ]
+    const expect = ['open r', 'stat', ...reads, 'close']
+    const { calls, mock } = mockFs()
+    await list({ file: longPaths, fs: mock, maxReadSize: 10000 })
+    assert.deepEqual(calls, expect)
+    const sync = mockFsSync()
+    listSync({ file: longPaths, fs: sync.mock, maxReadSize: 10000 })
+    assert.deepEqual(sync.calls, expect)
   })
 
-  test('no onReadEntry function', async () => {
-    assert.equal(await list({ file }), undefined)
+  test('a small file is read in one read of its size', async () => {
+    const dir = testdir({
+      'a.tar': Buffer.from(cat(file('a', 'abc'), EOA)),
+    })
+    const { calls, mock } = mockFs()
+    await list({ file: resolve(dir, 'a.tar'), fs: mock })
+    assert.deepEqual(calls, ['open r', 'stat', 'read 2048 0', 'close'])
+    const sync = mockFsSync()
+    listSync({ file: resolve(dir, 'a.tar'), fs: sync.mock })
+    assert.deepEqual(sync.calls, [
+      'open r',
+      'stat',
+      'read 2048 0',
+      'close',
+    ])
   })
 
-  describe('limit to specific files', () => {
-    const fileList = [
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t',
-      '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc///',
-    ]
-    const fileListCopy = [...fileList]
-
-    const expect = [
-      '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/a.txt',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t/h/Ω.txt',
-    ]
-
-    test('no filter function', async () => {
-      const actual: string[] = []
-      await list(
-        { file, onReadEntry: entry => actual.push(entry.path) },
-        fileList,
-      )
-      assert.deepEqual(actual, expect)
+  test('a gzip file, and warnings with the file name', async () => {
+    const dir = testdir({
+      'a.tgz': zlib.gzipSync(
+        cat(file('a', 'abc'), file('b').fill(1, 0, 1)),
+      ),
     })
-
-    test('no filter function, stream', async () => {
-      const actual: string[] = []
-      const onReadEntry = (entry: ReadEntry) => actual.push(entry.path)
-      const l = list(fileList).on('entry', onReadEntry)
-      const end = new Promise<void>(res => l.on('end', res))
-      fs.createReadStream(file).pipe(l)
-      await end
-      assert.deepEqual(actual, expect)
+    const path = resolve(dir, 'a.tgz')
+    const paths: string[] = []
+    const warnings: unknown[] = []
+    await list({
+      file: path,
+      fs,
+      onEntry: entry => paths.push(entry.path),
+      onwarn: (...args) => warnings.push(args),
     })
+    assert.deepEqual(paths, ['a'])
+    assert.match(warnings, [
+      ['TAR_ENTRY_INVALID', 'checksum failure', { file: path }],
+    ])
+  })
 
-    test('filter function', async () => {
-      const actual: string[] = []
-      await list(
-        {
-          file,
-          filter: path => path === expect[0],
-          onReadEntry: entry => actual.push(entry.path),
+  test('a codec that is found by the file name', async () => {
+    const codec = {
+      ...xorCodec,
+      detect: () => false,
+      extensions: ['.txr'],
+    }
+    const dir = testdir({
+      'a.txr': Buffer.from(xorCompress(cat(file('a', 'abc'), EOA))),
+    })
+    const opt = { file: resolve(dir, 'a.txr'), codecs: [codec] }
+    const paths: string[] = []
+    await list({ ...opt, fs, onEntry: entry => paths.push(entry.path) })
+    listSync({
+      ...opt,
+      fs: fsSync,
+      onEntry: entry => paths.push(entry.path),
+    })
+    assert.deepEqual(paths, ['a', 'a'])
+  })
+
+  test('the reading stops at the end of the archive', async () => {
+    const data = cat(file('a'), EOA, new Uint8Array(4096))
+    const dir = testdir({ 'a.tar': Buffer.from(data) })
+    const { calls, mock } = mockFs()
+    await list({
+      file: resolve(dir, 'a.tar'),
+      fs: mock,
+      maxReadSize: 1024,
+    })
+    assert.deepEqual(calls, [
+      'open r',
+      'stat',
+      'read 1024 0',
+      'read 1024 1024',
+      'close',
+    ])
+    const sync = mockFsSync()
+    listSync({
+      file: resolve(dir, 'a.tar'),
+      fs: sync.mock,
+      maxReadSize: 1024,
+    })
+    assert.deepEqual(sync.calls, calls)
+  })
+})
+
+describe('input', () => {
+  const data = cat(file('a', 'abc'), file('b', 'def'), EOA)
+
+  test('async', async () => {
+    const found: string[] = []
+    await list({
+      input: new Blob([data]),
+      onEntry: async entry => {
+        found.push(entry.path + '=' + (await entry.text()))
+      },
+    })
+    assert.deepEqual(found, ['a=abc', 'b=def'])
+  })
+
+  test('sync', () => {
+    const found: string[] = []
+    listSync({
+      input: [data],
+      onEntry: entry => found.push(entry.path + '=' + entry.text()),
+    })
+    assert.deepEqual(found, ['a=abc', 'b=def'])
+  })
+
+  test('no onEntry function', async () => {
+    assert.equal(await list({ input: data }), undefined)
+    assert.equal(listSync({ input: data }), undefined)
+  })
+
+  test('no input', async () => {
+    const expect = {
+      name: 'TypeError',
+      message: 'list needs input, or file and fs',
+    }
+    await assert.rejects(list({}), expect)
+    await assert.rejects(list({ file: longPaths }), expect)
+    await assert.rejects(list({ fs }), expect)
+    assert.throws(() => listSync({}), expect)
+    assert.throws(() => listSync({ file: longPaths }), expect)
+    assert.throws(() => listSync({ fs: fsSync }), expect)
+  })
+})
+
+describe('onEntry', () => {
+  const data = cat(file('a', 'abc'), file('b', 'def'), file('c'), EOA)
+
+  test('a promise is awaited before the next entry', async () => {
+    const order: string[] = []
+    await list({
+      input: data,
+      onEntry: async entry => {
+        order.push('start ' + entry.path)
+        await new Promise(res => setTimeout(res, 5))
+        order.push('end ' + entry.path)
+      },
+    })
+    assert.deepEqual(order, [
+      'start a',
+      'end a',
+      'start b',
+      'end b',
+      'start c',
+      'end c',
+    ])
+  })
+
+  test('an error stops the list, and the file is closed', async () => {
+    const { calls, mock } = mockFs()
+    const seen: string[] = []
+    const er = await assert.rejects(
+      list({
+        file: longPaths,
+        fs: mock,
+        onEntry: async entry => {
+          seen.push(entry.path)
+          throw poop
         },
-        fileList,
-      )
-      assert.deepEqual(actual, expect.slice(0, 1))
-    })
-
-    // This runs after the tests that pass fileList to list().
-    test('list is unmunged', () => {
-      assert.deepEqual(fileList, fileListCopy)
-    })
-  })
-})
-
-test('bad args', () => {
-  assert.throws(() => list({ file: __filename, sync: true }, () => {}), {
-    message: 'callback not supported for sync tar functions',
-  })
-  assert.throws(() => list({}, () => {}), {
-    message: 'callback only supported with file option',
-  })
-})
-
-describe('stat fails', () => {
-  const setup = () =>
-    mockedList({
-      open: cbFail,
-      stat: cbFail,
-      lstat: cbFail,
-      fstat: cbFail,
-      openSync: syncFail,
-      statSync: syncFail,
-      lstatSync: syncFail,
-      fstatSync: syncFail,
-    })
-
-  test('sync', async () => {
-    const list = await setup()
-    const er = assert.throws(
-      () => list({ file: __filename, sync: true }),
+      }),
       Error,
     )
     assert.equal(er, poop)
+    assert.equal(seen.length, 1)
+    assert.equal(calls.pop(), 'close')
   })
 
-  test('cb', async () => {
-    const list = await setup()
-    const er = await new Promise<Error | undefined>(cb =>
-      list({ file: __filename }, cb),
-    )
-    assert.equal(er, poop)
-  })
-
-  test('promise', async () => {
-    const list = await setup()
-    const er = await assert.rejects(list({ file: __filename }), Error)
-    assert.equal(er, poop)
-  })
-})
-
-describe('read fail', () => {
-  const setup = () => mockedList({ read: cbFail, readSync: syncFail })
-
-  test('sync', async () => {
-    const list = await setup()
+  test('sync: an error stops the list, and the file is closed', () => {
+    const { calls, mock } = mockFsSync()
+    const seen: string[] = []
     const er = assert.throws(
-      () => list({ file: __filename, sync: true, maxReadSize: 10 }),
+      () =>
+        listSync({
+          file: longPaths,
+          fs: mock,
+          onEntry: entry => {
+            seen.push(entry.path)
+            throw poop
+          },
+        }),
       Error,
     )
     assert.equal(er, poop)
+    assert.equal(seen.length, 1)
+    assert.equal(calls.pop(), 'close')
+  })
+})
+
+describe('limit to specific files', () => {
+  const fileList = [
+    'long-path/r/e/a/l/l/y/-/d/e/e/p/-/f/o/l/d/e/r/-/p/a/t',
+    '170-byte-filename-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc///',
+  ]
+  const fileListCopy = [...fileList]
+  const expect = expectLong.filter(
+    p => p.startsWith(fileList[0] + '/') || p.startsWith('170-byte'),
+  )
+
+  test('gutcheck', () => {
+    assert.equal(expect.length, 8)
+    assert.lessThan(expect.length, expectLong.length)
   })
 
-  test('cb', async () => {
-    const list = await setup()
-    const er = await new Promise<Error | undefined>(cb =>
-      list({ file: __filename }, cb),
+  test('no filter function', async () => {
+    const actual: string[] = []
+    await list(
+      { file: longPaths, fs, onEntry: entry => actual.push(entry.path) },
+      fileList,
+    )
+    assert.deepEqual(actual, expect)
+    actual.length = 0
+    listSync(
+      {
+        file: longPaths,
+        fs: fsSync,
+        onEntry: entry => actual.push(entry.path),
+      },
+      fileList,
+    )
+    assert.deepEqual(actual, expect)
+  })
+
+  test('filter function', async () => {
+    const actual: string[] = []
+    const seen: string[] = []
+    const opt = {
+      file: longPaths,
+      filter: (path: string) => !!seen.push(path) && path === expect[0],
+    }
+    await list(
+      { ...opt, fs, onEntry: entry => actual.push(entry.path) },
+      fileList,
+    )
+    assert.deepEqual(actual, expect.slice(0, 1))
+    // The filter of the caller gets each entry.
+    assert.deepEqual(seen, expectLong)
+    listSync(
+      { ...opt, fs: fsSync, onEntry: entry => actual.push(entry.path) },
+      fileList,
+    )
+    assert.deepEqual(actual, expect.slice(0, 1).concat(expect.slice(0, 1)))
+  })
+
+  test('an empty list is no limit', async () => {
+    const actual: string[] = []
+    await list(
+      { file: longPaths, fs, onEntry: entry => actual.push(entry.path) },
+      [],
+    )
+    assert.deepEqual(actual, expectLong)
+  })
+
+  // This runs after the tests that pass fileList to list().
+  test('list is unmunged', () => {
+    assert.deepEqual(fileList, fileListCopy)
+  })
+
+  test('filesFilter', () => {
+    const filter = filesFilter(['x', 'd/e/', '/abs/dir', '.'])
+    const pass = (path: string) => filter(path, undefined)
+    assert.deepEqual(
+      ['x', 'x/', 'x/y', 'x/y/z/', 'd/e', 'd/e/f', '/abs/dir/f'].filter(
+        p => !pass(p),
+      ),
+      [],
+    )
+    assert.deepEqual(
+      [
+        'xy',
+        'y/x',
+        'd',
+        'd/f',
+        '/abs',
+        '/x',
+        'abs/dir',
+        '.',
+        '/',
+        '',
+      ].filter(pass),
+      [],
+    )
+  })
+
+  test('files filter looks at 100 parent directories at most', () => {
+    const filter = filesFilter(['x'])
+    assert.equal(filter('x/y', undefined), true)
+    assert.equal(filter('x/' + 'a/'.repeat(98) + 'b', undefined), true)
+    assert.equal(filter('x/' + 'a/'.repeat(99) + 'b', undefined), false)
+    assert.equal(filter('x/' + 'a/'.repeat(101) + 'b', undefined), false)
+  })
+})
+
+describe('file system errors', () => {
+  test('open fails', async () => {
+    const mock: TarFS = { open: () => Promise.reject(poop) }
+    const er = await assert.rejects(list({ file: 'x', fs: mock }), Error)
+    assert.equal(er, poop)
+    const { calls, mock: sync } = mockFsSync({
+      openSync: () => {
+        throw poop
+      },
+    })
+    assert.equal(
+      assert.throws(() => listSync({ file: 'x', fs: sync }), Error),
+      poop,
+    )
+    assert.deepEqual(calls, ['open r'])
+  })
+
+  test('a missing file', async () => {
+    await assert.rejects(list({ file: resolve(fixtures, 'nope'), fs }), {
+      code: 'ENOENT',
+    })
+    assert.throws(
+      () => listSync({ file: resolve(fixtures, 'nope'), fs: fsSync }),
+      { code: 'ENOENT' },
+    )
+  })
+
+  test('stat fails, and the file is closed', async () => {
+    const { calls, mock } = mockFs({ stat: () => Promise.reject(poop) })
+    const er = await assert.rejects(
+      list({ file: longPaths, fs: mock }),
+      Error,
     )
     assert.equal(er, poop)
-  })
-
-  test('promise', async () => {
-    const list = await setup()
-    const er = await assert.rejects(list({ file: __filename }), Error)
-    assert.equal(er, poop)
-  })
-})
-
-describe('noResume option', () => {
-  const file = resolve(__dirname, 'fixtures/tars/file.tar')
-  test('sync', async () => {
-    let e!: ReadEntry
-    list({
-      file,
-      onReadEntry: entry => {
-        e = entry
-        process.nextTick(() => {
-          assert(!entry.flowing)
-          entry.resume()
-        })
+    assert.deepEqual(calls, ['open r', 'stat', 'close'])
+    const sync = mockFsSync({
+      fstatSync: () => {
+        throw poop
       },
-      sync: true,
-      noResume: true,
     })
-    assert(e)
-    assert(!e.flowing)
-    await new Promise<void>(res => e.on('end', res))
+    assert.equal(
+      assert.throws(
+        () => listSync({ file: longPaths, fs: sync.mock }),
+        Error,
+      ),
+      poop,
+    )
+    assert.deepEqual(sync.calls, ['open r', 'stat', 'close'])
   })
 
-  test('async', () =>
-    list({
-      file,
-      onReadEntry: entry => {
-        process.nextTick(() => {
-          assert(!entry.flowing)
-          entry.resume()
-        })
+  test('read fails, and the file is closed', async () => {
+    const { calls, mock } = mockFs({ read: () => Promise.reject(poop) })
+    const er = await assert.rejects(
+      list({ file: longPaths, fs: mock }),
+      Error,
+    )
+    assert.equal(er, poop)
+    assert.equal(calls.pop(), 'close')
+    const sync = mockFsSync({
+      readSync: () => {
+        throw poop
       },
-      noResume: true,
-    }))
-})
+    })
+    assert.equal(
+      assert.throws(
+        () => listSync({ file: longPaths, fs: sync.mock }),
+        Error,
+      ),
+      poop,
+    )
+    assert.equal(sync.calls.pop(), 'close')
+  })
 
-test('typechecks', () => {
-  const p = list()
-  //@ts-expect-error
-  p.then
-  assert(p instanceof Parser)
+  test('an error of close is ignored', async () => {
+    const paths: string[] = []
+    const { calls, mock } = mockFs({ close: () => Promise.reject(poop) })
+    await list({
+      file: longPaths,
+      fs: mock,
+      onEntry: entry => paths.push(entry.path),
+    })
+    assert.equal(calls.pop(), 'close')
+    const sync = mockFsSync({
+      closeSync: () => {
+        throw poop
+      },
+    })
+    listSync({
+      file: longPaths,
+      fs: sync.mock,
+      onEntry: entry => paths.push(entry.path),
+    })
+    assert.equal(sync.calls.pop(), 'close')
+    assert.deepEqual(paths, [...expectLong, ...expectLong])
+  })
 })
 
 // GHSA-29xp-372q-xqph
-describe('reduce file size while synchronously reading', () => {
-  const data = makeTar([
-    {
-      type: 'File',
-      path: 'a',
-      size: 1,
-    },
-    'a',
-    {
-      type: 'File',
-      path: 'b',
-      size: 1,
-    },
-    'b',
-    '',
-    '',
-  ])
-  const dataLen = data.byteLength
+describe('the file gets smaller while it is read', () => {
+  const data = cat(file('a', 'a'), file('b', 'b'), EOA)
   const truncLen = 512 * 2
-  const truncData = data.subarray(0, truncLen)
-
-  const setup = async () => {
-    const dir = testdir({ 'file.tar': data })
-    const file = resolve(dir, 'file.tar')
-    const { list } = await mockImport(
-      () => import('../src/list.js'),
-      [
-        [
-          () => import('node:fs'),
-          mockFs({
-            fstatSync: (fd: number): Stats => {
-              const st = fs.fstatSync(fd)
-              // truncate the file before we have a chance to read
-              fs.writeFileSync(file, truncData)
-              return st
-            },
-          }),
-        ],
-      ],
-    )
-
-    return { file, list }
-  }
-
-  test('gutcheck, reading normally reads the whole file', () => {
-    const dir = testdir({ 'file.tar': data })
-    const file = resolve(dir, 'file.tar')
-    for (const maxReadSize of [dataLen + 1, dataLen - 1]) {
-      const entries: string[] = []
-      list({
-        file,
-        sync: true,
-        maxReadSize,
-        onReadEntry: e => entries.push(e.path),
-      })
-      assert.deepEqual(entries, ['a', 'b'])
-    }
-  })
 
   for (const [name, maxReadSize] of [
-    ['read in one go', dataLen + 1],
-    ['read in parts', dataLen / 4],
+    ['read in one go', data.length + 1],
+    ['read in parts', data.length / 4],
   ] as const) {
-    test(name, async () => {
-      const { file, list } = await setup()
-      const entries: string[] = []
-      list({
-        file,
-        sync: true,
-        maxReadSize,
-        onReadEntry: e => entries.push(e.path),
+    test(`async, ${name}`, async () => {
+      const dir = testdir({ 'file.tar': Buffer.from(data) })
+      const path = resolve(dir, 'file.tar')
+      const { mock } = mockFs({
+        stat: async () => {
+          const st = nodeFs.statSync(path)
+          nodeFs.truncateSync(path, truncLen)
+          return st
+        },
       })
-      assert.deepEqual(entries, ['a'])
+      const found: string[] = []
+      await list({
+        file: path,
+        fs: mock,
+        maxReadSize,
+        onEntry: async entry => {
+          found.push(entry.path + '=' + (await entry.text()))
+        },
+      })
+      assert.deepEqual(found, ['a=a'])
+    })
+
+    test(`sync, ${name}`, () => {
+      const dir = testdir({ 'file.tar': Buffer.from(data) })
+      const path = resolve(dir, 'file.tar')
+      const { mock } = mockFsSync({
+        fstatSync: fd => {
+          const st = nodeFs.fstatSync(fd)
+          nodeFs.truncateSync(path, truncLen)
+          return st
+        },
+      })
+      const found: string[] = []
+      listSync({
+        file: path,
+        fs: mock,
+        maxReadSize,
+        onEntry: entry => found.push(entry.path + '=' + entry.text()),
+      })
+      assert.deepEqual(found, ['a=a'])
     })
   }
 })
 
-test('files filter looks at 100 parent directories at most', () => {
-  const opt: TarOptions = {}
-  filesFilter(opt, ['x'])
-  const filter = opt.filter
-  assert(filter)
-  const entry = {} as ReadEntry
-  assert.equal(filter('x/y', entry), true)
-  assert.equal(filter('x/' + 'a/'.repeat(101) + 'b', entry), false)
-})
+describe('readFile', () => {
+  test('each chunk is a new array', async () => {
+    const chunks: Uint8Array[] = []
+    for await (const chunk of readFile(fs, longPaths, 4096))
+      chunks.push(chunk)
+    const syncChunks = [...readFileSync(fsSync, longPaths, 4096)]
+    const data = nodeFs.readFileSync(longPaths)
+    assert.equal(Buffer.concat(chunks).equals(data), true)
+    assert.equal(Buffer.concat(syncChunks).equals(data), true)
+    assert.equal(new Set(chunks.map(c => c.buffer)).size, chunks.length)
+    assert.equal(
+      new Set(syncChunks.map(c => c.buffer)).size,
+      chunks.length,
+    )
+    assert.equal(chunks.length, Math.ceil(data.length / 4096))
+  })
 
-test('sync list ignores an error of close', () => {
-  const dir = testdir({
-    'file.tar': makeTar([{ path: 'a', type: 'File', size: 0 }, '', '']),
+  test('an empty file', async () => {
+    const dir = testdir({ empty: '' })
+    const chunks: Uint8Array[] = []
+    for await (const c of readFile(fs, resolve(dir, 'empty')))
+      chunks.push(c)
+    assert.deepEqual(chunks, [])
+    assert.deepEqual([...readFileSync(fsSync, resolve(dir, 'empty'))], [])
   })
-  const { closeSync } = fs
-  const close = spyOn(fs, 'closeSync', (fd: number) => {
-    closeSync(fd)
-    throw poop
-  })
-  const entries: string[] = []
-  list({
-    file: resolve(dir, 'file.tar'),
-    sync: true,
-    onReadEntry: e => entries.push(e.path),
-  })
-  assert.deepEqual(entries, ['a'])
-  assert.equal(close.calls.length, 1)
 })

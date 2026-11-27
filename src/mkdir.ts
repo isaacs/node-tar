@@ -1,244 +1,171 @@
-import { chownr, chownrSync } from 'chownr'
-import fs from 'node:fs'
-import fsp from 'node:fs/promises'
-import path from 'node:path'
 import { CwdError } from './cwd-error.js'
-import { normalizeWindowsPath } from './normalize-windows-path.js'
 import { SymlinkError } from './symlink-error.js'
+import type { ExtractFS, ExtractFSSync } from './fs.js'
+import { relative } from './path.js'
 
+/** The options of `mkdir`. Each path has `/` separators. */
 export type MkdirOptions = {
+  /** The owner of each directory that is made, if it has `gid` also. */
   uid?: number
   gid?: number
   processUid?: number
   processGid?: number
-  umask?: number
+  /** If the mode has a bit of this mask, `chmod` sets the mode. */
+  umask: number
+  /** Permit a symbolic link in the path. */
   preserve: boolean
+  /** Remove an object in the path that is not a directory. */
   unlink: boolean
+  /** The absolute path of the extraction directory. */
   cwd: string
   mode: number
 }
 
-export type MkdirError = NodeJS.ErrnoException | CwdError | SymlinkError
+type ErrorWithCode = Error & { code?: string }
 
-const checkCwd = (
-  dir: string,
-  cb: (er?: null | MkdirError) => unknown,
-) => {
-  fs.stat(dir, (er, st) => {
-    if (er || !st.isDirectory()) {
-      er = new CwdError(
-        dir,
-        (er as NodeJS.ErrnoException)?.code || 'ENOTDIR',
-      )
-    }
-    cb(er)
-  })
+// The parts of the mkdir options that do not need the file system.
+const plan = (opt: MkdirOptions) => {
+  const mode = opt.mode | 0o700
+  const { uid, gid } = opt
+  return {
+    mode,
+    // The umask removes bits when the system makes the directory.
+    needChmod: (mode & opt.umask) !== 0,
+    owner:
+      (
+        typeof uid === 'number' &&
+        typeof gid === 'number' &&
+        (uid !== opt.processUid || gid !== opt.processGid)
+      ) ?
+        { uid, gid }
+      : undefined,
+  }
+}
+
+const child = (dir: string, name: string) =>
+  dir.endsWith('/') ? dir + name : dir + '/' + name
+
+// The directories that a recursive mkdir made: `dir`, and its parents
+// up to `first`, the one that was made first. Only the length of
+// `first` is used, because its separators can differ from `dir`.
+const chain = (first: string, dir: string) => {
+  const made = [dir]
+  for (
+    let i = dir.lastIndexOf('/');
+    i >= first.length;
+    i = dir.lastIndexOf('/', i - 1)
+  ) {
+    made.push(dir.slice(0, i))
+  }
+  return made
 }
 
 /**
- * Wrapper around fs/promises.mkdir for tar's needs.
+ * Make the directory `dir` and its parents, below `opt.cwd`.
  *
- * The main purpose is to avoid creating directories if we know that
- * they already exist (and track which ones exist for this purpose),
- * and prevent entries from being extracted into symlinked folders,
- * if `preservePaths` is not set.
+ * If `opt.preserve` is not set, a symbolic link in the path is an
+ * error, so that no entry is extracted through a link. The
+ * extraction directory itself is never made: it must be a directory,
+ * or the error is a `CwdError`.
  */
-export const mkdir = (
+export const mkdir = async (
+  fs: ExtractFS,
   dir: string,
   opt: MkdirOptions,
-  cb: (er?: null | MkdirError, made?: string) => void,
-) => {
-  dir = normalizeWindowsPath(dir)
-
-  // if there's any overlap between mask and mode,
-  // then we'll need an explicit chmod
-  // ubq: not measured: Unpack always sets umask
-  const umask = opt.umask ?? 0o22
-  const mode = opt.mode | 0o0700
-  const needChmod = (mode & umask) !== 0
-
-  const uid = opt.uid
-  const gid = opt.gid
-  const doChown =
-    typeof uid === 'number' &&
-    typeof gid === 'number' &&
-    (uid !== opt.processUid || gid !== opt.processGid)
-
-  const preserve = opt.preserve
-  const unlink = opt.unlink
-  const cwd = normalizeWindowsPath(opt.cwd)
-
-  const done = (er?: null | MkdirError, created?: string) => {
-    if (er) {
-      cb(er)
-    } else {
-      if (created && doChown) {
-        chownr(created, uid, gid, er => done(er as NodeJS.ErrnoException))
-      } else if (needChmod) {
-        fs.chmod(dir, mode, cb)
-      } else {
-        cb()
-      }
-    }
-  }
-
+): Promise<void> => {
+  const { mode, needChmod, owner } = plan(opt)
+  const { cwd } = opt
+  let made: string[] = []
   if (dir === cwd) {
-    return checkCwd(dir, done)
-  }
-
-  if (preserve) {
-    return fsp.mkdir(dir, { mode, recursive: true }).then(
-      made => done(null, made ?? undefined), // oh, ts
-      done,
+    let code: string | undefined = 'ENOTDIR'
+    const ok = await fs.stat(dir).then(
+      st => st.isDirectory(),
+      (er: ErrorWithCode) => {
+        code = er?.code || code
+        return false
+      },
     )
-  }
-
-  const sub = normalizeWindowsPath(path.relative(cwd, dir))
-  const parts = sub.split('/')
-  mkdir_(cwd, parts, mode, unlink, cwd, undefined, done)
-}
-
-const mkdir_ = (
-  base: string,
-  parts: string[],
-  mode: number,
-  unlink: boolean,
-  cwd: string,
-  created: string | undefined,
-  cb: (er?: null | MkdirError, made?: string) => void,
-): void => {
-  if (parts.length === 0) {
-    return cb(null, created)
-  }
-  const p = parts.shift()
-  const part = normalizeWindowsPath(path.resolve(base + '/' + p))
-  fs.mkdir(
-    part,
-    mode,
-    onmkdir(part, parts, mode, unlink, cwd, created, cb),
-  )
-}
-
-const onmkdir =
-  (
-    part: string,
-    parts: string[],
-    mode: number,
-    unlink: boolean,
-    cwd: string,
-    created: string | undefined,
-    cb: (er?: null | MkdirError, made?: string) => void,
-  ) =>
-  (er?: null | NodeJS.ErrnoException) => {
-    if (er) {
-      fs.lstat(part, (statEr, st) => {
-        if (statEr) {
-          statEr.path = statEr.path && normalizeWindowsPath(statEr.path)
-          cb(statEr)
-        } else if (st.isDirectory()) {
-          mkdir_(part, parts, mode, unlink, cwd, created, cb)
-        } else if (unlink) {
-          fs.unlink(part, er => {
-            if (er) {
-              return cb(er)
-            }
-            fs.mkdir(
-              part,
-              mode,
-              onmkdir(part, parts, mode, unlink, cwd, created, cb),
-            )
-          })
-        } else if (st.isSymbolicLink()) {
-          return cb(new SymlinkError(part, part + '/' + parts.join('/')))
-        } else {
-          cb(er)
+    if (!ok) throw new CwdError(dir, code)
+  } else if (opt.preserve) {
+    const first = await fs.mkdir(dir, { mode, recursive: true })
+    if (first) made = chain(first, dir)
+  } else {
+    const parts = relative(cwd, dir).split('/')
+    let part = cwd
+    for (let i = 0; i < parts.length; i++) {
+      part = child(part, parts[i] as string)
+      try {
+        await fs.mkdir(part, { mode })
+      } catch (er) {
+        const st = await fs.lstat(part)
+        if (st.isDirectory()) continue
+        if (!opt.unlink) {
+          throw st.isSymbolicLink() ?
+              new SymlinkError(
+                part,
+                part + '/' + parts.slice(i + 1).join('/'),
+              )
+            : er
         }
-      })
-    } else {
-      created = created || part
-      mkdir_(part, parts, mode, unlink, cwd, created, cb)
+        await fs.unlink(part)
+        await fs.mkdir(part, { mode })
+      }
+      made.push(part)
     }
   }
-
-const checkCwdSync = (dir: string) => {
-  let ok = false
-  let code
-  try {
-    ok = fs.statSync(dir).isDirectory()
-  } catch (er) {
-    code = (er as NodeJS.ErrnoException)?.code
-  } finally {
-    if (!ok) {
-      throw new CwdError(dir, code ?? 'ENOTDIR')
-    }
+  if (owner) {
+    for (const d of made) await fs.lchown(d, owner.uid, owner.gid)
   }
+  if (needChmod) await fs.chmod(dir, mode)
 }
 
-export const mkdirSync = (dir: string, opt: MkdirOptions) => {
-  dir = normalizeWindowsPath(dir)
-  // if there's any overlap between mask and mode,
-  // then we'll need an explicit chmod
-  // ubq: not measured: Unpack always sets umask
-  const umask = opt.umask ?? 0o22
-  const mode = opt.mode | 0o700
-  const needChmod = (mode & umask) !== 0
-
-  const uid = opt.uid
-  const gid = opt.gid
-  const doChown =
-    typeof uid === 'number' &&
-    typeof gid === 'number' &&
-    (uid !== opt.processUid || gid !== opt.processGid)
-
-  const preserve = opt.preserve
-  const unlink = opt.unlink
-  const cwd = normalizeWindowsPath(opt.cwd)
-
-  const done = (created?: string | undefined) => {
-    if (created && doChown) {
-      chownrSync(created, uid, gid)
-    }
-    if (needChmod) {
-      fs.chmodSync(dir, mode)
-    }
-  }
-
+/** The sync form of `mkdir`. */
+export const mkdirSync = (
+  fs: ExtractFSSync,
+  dir: string,
+  opt: MkdirOptions,
+): void => {
+  const { mode, needChmod, owner } = plan(opt)
+  const { cwd } = opt
+  let made: string[] = []
   if (dir === cwd) {
-    checkCwdSync(cwd)
-    return done()
-  }
-
-  if (preserve) {
-    return done(fs.mkdirSync(dir, { mode, recursive: true }) ?? undefined)
-  }
-
-  const sub = normalizeWindowsPath(path.relative(cwd, dir))
-  const parts = sub.split('/')
-  let created
-  for (
-    let p = parts.shift(), part = cwd;
-    p && (part += '/' + p);
-    p = parts.shift()
-  ) {
-    part = normalizeWindowsPath(path.resolve(part))
-
+    let code: string | undefined = 'ENOTDIR'
+    let ok = false
     try {
-      fs.mkdirSync(part, mode)
-      created = created || part
-    } catch {
-      const st = fs.lstatSync(part)
-      if (st.isDirectory()) {
-        continue
-      } else if (unlink) {
+      ok = fs.statSync(dir).isDirectory()
+    } catch (er) {
+      code = (er as ErrorWithCode)?.code || code
+    }
+    if (!ok) throw new CwdError(dir, code)
+  } else if (opt.preserve) {
+    const first = fs.mkdirSync(dir, { mode, recursive: true })
+    if (first) made = chain(first, dir)
+  } else {
+    const parts = relative(cwd, dir).split('/')
+    let part = cwd
+    for (let i = 0; i < parts.length; i++) {
+      part = child(part, parts[i] as string)
+      try {
+        fs.mkdirSync(part, { mode })
+      } catch (er) {
+        const st = fs.lstatSync(part)
+        if (st.isDirectory()) continue
+        if (!opt.unlink) {
+          throw st.isSymbolicLink() ?
+              new SymlinkError(
+                part,
+                part + '/' + parts.slice(i + 1).join('/'),
+              )
+            : er
+        }
         fs.unlinkSync(part)
-        fs.mkdirSync(part, mode)
-        created = created || part
-        continue
-      } else if (st.isSymbolicLink()) {
-        return new SymlinkError(part, part + '/' + parts.join('/'))
+        fs.mkdirSync(part, { mode })
       }
+      made.push(part)
     }
   }
-
-  return done(created)
+  if (owner) {
+    for (const d of made) fs.lchownSync(d, owner.uid, owner.gid)
+  }
+  if (needChmod) fs.chmodSync(dir, mode)
 }

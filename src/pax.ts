@@ -1,7 +1,7 @@
 import type { HeaderData } from './header.js'
 import { Header } from './header.js'
 import { decodeUtf8, encodeUtf8Into, utf8Length } from './bytes.js'
-import { basename } from './next/path.js'
+import { basename } from './path.js'
 
 const SIMPLE_NUMBER = /^\d+$/
 

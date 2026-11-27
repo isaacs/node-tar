@@ -1,27 +1,21 @@
-// unix absolute paths are also absolute on win32, so we use this for both
-import { win32 } from 'node:path'
-const { isAbsolute, parse } = win32
+import { win32Root } from './win32-path.js'
 
-// returns [root, stripped]
-// Note that windows will think that //x/y/z/a has a "root" of //x/y, and in
-// those cases, we want to sanitize it to x/y/z/a, not z/a, so we strip /
-// explicitly if it's the first character.
-// drive-specific relative paths on Windows get their root stripped off even
-// though they are not absolute, so `c:../foo` becomes ['c:', '../foo']
+/**
+ * Remove each root from the start of a path. Returns the roots and
+ * the rest of the path.
+ *
+ * A POSIX absolute path is also absolute on Windows, so the rules of
+ * Windows are used on each platform. A path that is relative to a
+ * drive loses the drive: `c:../foo` gives `['c:', '../foo']`.
+ */
 export const stripAbsolutePath = (path: string): [string, string] => {
-  let r = ''
-
-  let parsed = parse(path)
-  while (isAbsolute(path) || parsed.root) {
-    // windows will think that //x/y/z has a "root" of //x/y/
-    // but strip the //?/C:/ off of //?/C:/path
-    const root =
-      path.charAt(0) === '/' && path.slice(0, 4) !== '//?/' ?
-        '/'
-      : parsed.root
+  let roots = ''
+  for (let root; (root = win32Root(path)); ) {
+    // Windows reads `//x/y/` as the root of `//x/y/z`. Remove only the
+    // first slash, but remove all of `//?/c:/`.
+    if (path.charAt(0) === '/' && path.slice(0, 4) !== '//?/') root = '/'
     path = path.slice(root.length)
-    r += root
-    parsed = parse(path)
+    roots += root
   }
-  return [r, path]
+  return [roots, path]
 }

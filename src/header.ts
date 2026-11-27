@@ -10,7 +10,7 @@ import {
   writeAscii,
 } from './bytes.js'
 import * as large from './large-numbers.js'
-import { basename, dirname, join } from './next/path.js'
+import { basename, dirname, join } from './path.js'
 import type { EntryTypeCode, EntryTypeName } from './types.js'
 import * as types from './types.js'
 

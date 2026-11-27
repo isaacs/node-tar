@@ -1,288 +1,194 @@
-// tar -r
-import { WriteStream, WriteStreamSync } from '@isaacs/fs-minipass'
-import type { Minipass } from 'minipass'
-import fs from 'node:fs'
-import path from 'node:path'
-import { Header } from './header.js'
-import { list } from './list.js'
-import { makeCommand } from './make-command.js'
-import type { TarOptionsFile, TarOptionsSyncFile } from './options.js'
-import { isFile } from './options.js'
-import { Pack, PackSync } from './pack.js'
+import { gzip, type Codec } from './codec.js'
+import {
+  packFiles,
+  packFilesSync,
+  writeChunks,
+  writeChunksSync,
+} from './create.js'
+import type { ReplaceOptions, ReplaceOptionsSync } from './options.js'
+import type { PackInput, PackInputSync } from './pack.js'
+import { Parser } from './parser.js'
 
-// starting at the head of the file, read a Header
-// If the checksum is invalid, that's our position to start writing
-// If it is, jump forward by the specified size (round up to 512)
-// and try again.
-// Write the new Pack stream starting there.
+// The most bytes to read from the archive at one time.
+const CHUNK = 64 * 1024
+// Thrown in the parser to stop at the first block that is not valid.
+const STOP = {}
+const noop = () => {}
 
-const replaceSync = (opt: TarOptionsSyncFile, files: string[]) => {
-  const p = new PackSync(opt)
+const compressed = () => new Error('cannot append to compressed archives')
 
-  let threw = true
-  let fd
-  let position
-
-  try {
-    try {
-      fd = fs.openSync(opt.file, 'r+')
-    } catch (er) {
-      if ((er as NodeJS.ErrnoException)?.code === 'ENOENT') {
-        fd = fs.openSync(opt.file, 'w+')
-      } else {
-        throw er
-      }
-    }
-
-    const st = fs.fstatSync(fd)
-    const headBuf = Buffer.alloc(512)
-
-    POSITION: for (position = 0; position < st.size; position += 512) {
-      for (let bufPos = 0, bytes = 0; bufPos < 512; bufPos += bytes) {
-        bytes = fs.readSync(
-          fd,
-          headBuf,
-          bufPos,
-          headBuf.length - bufPos,
-          position + bufPos,
-        )
-
-        if (position === 0 && headBuf[0] === 0x1f && headBuf[1] === 0x8b) {
-          throw new Error('cannot append to compressed archives')
-        }
-
-        if (!bytes) {
-          break POSITION
-        }
-      }
-
-      const h = new Header(headBuf)
-      if (!h.cksumValid) {
-        break
-      }
-      const entryBlockSize = 512 * Math.ceil((h.size || 0) / 512)
-      if (position + entryBlockSize + 512 > st.size) {
-        break
-      }
-      // the 512 for the header we just parsed will be added as well
-      // also jump ahead all the blocks for the body
-      position += entryBlockSize
-      if (opt.mtimeCache && h.mtime) {
-        opt.mtimeCache.set(String(h.path), h.mtime)
-      }
-    }
-    threw = false
-
-    streamSync(opt, p, position, fd, files)
-  } finally {
-    if (threw) {
-      try {
-        fs.closeSync(fd as number)
-      } catch {}
-    }
+const check = (
+  opt: ReplaceOptions | ReplaceOptionsSync,
+  files: unknown[],
+) => {
+  const { file } = opt
+  if (!file) throw new TypeError('file is required')
+  if (
+    opt.gzip ||
+    opt.brotli ||
+    opt.zstd ||
+    file.endsWith('.br') ||
+    file.endsWith('.tbr')
+  ) {
+    throw new TypeError(compressed().message)
+  }
+  if (!files?.length) {
+    throw new TypeError('no paths specified to add/replace')
   }
 }
 
-const streamSync = (
-  opt: TarOptionsSyncFile,
-  p: Pack,
-  position: number,
-  fd: number,
-  files: string[],
-) => {
-  const stream = new WriteStreamSync(opt.file, {
-    fd: fd,
-    start: position,
+/**
+ * Finds the place in an archive file where new entries go: the end
+ * of the last complete entry before the first block that is not a
+ * valid header. A PAX or GNU header with no entry after it is not a
+ * complete entry.
+ *
+ * Read the file into `buf` at `pos`, and call `push()`, until it
+ * returns false. The bodies of the entries are not read.
+ */
+export class AppendScan {
+  buf: Uint8Array = new Uint8Array(CHUNK)
+  /** The place in the file of the next read. */
+  pos: number = 0
+  #size: number
+  #parser: Parser
+  #codecs: Codec[]
+  #mtimes?: Map<string, Date>
+
+  /**
+   * @param size the size of the file
+   * @param mtimes gets the path and the `mtime` of each complete entry
+   */
+  constructor(
+    size: number,
+    codecs: Codec[] = [],
+    mtimes?: Map<string, Date>,
+  ) {
+    this.#size = size
+    this.#codecs = [...codecs, gzip]
+    this.#mtimes = mtimes
+    this.#parser = new Parser({
+      // The parser must not give the bodies.
+      filter: () => false,
+      onwarn: (_code, _message, data) => {
+        // An error of the header code goes to the caller.
+        throw data instanceof Error ? data : STOP
+      },
+    })
+  }
+
+  /** The place in the file where new entries go. */
+  get position(): number {
+    return this.#parser.position
+  }
+
+  /** The number of bytes to read into `buf` at `pos`. */
+  get want(): number {
+    return Math.min(CHUNK, this.#size - this.pos)
+  }
+
+  /**
+   * Parse the first `length` bytes of `buf`. False if the place is
+   * found. Throws if the file is compressed.
+   */
+  push(length: number): boolean {
+    const chunk = this.buf.subarray(0, length)
+    if (this.pos === 0 && this.#codecs.some(c => c.detect(chunk))) {
+      throw compressed()
+    }
+    const parser = this.#parser
+    this.pos += length
+    // the end of the body of the last entry in the chunk
+    let end = 0
+    parser.push(chunk)
+    try {
+      for (let ev; (ev = parser.next()); ) {
+        if (ev.type !== 'entry') return false
+        const { entry } = ev
+        end = parser.offset + 512 * Math.ceil(entry.size / 512)
+        if (end > this.#size) return false
+        if (entry.mtime) this.#mtimes?.set(entry.path, entry.mtime)
+      }
+      // The parser does not look at the bytes of a body. Give it the
+      // bytes of the buffer in place of the rest of the body.
+      while (this.pos < end) {
+        const n = Math.min(CHUNK, end - this.pos)
+        parser.push(this.buf.subarray(0, n))
+        parser.next()
+        this.pos += n
+      }
+    } catch (er) {
+      if (er !== STOP) throw er
+      return false
+    }
+    return length > 0 && this.pos < this.#size
+  }
+}
+
+/**
+ * Add the files to the end of an archive file that is not
+ * compressed. The files are the same as for `create`. If the archive
+ * does not exist, it is made.
+ *
+ * The new entries go after the last complete entry of the archive.
+ * A reader of the archive gets the old entry and then the new entry
+ * of a path that is in it two times.
+ */
+export const replace = async (
+  opt: ReplaceOptions,
+  files: PackInput[],
+): Promise<void> => {
+  check(opt, files)
+  const { fs, file } = opt
+  const pack = packFiles(opt, files)
+  if (pack.codec) throw new TypeError(compressed().message)
+  const handle = await fs.open(file, 'r+').catch(er => {
+    if ((er as { code?: string })?.code !== 'ENOENT') throw er
+    return fs.open(file, 'w+', opt.mode || 0o666)
   })
-  p.pipe(stream as unknown as Minipass.Writable)
+  let ok = false
   try {
-    addFilesSync(p, files)
+    const { size } = await handle.stat()
+    const scan = new AppendScan(size, opt.codecs, opt.mtimeCache)
+    while (
+      scan.push(
+        (await handle.read(scan.buf, 0, scan.want, scan.pos)).bytesRead,
+      )
+    );
+    await writeChunks(handle, pack, scan.position)
+    ok = true
+  } finally {
+    const closed = handle.close()
+    await (ok ? closed : closed.catch(noop))
+  }
+}
+
+/** The sync form of `replace`. */
+export const replaceSync = (
+  opt: ReplaceOptionsSync,
+  files: PackInputSync[],
+): void => {
+  check(opt, files)
+  const { fs, file } = opt
+  const pack = packFilesSync(opt, files)
+  if (pack.codec) throw new TypeError(compressed().message)
+  let fd: number
+  try {
+    fd = fs.openSync(file, 'r+')
   } catch (er) {
-    stream.end()
+    if ((er as { code?: string })?.code !== 'ENOENT') throw er
+    fd = fs.openSync(file, 'w+', opt.mode || 0o666)
+  }
+  try {
+    const { size } = fs.fstatSync(fd)
+    const scan = new AppendScan(size, opt.codecs, opt.mtimeCache)
+    while (scan.push(fs.readSync(fd, scan.buf, 0, scan.want, scan.pos)));
+    writeChunksSync(fs, fd, pack, scan.position)
+  } catch (er) {
+    try {
+      fs.closeSync(fd)
+    } catch {}
     throw er
   }
+  fs.closeSync(fd)
 }
-
-const replaceAsync = (
-  opt: TarOptionsFile,
-  files: string[],
-): Promise<void> => {
-  files = Array.from(files)
-  const p = new Pack(opt)
-
-  const getPos = (
-    fd: number,
-    size: number,
-    cb_: (er?: null | Error, pos?: number) => void,
-  ) => {
-    const cb = (er?: Error | null, pos?: number) => {
-      if (er) {
-        fs.close(fd, _ => cb_(er))
-      } else {
-        cb_(null, pos)
-      }
-    }
-
-    let position = 0
-    if (size === 0) {
-      return cb(null, 0)
-    }
-
-    let bufPos = 0
-    const headBuf = Buffer.alloc(512)
-    const onread = (er?: null | Error, bytes?: number): void => {
-      if (er || bytes === undefined) {
-        return cb(er)
-      }
-      bufPos += bytes
-      if (bufPos < 512 && bytes) {
-        return fs.read(
-          fd,
-          headBuf,
-          bufPos,
-          headBuf.length - bufPos,
-          position + bufPos,
-          onread,
-        )
-      }
-
-      if (position === 0 && headBuf[0] === 0x1f && headBuf[1] === 0x8b) {
-        return cb(new Error('cannot append to compressed archives'))
-      }
-
-      // truncated header
-      if (bufPos < 512) {
-        return cb(null, position)
-      }
-
-      let h: Header
-      try {
-        h = new Header(headBuf)
-      } catch (er) {
-        return cb(er as Error)
-      }
-      if (!h.cksumValid) {
-        return cb(null, position)
-      }
-
-      const entryBlockSize = 512 * Math.ceil((h.size ?? 0) / 512)
-      if (position + entryBlockSize + 512 > size) {
-        return cb(null, position)
-      }
-
-      position += entryBlockSize + 512
-      if (position >= size) {
-        return cb(null, position)
-      }
-
-      if (opt.mtimeCache && h.mtime) {
-        opt.mtimeCache.set(String(h.path), h.mtime)
-      }
-      bufPos = 0
-      fs.read(fd, headBuf, 0, 512, position, onread)
-    }
-    fs.read(fd, headBuf, 0, 512, position, onread)
-  }
-
-  const promise = new Promise<void>((resolve, reject) => {
-    p.on('error', reject)
-    let flag = 'r+'
-    const onopen = (er?: NodeJS.ErrnoException | null, fd?: number) => {
-      if (er && er.code === 'ENOENT' && flag === 'r+') {
-        flag = 'w+'
-        return fs.open(opt.file, flag, onopen)
-      }
-
-      if (er || !fd) {
-        return reject(er)
-      }
-
-      fs.fstat(fd, (er, st) => {
-        if (er) {
-          return fs.close(fd, () => reject(er))
-        }
-
-        getPos(fd, st.size, (er, position) => {
-          if (er) {
-            return fs.close(fd, () => reject(er))
-          }
-          const stream = new WriteStream(opt.file, {
-            fd: fd,
-            start: position,
-          })
-          p.pipe(stream as unknown as Minipass.Writable)
-          stream.on('error', reject)
-          stream.on('close', resolve)
-          addFilesAsync(p, files).catch(er => {
-            stream.end()
-            reject(er)
-          })
-        })
-      })
-    }
-    fs.open(opt.file, flag, onopen)
-  })
-
-  return promise
-}
-
-const addFilesSync = (p: Pack, files: string[]) => {
-  files.forEach(file => {
-    if (file.charAt(0) === '@') {
-      list({
-        file: path.resolve(p.cwd, file.slice(1)),
-        sync: true,
-        noResume: true,
-        onReadEntry: entry => p.add(entry),
-      })
-    } else {
-      p.add(file)
-    }
-  })
-  p.end()
-}
-
-const addFilesAsync = async (p: Pack, files: string[]): Promise<void> => {
-  for (const file of files) {
-    if (file.charAt(0) === '@') {
-      await list({
-        file: path.resolve(String(p.cwd), file.slice(1)),
-        noResume: true,
-        onReadEntry: entry => p.add(entry),
-      })
-    } else {
-      p.add(file)
-    }
-  }
-  p.end()
-}
-
-export const replace = makeCommand(
-  replaceSync,
-  replaceAsync,
-  (): never => {
-    throw new TypeError('file is required')
-  },
-  (): never => {
-    throw new TypeError('file is required')
-  },
-  (opt, entries) => {
-    if (!isFile(opt)) {
-      throw new TypeError('file is required')
-    }
-
-    if (
-      opt.gzip ||
-      opt.brotli ||
-      opt.zstd ||
-      opt.file.endsWith('.br') ||
-      opt.file.endsWith('.tbr')
-    ) {
-      throw new TypeError('cannot append to compressed archives')
-    }
-
-    if (!entries?.length) {
-      throw new TypeError('no paths specified to add/replace')
-    }
-  },
-)

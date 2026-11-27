@@ -1,4 +1,4 @@
-import { assert, describe, env, mockImport, test } from 'ubqtest'
+import { assert, describe, test } from 'ubqtest'
 import { normalizeUnicode } from '../src/normalize-unicode.js'
 import { stripTrailingSlashes } from '../src/strip-trailing-slashes.js'
 
@@ -29,13 +29,9 @@ describe('normalize with strip slashes', () => {
   ]
 
   for (const path of paths) {
-    test(JSON.stringify(path), async () => {
-      // Use the path rules of Windows on each platform.
-      env({ TESTING_TAR_FAKE_PLATFORM: 'win32' })
-      const { normalizeWindowsPath } = await mockImport(
-        () => import('../src/normalize-windows-path.js'),
-        [],
-      )
+    test(JSON.stringify(path), () => {
+      // The path rule of Windows: each backslash is a separator.
+      const normalizeWindowsPath = p => p.replace(/\\/g, '/')
       const a = normalizeUnicode(
         stripTrailingSlashes(normalizeWindowsPath(path)),
       )

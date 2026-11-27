@@ -1,58 +1,43 @@
-// tar -x
-import * as fsm from '@isaacs/fs-minipass'
-import fs from 'node:fs'
 import { filesFilter } from './list.js'
-import { makeCommand } from './make-command.js'
-import type { TarOptionsFile, TarOptionsSyncFile } from './options.js'
-import { Unpack, UnpackSync } from './unpack.js'
+import type { ExtractOptions, ExtractOptionsSync } from './options.js'
+import { readFile, readFileSync } from './read-file.js'
+import { ownOptions, Unpack, UnpackSync } from './unpack.js'
 
-const extractFileSync = (opt: TarOptionsSyncFile) => {
-  const u = new UnpackSync(opt)
-  const file = opt.file
-  const stat = fs.statSync(file)
-  // This trades a zero-byte read() syscall for a stat
-  // However, it will usually result in less memory allocation
-  const readSize = opt.maxReadSize || 16 * 1024 * 1024
-  const stream = new fsm.ReadStreamSync(file, {
-    readSize: readSize,
-    size: stat.size,
-  })
-  stream.pipe(u)
+const noInput = () => new TypeError('extract needs input or file')
+
+/**
+ * Extract the entries of an archive into the directory `opt.cwd`.
+ * If `files` is set, only the entries that it lists, and the entries
+ * in the directories that it lists.
+ *
+ * A problem with one entry is a warning for `opt.onwarn`, and the
+ * extraction continues. With `opt.strict`, it is an error.
+ */
+export const extract = async (
+  options: ExtractOptions,
+  files?: string[],
+): Promise<void> => {
+  const opt = ownOptions(options)
+  const source =
+    opt.input ??
+    (opt.file ? readFile(opt.fs, opt.file, opt.maxReadSize) : undefined)
+  if (!source) throw noInput()
+  if (files?.length) opt.filter = filesFilter(files, opt.filter)
+  await new Unpack(opt).extract(source)
 }
 
-const extractFile = (opt: TarOptionsFile, _?: string[]) => {
-  const u = new Unpack(opt)
-  const readSize = opt.maxReadSize || 16 * 1024 * 1024
-
-  const file = opt.file
-  const p = new Promise<void>((resolve, reject) => {
-    u.on('error', reject)
-    u.on('close', resolve)
-
-    // This trades a zero-byte read() syscall for a stat
-    // However, it will usually result in less memory allocation
-    fs.stat(file, (er, stat) => {
-      if (er) {
-        reject(er)
-      } else {
-        const stream = new fsm.ReadStream(file, {
-          readSize: readSize,
-          size: stat.size,
-        })
-        stream.on('error', reject)
-        stream.pipe(u)
-      }
-    })
-  })
-  return p
+/** The sync form of `extract`. */
+export const extractSync = (
+  options: ExtractOptionsSync,
+  files?: string[],
+): void => {
+  const opt = ownOptions(options)
+  const source =
+    opt.input ??
+    (opt.file ?
+      readFileSync(opt.fs, opt.file, opt.maxReadSize)
+    : undefined)
+  if (!source) throw noInput()
+  if (files?.length) opt.filter = filesFilter(files, opt.filter)
+  new UnpackSync(opt).extract(source)
 }
-
-export const extract = makeCommand<Unpack, UnpackSync>(
-  extractFileSync,
-  extractFile,
-  opt => new UnpackSync(opt),
-  opt => new Unpack(opt),
-  (opt, files) => {
-    if (files?.length) filesFilter(opt, files)
-  },
-)

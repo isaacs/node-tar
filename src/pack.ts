@@ -1,563 +1,882 @@
-// A readable tar stream creator
-// Technically, this is a transform stream that you write paths into,
-// and tar format comes out of.
-// The `add()` method is like `write()` but returns this,
-// and end() return `this` as well, so you can
-// do `new Pack(opt).add('files').add('dir').end().pipe(output)
-// You could also do something like:
-// streamOfPaths().pipe(new Pack()).pipe(new fs.WriteStream('out.tar'))
-
-import fs, { type Stats } from 'fs'
+import { modeFix } from './mode-fix.js'
+import type { EntryTypeName } from './types.js'
+import * as winchars from './winchars.js'
+import { gzip, type Codec, type CodecStream } from './codec.js'
+import { concat } from './concat.js'
+import type {
+  CreateFileHandle,
+  CreateFS,
+  CreateFSSync,
+  CreateStats,
+} from './fs.js'
+import type {
+  PackOptions,
+  PackOptionsBase,
+  PackOptionsSync,
+} from './options.js'
+import { relative, resolve } from './path.js'
 import {
-  WriteEntry,
-  WriteEntrySync,
-  WriteEntryTar,
-} from './write-entry.js'
+  EntryData,
+  type ReadEntry,
+  type ReadEntrySync,
+} from './read-entry.js'
+import { stripAbsolutePath } from './strip-absolute-path.js'
+import { toStream } from './to-stream.js'
+import { warn } from './warn.js'
+import { win32Resolve } from './win32-path.js'
+import { WriteEntry, type EncodeOptions } from './write-entry.js'
 
+const MAX_READ = 16 * 1024 * 1024
+const noop = () => {}
+
+const blockLength = (size: number) => 512 * Math.ceil(size / 512)
+const slashes = (path: string) => path.replaceAll('\\', '/')
+const idOf = (stat: CreateStats) => `${stat.dev}:${stat.ino}`
+const same = (
+  a: { dev: number; ino: number },
+  b: { dev: number; ino: number },
+) => a.dev === b.dev && a.ino === b.ino
+
+const eof = (message: string, path: string) =>
+  Object.assign(new Error(message), { path, syscall: 'read', code: 'EOF' })
+const pathOf = (entry: WriteEntry) => entry.absolute ?? entry.path
+const tooLong = (entry: WriteEntry) =>
+  Object.assign(new Error('writing more data than expected'), {
+    path: pathOf(entry),
+  })
+
+/** A directory above a path, when a pack follows symbolic links. */
+export type Ancestor = { key: string; up?: Ancestor }
+
+/** What `Pack` reads for a path before it writes the entry. */
+export type PackLoad = {
+  stat: CreateStats
+  type: EntryTypeName
+  /** The target of a symbolic link. */
+  linkpath?: string
+  /** The names in a directory. */
+  names?: string[]
+  /** A file of `maxReadSize` bytes or less, after 512 bytes of zeros. */
+  buf?: Uint8Array
+  /** A larger file. */
+  handle?: CreateFileHandle
+  /** The path is a different object now. The pack skips it. */
+  changed?: boolean
+}
+
+/** A path in the queue of a pack. */
 export class PackJob {
   path: string
   absolute: string
-  entry?: WriteEntry | WriteEntryTar
-  stat?: Stats
-  readdir?: string[]
-  pending: boolean = false
-  pendingLink: boolean = false
-  ignore: boolean = false
-  piped: boolean = false
+  /** The directories above it, when the pack follows symbolic links. */
+  up?: Ancestor
+  /** The target, when the pack writes the file as a hard link. */
+  linkpath?: string
+  /** Set when `Pack` starts to read the path. */
+  ready?: Promise<PackLoad | undefined>
+
   constructor(path: string, absolute: string) {
-    this.path = path || './'
+    this.path = path
     this.absolute = absolute
   }
 }
 
-import { Minipass } from 'minipass'
-import * as zlib from 'minizlib'
-import { Yallist } from 'yallist'
-import type { ReadEntry } from './read-entry.js'
-import type { WarnEvent } from './warn-method.js'
-import { warnMethod, type WarnData, type Warner } from './warn-method.js'
+type Node<T> = { item: T; next?: Node<T> }
 
-const EOF = Buffer.alloc(1024)
-const ONSTAT = Symbol('onStat')
-const ENDED = Symbol('ended')
-const QUEUE = Symbol('queue')
-const PENDINGLINKS = Symbol('pendingLinks')
-const CURRENT = Symbol('current')
-const PROCESS = Symbol('process')
-const PROCESSING = Symbol('processing')
-const PROCESSJOB = Symbol('processJob')
-const JOBS = Symbol('jobs')
-const JOBDONE = Symbol('jobDone')
-const ADDFSENTRY = Symbol('addFSEntry')
-const ADDTARENTRY = Symbol('addTarEntry')
-const STAT = Symbol('stat')
-const READDIR = Symbol('readdir')
-const ONREADDIR = Symbol('onreaddir')
-const PIPE = Symbol('pipe')
-const ENTRY = Symbol('entry')
-const ENTRYOPT = Symbol('entryOpt')
-const WRITEENTRYCLASS = Symbol('writeEntryClass')
-const WRITE = Symbol('write')
-const ONDRAIN = Symbol('ondrain')
+/**
+ * The parts of `Pack` and `PackSync` that are the same: the options,
+ * the queue, and the rules that make an entry from a path or from an
+ * entry of another archive.
+ */
+export abstract class PackBase<
+  FS,
+  E extends ReadEntry | ReadEntrySync,
+  S extends object,
+> {
+  opt: PackOptionsBase<E>
+  fs?: FS
+  /** The normalized form of `opt.cwd`. */
+  cwd?: string
+  win32: boolean
+  maxReadSize: number
+  /** The options of `WriteEntry.encode`. */
+  header: EncodeOptions
+  /** The compression of the output. */
+  codec?: Codec
+  codecOptions?: Record<string, unknown>
+  /** True after `end()`. */
+  ended: boolean = false
+  protected head?: Node<PackJob | WriteEntry | E | S>
+  protected tail?: Node<PackJob | WriteEntry | E | S>
+  protected wake?: () => void
+  // The first path of each file that has more than one link.
+  #links = new Map<string, string>()
 
-import path from 'path'
-import { normalizeWindowsPath } from './normalize-windows-path.js'
-import type { LinkCacheKey, TarOptions } from './options.js'
-
-export class Pack
-  extends Minipass<Buffer, ReadEntry | string, WarnEvent<Buffer>>
-  implements Warner
-{
-  sync: boolean = false
-  opt: TarOptions
-  cwd: string
-  maxReadSize?: number
-  preservePaths: boolean
-  strict: boolean
-  noPax: boolean
-  prefix: string
-  linkCache: Exclude<TarOptions['linkCache'], undefined>
-  statCache: Exclude<TarOptions['statCache'], undefined>
-  file: string
-  portable: boolean
-  zip?: zlib.BrotliCompress | zlib.Gzip | zlib.ZstdCompress
-  readdirCache: Exclude<TarOptions['readdirCache'], undefined>
-  noDirRecurse: boolean
-  follow: boolean
-  noMtime: boolean
-  mtime?: Date
-  filter: Exclude<TarOptions['filter'], undefined>
-  jobs: number;
-
-  [WRITEENTRYCLASS]: typeof WriteEntry | typeof WriteEntrySync
-  onWriteEntry?: (entry: WriteEntry) => void;
-  // Note: we actually DO need a linked list here, because we
-  // shift() to update the head of the list where we start, but still
-  // while that happens, need to know what the next item in the queue
-  // will be. Since we do multiple jobs in parallel, it's not as simple
-  // as just an Array.shift(), since that would lose the information about
-  // the next job in the list. We could add a .next field on the PackJob
-  // class, but then we'd have to be tracking the tail of the queue the
-  // whole time, and Yallist just does that for us anyway.
-  [QUEUE]: Yallist<PackJob>;
-  [PENDINGLINKS] = new Map<LinkCacheKey, PackJob[]>();
-  [JOBS]: number = 0;
-  [PROCESSING]: boolean = false;
-  [ENDED]: boolean = false
-
-  constructor(opt: TarOptions = {}) {
-    super()
-    this.opt = opt
-    this.file = opt.file || ''
-    this.cwd = opt.cwd || process.cwd()
-    this.maxReadSize = opt.maxReadSize
-    this.preservePaths = !!opt.preservePaths
-    this.strict = !!opt.strict
-    this.noPax = !!opt.noPax
-    this.prefix = normalizeWindowsPath(opt.prefix || '')
-    this.linkCache = opt.linkCache || new Map()
-    this.statCache = opt.statCache || new Map()
-    this.readdirCache = opt.readdirCache || new Map()
-    this.onWriteEntry = opt.onWriteEntry
-
-    this[WRITEENTRYCLASS] = WriteEntry
-    if (typeof opt.onwarn === 'function') {
-      this.on('warn', opt.onwarn)
-    }
-
-    this.portable = !!opt.portable
-
-    if (opt.gzip || opt.brotli || opt.zstd) {
-      if (
-        (opt.gzip ? 1 : 0) + (opt.brotli ? 1 : 0) + (opt.zstd ? 1 : 0) >
-        1
-      ) {
-        throw new TypeError('gzip, brotli, zstd are mutually exclusive')
-      }
-      if (opt.gzip) {
-        if (typeof opt.gzip !== 'object') {
-          opt.gzip = {}
-        }
-        if (this.portable) {
-          opt.gzip.portable = true
-        }
-        this.zip = new zlib.Gzip(opt.gzip)
-      }
-      if (opt.brotli) {
-        if (typeof opt.brotli !== 'object') {
-          opt.brotli = {}
-        }
-        this.zip = new zlib.BrotliCompress(opt.brotli)
-      }
-      if (opt.zstd) {
-        if (typeof opt.zstd !== 'object') {
-          opt.zstd = {}
-        }
-        this.zip = new zlib.ZstdCompress(opt.zstd)
-      }
-      // ubq: not measured: each of gzip, brotli, and zstd sets zip
-      if (!this.zip) throw new Error('impossible')
-      const zip = this.zip
-      zip.on('data', chunk => super.write(chunk as unknown as string))
-      zip.on('end', () => super.end())
-      zip.on('drain', () => this[ONDRAIN]())
-      this.on('resume', () => zip.resume())
-    } else {
-      this.on('drain', this[ONDRAIN])
-    }
-
-    this.noDirRecurse = !!opt.noDirRecurse
-    this.follow = !!opt.follow
-    this.noMtime = !!opt.noMtime
-    if (opt.mtime) this.mtime = opt.mtime
-
-    this.filter =
-      typeof opt.filter === 'function' ? opt.filter : () => true
-
-    this[QUEUE] = new Yallist<PackJob>()
-    this[JOBS] = 0
-    this.jobs = Number(opt.jobs) || 4
-    this[PROCESSING] = false
-    this[ENDED] = false
-  }
-
-  [WRITE](chunk: Buffer) {
-    return super.write(chunk as unknown as string)
-  }
-
-  add(path: string | ReadEntry) {
-    this.write(path)
-    return this
-  }
-
-  end(cb?: () => void): this
-  end(path: string | ReadEntry, cb?: () => void): this
-  end(
-    path: string | ReadEntry,
-    encoding?: Minipass.Encoding,
-    cb?: () => void,
-  ): this
-  end(
-    path?: string | ReadEntry | (() => void),
-    encoding?: Minipass.Encoding | (() => void),
-    cb?: () => void,
+  constructor(
+    opt: PackOptionsBase<E> & { fs?: FS },
+    compress: 'compress' | 'compressSync',
   ) {
-    if (typeof path === 'function') {
-      cb = path
-      path = undefined
+    this.opt = opt
+    this.fs = opt.fs
+    this.win32 = opt.platform === 'win32'
+    this.maxReadSize = opt.maxReadSize || MAX_READ
+    const { prefix, noPax } = opt
+    this.header = {
+      prefix: prefix && this.win32 ? slashes(prefix) : prefix,
+      noPax,
     }
-    if (typeof encoding === 'function') {
-      cb = encoding
-      encoding = undefined
+    const cwd = opt.cwd && (this.win32 ? slashes(opt.cwd) : opt.cwd)
+    this.cwd = cwd && this.#resolve(cwd, '')
+
+    const codecs = [...(opt.codecs ?? []), gzip]
+    const set = opt as Record<string, unknown>
+    const names = [
+      ...new Set(['gzip', 'brotli', 'zstd', ...codecs.map(c => c.name)]),
+    ].filter(name => set[name])
+    if (names.length > 1) {
+      throw new TypeError(`${names.join(', ')} are mutually exclusive`)
     }
-    if (path) {
-      this.add(path)
+    const [name] = names
+    if (name) {
+      const codec = codecs.find(c => c.name === name)
+      if (!codec?.[compress]) {
+        throw new TypeError(
+          `no codec named ${name} has a ${compress} function`,
+        )
+      }
+      const value = set[name]
+      this.codec = codec
+      this.codecOptions = {
+        ...(typeof value === 'object' ? value : undefined),
+        ...(name === 'gzip' && opt.portable ?
+          { portable: true }
+        : undefined),
+      }
     }
-    this[ENDED] = true
-    this[PROCESS]()
-    if (cb) cb()
+  }
+
+  #resolve(cwd: string, path: string) {
+    return this.win32 ? win32Resolve(cwd, path) : resolve(cwd, path)
+  }
+
+  /** The absolute form of a path that is relative to `cwd`. */
+  resolve(path: string): string {
+    if (!this.cwd || !this.fs) {
+      throw new TypeError('a path needs the cwd and fs options')
+    }
+    return this.#resolve(this.cwd, this.win32 ? slashes(path) : path)
+  }
+
+  /**
+   * Put a path, an entry, or a source of entries at the end of the
+   * queue. A directory is added with all that is in it.
+   */
+  add(item: string | WriteEntry | E | S): this {
+    if (this.ended) throw new Error('write after end')
+    if (typeof item !== 'string') this.push(item)
+    else {
+      const path = this.win32 ? slashes(item) : item
+      this.push(new PackJob(path || './', this.resolve(path)))
+    }
     return this
   }
 
-  write(path: string | ReadEntry) {
-    if (this[ENDED]) {
-      throw new Error('write after end')
-    }
-
-    if (typeof path === 'string') {
-      this[ADDFSENTRY](path)
-    } else {
-      this[ADDTARENTRY](path)
-    }
-    return this.flowing
+  /** Add no more. The archive ends after the last item of the queue. */
+  end(): this {
+    this.ended = true
+    this.wake?.()
+    return this
   }
 
-  [ADDTARENTRY](p: ReadEntry) {
-    const absolute = normalizeWindowsPath(path.resolve(this.cwd, p.path))
-    // in this case, we don't have to wait for the stat
-    if (!this.filter(p.path, p)) {
-      p.resume()
-    } else {
-      const job = new PackJob(p.path, absolute)
-      job.entry = new WriteEntryTar(p, this[ENTRYOPT](job))
-      job.entry.on('end', () => this[JOBDONE](job))
-      this[JOBS] += 1
-      this[QUEUE].push(job)
-    }
-
-    this[PROCESS]()
+  protected push(item: PackJob | WriteEntry | E | S): void {
+    const node = { item }
+    if (this.tail) this.tail.next = node
+    else this.head = node
+    this.tail = node
+    this.wake?.()
   }
 
-  [ADDFSENTRY](p: string) {
-    const absolute = normalizeWindowsPath(path.resolve(this.cwd, p))
-    this[QUEUE].push(new PackJob(p, absolute))
-    this[PROCESS]()
+  protected shift(): void {
+    this.head = this.head?.next
+    if (!this.head) this.tail = undefined
   }
 
-  [STAT](job: PackJob) {
-    job.pending = true
-    this[JOBS] += 1
-    const stat = this.follow ? 'stat' : 'lstat'
-    fs[stat](job.absolute, (er, stat) => {
-      job.pending = false
-      this[JOBS] -= 1
-      if (er) {
-        this.emit('error', er)
-      } else {
-        this[ONSTAT](job, stat)
-      }
-    })
-  }
-
-  [ONSTAT](job: PackJob, stat: Stats) {
-    this.statCache.set(job.absolute, stat)
-    job.stat = stat
-
-    // now we have the stat, we can filter it.
-    if (!this.filter(job.path, stat)) {
-      job.ignore = true
-    } else if (
-      stat.isFile() &&
-      stat.nlink > 1 &&
-      !this.linkCache.get(`${stat.dev}:${stat.ino}`) &&
-      !this.sync
-    ) {
-      // if it's not filtered, and it's a new File entry, and next anyway
-      // process right away in case any pending Link entries are about
-      // to try to link to it.
-      if (job === this[CURRENT]) {
-        this[PROCESSJOB](job)
-      } else {
-        // if it's NOT the current entry, it needs to be deferred,
-        // so that the link target can be built first.
-        const key: LinkCacheKey = `${stat.dev}:${stat.ino}`
-        const pending = this[PENDINGLINKS].get(key)
-        if (pending) pending.push(job)
-        else this[PENDINGLINKS].set(key, [job])
-        job.pendingLink = true
-        job.pending = true
-      }
-    }
-
-    this[PROCESS]()
-  }
-
-  [READDIR](job: PackJob) {
-    job.pending = true
-    this[JOBS] += 1
-    fs.readdir(job.absolute, (er, entries) => {
-      job.pending = false
-      this[JOBS] -= 1
-      if (er) {
-        return this.emit('error', er)
-      }
-      this[ONREADDIR](job, entries)
-    })
-  }
-
-  [ONREADDIR](job: PackJob, entries: string[]) {
-    this.readdirCache.set(job.absolute, entries)
-    job.readdir = entries
-    this[PROCESS]()
-  }
-
-  [PROCESS]() {
-    if (this[PROCESSING]) {
-      return
-    }
-
-    this[PROCESSING] = true
-    for (
-      let w = this[QUEUE].head;
-      !!w && this[JOBS] < this.jobs;
-      w = w.next
-    ) {
-      this[PROCESSJOB](w.value)
-      if (w.value.ignore) {
-        const p = w.next
-        this[QUEUE].removeNode(w)
-        w.next = p
-      }
-    }
-
-    this[PROCESSING] = false
-
-    if (this[ENDED] && this[QUEUE].length === 0 && this[JOBS] === 0) {
-      if (this.zip) {
-        this.zip.end(EOF)
-      } else {
-        super.write(EOF as unknown as string)
-        super.end()
-      }
-    }
-  }
-
-  get [CURRENT]() {
-    return this[QUEUE] && this[QUEUE].head && this[QUEUE].head.value
-  }
-
-  [JOBDONE](job: PackJob) {
-    this[QUEUE].shift()
-    this[JOBS] -= 1
-    const { stat } = job
-    if (stat && stat.isFile() && stat.nlink > 1) {
-      // might be a file with pending links
-      const key: LinkCacheKey = `${stat.dev}:${stat.ino}`
-      const pending = this[PENDINGLINKS].get(key)
-      if (pending) {
-        this[PENDINGLINKS].delete(key)
-        for (const job of pending) {
-          job.pending = false
-          this[PROCESSJOB](job)
-        }
-      }
-    }
-    this[PROCESS]()
-  }
-
-  [PROCESSJOB](job: PackJob) {
-    if (job.pending && job.pendingLink && job === this[CURRENT]) {
-      // At least one of the links to this file are not being included
-      // in the tarball, so we need to just proceed.
-      job.pending = false
-      job.pendingLink = false
-    }
-    if (job.pending) {
-      return
-    }
-
-    if (job.entry) {
-      if (job === this[CURRENT] && !job.piped) {
-        this[PIPE](job)
-      }
-      return
-    }
-
-    if (!job.stat) {
-      const sc = this.statCache.get(job.absolute)
-      if (sc) {
-        this[ONSTAT](job, sc)
-      } else {
-        this[STAT](job)
-      }
-    }
-    if (!job.stat) {
-      return
-    }
-
-    // filtered out!
-    if (job.ignore) {
-      return
-    }
-
-    if (!this.noDirRecurse && job.stat.isDirectory() && !job.readdir) {
-      const rc = this.readdirCache.get(job.absolute)
-      if (rc) {
-        this[ONREADDIR](job, rc)
-      } else {
-        this[READDIR](job)
-      }
-      if (!job.readdir) {
+  /**
+   * The type of the entry to write for a path, or `undefined` to
+   * write no entry. The pack calls it one time for each path, in the
+   * order of the queue.
+   */
+  protected plan(
+    job: PackJob,
+    stat: CreateStats,
+  ): EntryTypeName | undefined {
+    const { filter } = this.opt
+    if (filter && !filter(job.path, stat)) return
+    if (stat.isDirectory()) {
+      for (let a = job.up; a; a = a.up) {
+        if (a.key !== idOf(stat)) continue
+        warn(
+          this.opt,
+          'TAR_ENTRY_ERROR',
+          'directory is its own ancestor',
+          {
+            path: job.path,
+            absolute: job.absolute,
+          },
+        )
         return
       }
+      return 'Directory'
     }
-
-    // we know it doesn't have an entry, because that got checked above
-    job.entry = this[ENTRY](job)
-    if (!job.entry) {
-      job.ignore = true
-      return
+    if (stat.isSymbolicLink()) return 'SymbolicLink'
+    if (!stat.isFile()) return
+    if (stat.nlink > 1) {
+      const key = idOf(stat)
+      const target = this.#links.get(key)
+      const cwd = this.cwd as string
+      if (target?.startsWith(cwd)) {
+        job.linkpath = relative(cwd, target)
+        return 'Link'
+      }
+      this.#links.set(key, job.absolute)
     }
-
-    if (job === this[CURRENT] && !job.piped) {
-      this[PIPE](job)
-    }
+    return 'File'
   }
 
-  [ENTRYOPT](job: PackJob): TarOptions {
-    return {
-      onwarn: (code, msg, data) => this.warn(code, msg, data),
-      noPax: this.noPax,
-      cwd: this.cwd,
-      absolute: job.absolute,
-      preservePaths: this.preservePaths,
-      maxReadSize: this.maxReadSize,
-      strict: this.strict,
-      portable: this.portable,
-      linkCache: this.linkCache,
-      statCache: this.statCache,
-      noMtime: this.noMtime,
-      mtime: this.mtime,
-      prefix: this.prefix,
-      onWriteEntry: this.onWriteEntry,
-    }
+  /** The jobs for the names in the directory of `job`. */
+  protected children(
+    job: PackJob,
+    names: string[],
+    stat: CreateStats,
+  ): PackJob[] {
+    const base = job.path === './' ? '' : job.path.replace(/\/*$/, '/')
+    const dir =
+      job.absolute.endsWith('/') ? job.absolute : job.absolute + '/'
+    // Only a pack that follows symbolic links can find a directory
+    // in itself.
+    const up =
+      this.opt.follow ? { key: idOf(stat), up: job.up } : undefined
+    return names.map(name => {
+      const child = new PackJob(base + name, dir + name)
+      child.up = up
+      return child
+    })
   }
 
-  [ENTRY](job: PackJob) {
-    this[JOBS] += 1
-    try {
-      const e = new this[WRITEENTRYCLASS](job.path, this[ENTRYOPT](job))
-      return e
-        .on('end', () => this[JOBDONE](job))
-        .on('error', er => this.emit('error', er))
-    } catch (er) {
-      this.emit('error', er)
-    }
+  /** Report a path that is a different object after its `lstat`. */
+  protected changed(job: PackJob, type: EntryTypeName): void {
+    warn(
+      this.opt,
+      'TAR_ENTRY_ERROR',
+      type === 'Directory' ?
+        'directory changed between lstat and readdir'
+      : 'file changed between lstat and open',
+      { path: job.path, absolute: job.absolute },
+    )
   }
 
-  [ONDRAIN]() {
-    if (this[CURRENT] && this[CURRENT].entry) {
-      this[CURRENT].entry.resume()
-    }
+  /** Make the entry for a path. */
+  protected pathEntry(
+    job: PackJob,
+    stat: CreateStats,
+    type: EntryTypeName,
+    linkpath: string | undefined,
+    body: WriteEntry['body'],
+  ): WriteEntry {
+    const { processUid, processUname = '' } = this.opt
+    const entry = new WriteEntry(
+      {
+        path: job.path,
+        type,
+        mode: stat.mode,
+        uid: stat.uid,
+        gid: stat.gid,
+        uname: stat.uid === processUid ? processUname : '',
+        size: type === 'File' ? stat.size : 0,
+        mtime: stat.mtime,
+        atime: stat.atime,
+        ctime: stat.ctime,
+        linkpath: linkpath && this.win32 ? slashes(linkpath) : linkpath,
+        dev: stat.dev,
+        ino: stat.ino,
+        nlink: stat.nlink,
+      },
+      body,
+    )
+    entry.absolute = job.absolute
+    return this.#finish(entry, true)
   }
 
-  // like .pipe() but using super, because our write() is special
-  [PIPE](job: PackJob) {
-    job.piped = true
+  /**
+   * Make the entry to write for an entry that the caller added.
+   * `undefined` if the filter refuses an entry of another archive.
+   */
+  protected addedEntry(item: WriteEntry | E): WriteEntry | undefined {
+    if (item instanceof WriteEntry) return this.#finish(item, false)
+    const { filter } = this.opt
+    if (filter && !filter(item.path, item)) return
+    return this.#finish(new WriteEntry(item, item.body), false)
+  }
 
-    if (job.readdir) {
-      job.readdir.forEach(entry => {
-        const p = job.path
-        const base = p === './' ? '' : p.replace(/\/*$/, '/')
-        this[ADDFSENTRY](base + entry)
+  // Apply the options to the fields of the entry.
+  #finish(entry: WriteEntry, fromPath: boolean): WriteEntry {
+    const { opt, win32 } = this
+    const dir = entry.type === 'Directory'
+    if (win32 && !fromPath) {
+      entry.path = slashes(entry.path)
+      if (entry.linkpath) entry.linkpath = slashes(entry.linkpath)
+    }
+    const [root, stripped] =
+      opt.preservePaths ? ['', entry.path] : stripAbsolutePath(entry.path)
+    entry.path = stripped
+    if (fromPath) {
+      if (win32) entry.path = winchars.decode(entry.path)
+      if (entry.path === '') entry.path = './'
+    }
+    if (root) {
+      warn(opt, 'TAR_ENTRY_INFO', `stripping ${root} from absolute path`, {
+        entry,
+        path: root + entry.path,
       })
     }
+    if (fromPath && dir && !entry.path.endsWith('/')) entry.path += '/'
 
-    const source = job.entry
-    const zip = this.zip
-    // ubq: not measured: PIPE gets only a job that has an entry
-    if (!source) throw new Error('cannot pipe without source')
-
-    if (zip) {
-      source.on('data', chunk => {
-        if (!zip.write(chunk)) {
-          source.pause()
-        }
-      })
-    } else {
-      source.on('data', chunk => {
-        if (!super.write(chunk as unknown as string)) {
-          source.pause()
-        }
-      })
+    if (opt.portable) {
+      entry.uid =
+        entry.gid =
+        entry.dev =
+        entry.ino =
+        entry.nlink =
+          undefined
+      entry.uname = entry.gname = undefined
+      entry.atime = entry.ctime = undefined
     }
-  }
-
-  pause() {
-    if (this.zip) {
-      this.zip.pause()
+    if (entry.mode !== undefined) {
+      entry.mode = modeFix(entry.mode, dir, !!opt.portable)
     }
-    return super.pause()
-  }
-  warn(code: string, message: string | Error, data: WarnData = {}): void {
-    warnMethod(this, code, message, data)
+    entry.mtime =
+      opt.noMtime || (opt.portable && dir) ?
+        undefined
+      : opt.mtime || entry.mtime
+    return entry
   }
 }
 
-export class PackSync extends Pack {
-  sync: true = true
-  constructor(opt: TarOptions) {
-    super(opt)
-    this[WRITEENTRYCLASS] = WriteEntrySync
-  }
-
-  // pause/resume are no-ops in sync streams.
-  pause() {}
-  resume() {}
-
-  [STAT](job: PackJob) {
-    const stat = this.follow ? 'statSync' : 'lstatSync'
-    this[ONSTAT](job, fs[stat](job.absolute))
-  }
-
-  [READDIR](job: PackJob) {
-    this[ONREADDIR](job, fs.readdirSync(job.absolute))
-  }
-
-  // gotta get it all in this tick
-  [PIPE](job: PackJob) {
-    const source = job.entry
-    const zip = this.zip
-
-    if (job.readdir) {
-      job.readdir.forEach(entry => {
-        const p = job.path
-        const base = p === './' ? '' : p.replace(/\/*$/, '/')
-        this[ADDFSENTRY](base + entry)
-      })
+// Read from the handle into `buf` at `off`, until the buffer is full
+// or the file has no more bytes. `pos` is the place in the file.
+// Returns the new place.
+const fill = async (
+  handle: CreateFileHandle,
+  buf: Uint8Array,
+  off: number,
+  pos: number,
+  size: number,
+  path: string,
+): Promise<number> => {
+  while (off < buf.length && pos < size) {
+    const { bytesRead } = await handle.read(
+      buf,
+      off,
+      buf.length - off,
+      pos,
+    )
+    if (bytesRead <= 0) throw eof('encountered unexpected EOF', path)
+    if (bytesRead > size - pos) {
+      throw eof('did not encounter expected EOF', path)
     }
+    off += bytesRead
+    pos += bytesRead
+  }
+  return pos
+}
 
-    // ubq: not measured: PIPE gets only a job that has an entry
-    if (!source) throw new Error('Cannot pipe without source')
-
-    if (zip) {
-      source.on('data', chunk => {
-        zip.write(chunk)
-      })
-    } else {
-      source.on('data', chunk => {
-        super[WRITE](chunk)
-      })
+const fillSync = (
+  fs: CreateFSSync,
+  fd: number,
+  buf: Uint8Array,
+  off: number,
+  pos: number,
+  size: number,
+  path: string,
+): number => {
+  while (off < buf.length && pos < size) {
+    const bytesRead = fs.readSync(fd, buf, off, buf.length - off, pos)
+    if (bytesRead <= 0) throw eof('encountered unexpected EOF', path)
+    if (bytesRead > size - pos) {
+      throw eof('did not encounter expected EOF', path)
     }
+    off += bytesRead
+    pos += bytesRead
+  }
+  return pos
+}
+
+// The chunks of a body, from each kind of content.
+async function* chunks(
+  body: WriteEntry['body'],
+): AsyncGenerator<Uint8Array, void, void> {
+  if (body instanceof Uint8Array) yield body
+  else if (body instanceof Blob || body instanceof ReadableStream) {
+    const reader = (
+      body instanceof Blob ?
+        body.stream()
+      : body).getReader()
+    try {
+      for (;;) {
+        const res = await reader.read()
+        if (res.done) break
+        yield res.value
+      }
+    } finally {
+      await reader.cancel().catch(noop)
+    }
+  } else if (body) yield* body
+}
+
+function* chunksSync(
+  body: WriteEntry['body'],
+): Generator<Uint8Array, void, void> {
+  if (body instanceof Uint8Array) yield body
+  else if (body && Symbol.iterator in body) yield* body
+  else if (body) {
+    throw new TypeError(
+      'PackSync needs a body that is a string, a Uint8Array, or an iterable',
+    )
+  }
+}
+
+// Count the bytes of a body part. Returns the bytes that are left.
+const count = (entry: WriteEntry, remain: number, chunk: Uint8Array) => {
+  if (chunk.length > remain) throw tooLong(entry)
+  return remain - chunk.length
+}
+
+// The zeros after a body, or an error if the body was too short.
+const padding = (entry: WriteEntry, remain: number) => {
+  if (remain) throw eof('encountered unexpected EOF', pathOf(entry))
+  return new Uint8Array(blockLength(entry.size) - entry.size)
+}
+
+// The body of the entry, with the zeros that fill its last block.
+async function* bodyBlocks(
+  entry: WriteEntry,
+): AsyncGenerator<Uint8Array, void, void> {
+  if (!entry.size) return
+  let remain = entry.size
+  for await (const chunk of chunks(entry.body)) {
+    remain = count(entry, remain, chunk)
+    yield chunk
+  }
+  const pad = padding(entry, remain)
+  if (pad.length) yield pad
+}
+
+function* bodyBlocksSync(
+  entry: WriteEntry,
+): Generator<Uint8Array, void, void> {
+  if (!entry.size) return
+  let remain = entry.size
+  for (const chunk of chunksSync(entry.body)) {
+    remain = count(entry, remain, chunk)
+    yield chunk
+  }
+  const pad = padding(entry, remain)
+  if (pad.length) yield pad
+}
+
+/** What `Pack.add()` takes. */
+export type PackInput =
+  | string
+  | WriteEntry
+  | ReadEntry
+  | AsyncIterable<WriteEntry | ReadEntry>
+  | Iterable<WriteEntry | ReadEntry>
+
+/** What `PackSync.add()` takes. */
+export type PackInputSync =
+  | string
+  | WriteEntry
+  | ReadEntrySync
+  | Iterable<WriteEntry | ReadEntrySync>
+
+/**
+ * Makes an archive. `add()` paths and entries, then `end()`. The
+ * pack is the async iterator of the bytes of the archive, compressed
+ * if an option selects a codec.
+ *
+ * It reads the file system only when the consumer asks for bytes.
+ * Then it reads the first `jobs` paths of the queue at the same
+ * time, and writes them in the order of the queue. The entries of a
+ * directory go to the end of the queue.
+ *
+ * `return()` closes each file that is open.
+ */
+export class Pack
+  extends PackBase<
+    CreateFS,
+    ReadEntry,
+    | AsyncIterable<WriteEntry | ReadEntry>
+    | Iterable<WriteEntry | ReadEntry>
+  >
+  implements AsyncIterableIterator<Uint8Array, undefined>
+{
+  jobs: number
+  #out?: AsyncGenerator<Uint8Array, void, void>
+  // Settles when the pack called `plan()` for each path that it
+  // started to read. It keeps the calls in the order of the queue.
+  #planned: Promise<unknown> = Promise.resolve()
+
+  constructor(opt: PackOptions = {}) {
+    super(opt, 'compress')
+    this.jobs = Number(opt.jobs) || 4
+  }
+
+  async next(): Promise<IteratorResult<Uint8Array, undefined>> {
+    const res = await (this.#out ??= this.#output()).next()
+    return res.done ? { value: undefined, done: true } : res
+  }
+
+  /** Stop, and close each file that is open. */
+  async return(): Promise<IteratorResult<Uint8Array, undefined>> {
+    this.end()
+    await this.#out?.return()
+    return { value: undefined, done: true }
+  }
+
+  [Symbol.asyncIterator](): this {
+    return this
+  }
+
+  #output(): AsyncGenerator<Uint8Array, void, void> {
+    const { codec } = this
+    return codec?.compress ?
+        this.#compress(codec.compress(this.codecOptions))
+      : this.#run()
+  }
+
+  async *#compress(
+    stream: CodecStream,
+  ): AsyncGenerator<Uint8Array, void, void> {
+    const run = this.#run()
+    // An error of the pack goes to the consumer, also when the codec
+    // does not pass it on: then the cancel ends the read.
+    let failure: { er: unknown } | undefined
+    const reader = toStream({
+      next: () =>
+        run.next().catch(er => {
+          failure = { er }
+          void reader.cancel().catch(noop)
+          throw er
+        }),
+    })
+      .pipeThrough(stream)
+      .getReader()
+    try {
+      for (;;) {
+        const res = await reader.read()
+        if (failure) throw failure.er
+        if (res.done) break
+        yield res.value
+      }
+    } finally {
+      await reader.cancel().catch(noop)
+      await run.return()
+    }
+  }
+
+  async *#run(): AsyncGenerator<Uint8Array, void, void> {
+    try {
+      for (;;) {
+        const node = this.head
+        if (!node) {
+          if (this.ended) break
+          await new Promise<void>(res => (this.wake = res))
+          continue
+        }
+        this.#start()
+        const { item } = node
+        if (item instanceof PackJob) yield* this.#path(item)
+        else if (item instanceof WriteEntry || item instanceof EntryData) {
+          yield* this.#entry(item)
+        } else for await (const entry of item) yield* this.#entry(entry)
+        this.shift()
+      }
+      yield new Uint8Array(1024)
+    } finally {
+      // Close the files of the paths that the pack did not write.
+      for (let node = this.head; node; node = node.next) {
+        const { item } = node
+        if (!(item instanceof PackJob) || !item.ready) break
+        const load = await item.ready.catch(noop)
+        await load?.handle?.close().catch(noop)
+      }
+    }
+  }
+
+  // Start to read the paths at the start of the queue.
+  #start() {
+    const fs = this.fs as CreateFS
+    let node = this.head
+    for (let n = 0; node && n < this.jobs; n++, node = node.next) {
+      const job = node.item
+      // An entry can change what the filter does with a later path.
+      if (!(job instanceof PackJob)) break
+      if (job.ready) continue
+      const stat =
+        this.opt.follow ? fs.stat(job.absolute) : fs.lstat(job.absolute)
+      stat.catch(noop)
+      const planned = this.#planned
+        .then(() => stat)
+        .then(st => {
+          const type = this.plan(job, st)
+          return type && { load: this.#load(fs, job, st, type) }
+        })
+      this.#planned = planned.catch(noop)
+      job.ready = planned.then(p => p?.load)
+      job.ready.catch(noop)
+    }
+  }
+
+  async #load(
+    fs: CreateFS,
+    job: PackJob,
+    stat: CreateStats,
+    type: EntryTypeName,
+  ): Promise<PackLoad> {
+    const { absolute } = job
+    const { follow, noDirRecurse } = this.opt
+    const load: PackLoad = { stat, type }
+    if (type === 'SymbolicLink') {
+      load.linkpath = await fs.readlink(absolute)
+    } else if (type === 'Directory' && !noDirRecurse) {
+      load.names = await fs.readdir(absolute)
+      load.changed = !follow && !same(stat, await fs.lstat(absolute))
+    } else if (type === 'File' && stat.size) {
+      const handle = await fs.open(absolute, 'r')
+      try {
+        const { size } = stat
+        const length = blockLength(size)
+        if (!follow && !same(stat, await handle.stat())) {
+          load.changed = true
+        } else if (length > this.maxReadSize) load.handle = handle
+        else {
+          load.buf = new Uint8Array(512 + length)
+          await fill(handle, load.buf, 512, 0, size, absolute)
+        }
+      } catch (er) {
+        await handle.close().catch(noop)
+        throw er
+      }
+      if (!load.handle) await handle.close()
+    }
+    return load
+  }
+
+  async *#path(job: PackJob): AsyncGenerator<Uint8Array, void, void> {
+    const load = await job.ready
+    if (!load) return
+    const { stat, type, names, buf, handle } = load
+    if (load.changed) return this.changed(job, type)
+    let ok = false
+    try {
+      const body =
+        buf ?
+          buf.subarray(512, 512 + stat.size)
+        : handle && this.#read(handle, stat.size, job.absolute)
+      const entry = this.pathEntry(
+        job,
+        stat,
+        type,
+        load.linkpath ?? job.linkpath,
+        body,
+      )
+      if (names) {
+        for (const child of this.children(job, names, stat)) {
+          this.push(child)
+        }
+      }
+      await this.opt.onWriteEntry?.(entry)
+      // The header goes in the space before a body that is in `buf`.
+      const whole = buf && entry.body === body && entry.size === stat.size
+      yield* entry.encode(this.header, whole ? buf : undefined)
+      if (!whole) yield* bodyBlocks(entry)
+      ok = true
+    } finally {
+      if (handle) {
+        load.handle = undefined
+        const closed = handle.close()
+        await (ok ? closed : closed.catch(noop))
+      }
+    }
+  }
+
+  // The chunks of a file that is larger than `maxReadSize`.
+  async *#read(
+    handle: CreateFileHandle,
+    size: number,
+    path: string,
+  ): AsyncGenerator<Uint8Array, void, void> {
+    const length = blockLength(size)
+    for (let pos = 0; pos < size; ) {
+      // Ask for the bytes of the last block also, to find a file that
+      // is larger now.
+      const buf = new Uint8Array(Math.min(length - pos, this.maxReadSize))
+      const end = await fill(handle, buf, 0, pos, size, path)
+      yield buf.subarray(0, end - pos)
+      pos = end
+    }
+  }
+
+  async *#entry(
+    item: WriteEntry | ReadEntry,
+  ): AsyncGenerator<Uint8Array, void, void> {
+    const entry = this.addedEntry(item)
+    if (!entry) return
+    await this.opt.onWriteEntry?.(entry)
+    yield* entry.encode(this.header)
+    yield* bodyBlocks(entry)
+  }
+}
+
+/**
+ * Makes an archive with no promise. `add()` paths and entries. The
+ * pack is the iterator of the bytes of the archive. It reads the
+ * file system only when the consumer asks for bytes, one path at a
+ * time. The entries of a directory come before the next item that
+ * the caller added.
+ *
+ * The pack ends when the iterator comes to the end of the queue.
+ * With compression, the iterator gives all the archive in one chunk.
+ */
+export class PackSync
+  extends PackBase<
+    CreateFSSync,
+    ReadEntrySync,
+    Iterable<WriteEntry | ReadEntrySync>
+  >
+  implements IterableIterator<Uint8Array, undefined>
+{
+  #out?: Generator<Uint8Array, void, void>
+
+  constructor(opt: PackOptionsSync = {}) {
+    super(opt, 'compressSync')
+  }
+
+  next(): IteratorResult<Uint8Array, undefined> {
+    const res = (this.#out ??= this.#output()).next()
+    return res.done ? { value: undefined, done: true } : res
+  }
+
+  /** Stop, and close the file that is open. */
+  return(): IteratorResult<Uint8Array, undefined> {
+    this.ended = true
+    this.#out?.return()
+    return { value: undefined, done: true }
+  }
+
+  [Symbol.iterator](): this {
+    return this
+  }
+
+  *#output(): Generator<Uint8Array, void, void> {
+    const { codec } = this
+    if (!codec?.compressSync) return yield* this.#run()
+    yield codec.compressSync(concat([...this.#run()]), this.codecOptions)
+  }
+
+  *#run(): Generator<Uint8Array, void, void> {
+    for (let node; (node = this.head); this.shift()) {
+      const { item } = node
+      if (item instanceof PackJob) {
+        const jobs = [item]
+        for (const job of jobs) yield* this.#path(job, jobs)
+      } else if (item instanceof WriteEntry || item instanceof EntryData) {
+        yield* this.#entry(item)
+      } else for (const entry of item) yield* this.#entry(entry)
+    }
+    this.ended = true
+    yield new Uint8Array(1024)
+  }
+
+  *#path(
+    job: PackJob,
+    jobs: PackJob[],
+  ): Generator<Uint8Array, void, void> {
+    const fs = this.fs as CreateFSSync
+    const { absolute } = job
+    const { follow, noDirRecurse } = this.opt
+    const stat = follow ? fs.statSync(absolute) : fs.lstatSync(absolute)
+    const type = this.plan(job, stat)
+    if (!type) return
+    let { linkpath } = job
+    let buf: Uint8Array | undefined
+    let body: WriteEntry['body']
+    let fd: number | undefined
+    let ok = false
+    try {
+      if (type === 'SymbolicLink') linkpath = fs.readlinkSync(absolute)
+      else if (type === 'Directory' && !noDirRecurse) {
+        const names = fs.readdirSync(absolute)
+        if (!follow && !same(stat, fs.lstatSync(absolute))) {
+          return this.changed(job, type)
+        }
+        jobs.push(...this.children(job, names, stat))
+      } else if (type === 'File' && stat.size) {
+        const { size } = stat
+        const length = blockLength(size)
+        fd = fs.openSync(absolute, 'r')
+        if (!follow && !same(stat, fs.fstatSync(fd))) {
+          return this.changed(job, type)
+        }
+        if (length > this.maxReadSize) {
+          body = this.#read(fs, fd, size, absolute)
+        } else {
+          buf = new Uint8Array(512 + length)
+          fillSync(fs, fd, buf, 512, 0, size, absolute)
+          body = buf.subarray(512, 512 + size)
+        }
+      }
+      const entry = this.pathEntry(job, stat, type, linkpath, body)
+      this.opt.onWriteEntry?.(entry)
+      // The header goes in the space before a body that is in `buf`.
+      const whole = buf && entry.body === body && entry.size === stat.size
+      yield* entry.encode(this.header, whole ? buf : undefined)
+      if (!whole) yield* bodyBlocksSync(entry)
+      ok = true
+    } finally {
+      // An error of close must not hide the first error.
+      if (fd !== undefined && !ok) {
+        try {
+          fs.closeSync(fd)
+        } catch {}
+      }
+    }
+    if (fd !== undefined) fs.closeSync(fd)
+  }
+
+  // The chunks of a file that is larger than `maxReadSize`.
+  *#read(
+    fs: CreateFSSync,
+    fd: number,
+    size: number,
+    path: string,
+  ): Generator<Uint8Array, void, void> {
+    const length = blockLength(size)
+    for (let pos = 0; pos < size; ) {
+      const buf = new Uint8Array(Math.min(length - pos, this.maxReadSize))
+      const end = fillSync(fs, fd, buf, 0, pos, size, path)
+      yield buf.subarray(0, end - pos)
+      pos = end
+    }
+  }
+
+  *#entry(
+    item: WriteEntry | ReadEntrySync,
+  ): Generator<Uint8Array, void, void> {
+    const entry = this.addedEntry(item)
+    if (!entry) return
+    this.opt.onWriteEntry?.(entry)
+    yield* entry.encode(this.header)
+    yield* bodyBlocksSync(entry)
   }
 }
