@@ -62,8 +62,17 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      # The node-bzip2 dev dependency is a native addon, and the
+      # Windows runner cannot build it. Without its install script,
+      # the tests that use it skip. esbuild needs its own script.
       - name: Install dependencies
-        run: npm install
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            npm install --ignore-scripts
+            npm rebuild esbuild
+          else
+            npm install
+          fi
 
       - name: Run Tests
         run: npm test

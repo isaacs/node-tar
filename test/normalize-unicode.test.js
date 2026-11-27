@@ -44,21 +44,17 @@ describe('normalize with strip slashes', () => {
   }
 })
 
-test('blow out the cache', () => {
-  const cafBuf = Buffer.from([0x63, 0x61, 0x66])
-  const e1 = Buffer.from([0x65, 0xcc, 0x81])
-  const e2 = Buffer.from([0xc3, 0xa9])
-  let cafe1 = cafBuf
-  let cafe2 = cafBuf
+test('more strings than the cache holds', () => {
+  // The cache drops its oldest strings at 11,000. Each string here
+  // is short, and has an accent in one of two forms.
   for (let i = 0; i < 11_001; i++) {
-    cafe1 = Buffer.concat([cafe1, e1])
-    cafe2 = Buffer.concat([cafe2, e2])
-
-    const n1 = normalizeUnicode(cafe1.toString())
-    const n2 = normalizeUnicode(cafe2.toString())
-    // don't test all of these, too noisy
+    const n1 = normalizeUnicode(`cafe\u0301 ${i}`)
+    const n2 = normalizeUnicode(`caf\u00e9 ${i}`)
+    // One check in 500 is enough.
     if (!(i % 500)) {
       assert.equal(n1, n2)
     }
   }
+  // A string that the cache dropped still gets the same result.
+  assert.equal(normalizeUnicode('cafe\u0301 0'), 'CAFE\u0301 0')
 })
