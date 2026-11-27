@@ -24,8 +24,8 @@ import {
 const tardir = resolve(import.meta.dirname, './fixtures/tars')
 const parsedir = resolve(import.meta.dirname, './fixtures/parse')
 
-// The fixtures in test/fixtures/parse hold the events of the old
-// parser. This maps them to the events of this parser.
+// The fixtures in test/fixtures/parse hold more types of events than
+// the parser has. This maps them to the events of the parser.
 describe('fixtures', () => {
   type Old = [string, ...unknown[]]
   const fromOld = (events: Old[]): Old[] =>
@@ -447,7 +447,6 @@ describe('end of the archive', () => {
   })
 
   test('an archive with only an end marker has a warning', () => {
-    // The old parser gives the same warning.
     const { warnings, ends } = parse([EOA])
     assert.deepEqual(warnings, [
       ['TAR_BAD_ARCHIVE', 'Unrecognized archive format'],
@@ -999,8 +998,8 @@ describe('PAX records are framed by their length', () => {
   }
 
   test('the length counts bytes, also for bytes that are not UTF-8', () => {
-    // The old parser decoded the body to text first. That changed
-    // the byte count of a record with an invalid sequence.
+    // As text, a record with an invalid sequence has a different
+    // length.
     const { paths } = parse([
       pax([
         ['comment', new Uint8Array([0xff, 0xfe])],
@@ -1294,7 +1293,7 @@ describe('maxMetaEntrySize', () => {
   test('an archive of only empty meta entries is valid tar', () => {
     assert.deepEqual(
       parse([hdr({ path: 'x', type: 'ExtendedHeader' })]).warnings,
-      // The state of the old parser is still "begin" here.
+      // The input has no entry and no end marker.
       [['TAR_BAD_ARCHIVE', 'Unrecognized archive format']],
     )
   })

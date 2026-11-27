@@ -1629,8 +1629,7 @@ describe('entries of another archive', () => {
       ['$', undefined],
       ['blep', undefined],
     ])
-    // Each field of the header is the same. The old code did not
-    // write the gname.
+    // Each field of the header is the same, also the gname.
     assert.deepEqual(data, Buffer.from(tar))
   })
 
