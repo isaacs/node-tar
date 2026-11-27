@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>tar/core in a browser</title>
+<script type="module">
+  // The page of test/browser/core.test.ts. It loads the built core
+  // bundle. The tests read `globals` and call `tar` in the page.
+  const kind = name => typeof globalThis[name]
+  const names = ['Buffer', 'process', 'require', 'module']
+  const before = Object.fromEntries(names.map(n => [n, kind(n)]))
+  const tar = await import('/dist/esm/index.min.js')
+  const after = Object.fromEntries(names.map(n => [n, kind(n)]))
+  Object.assign(globalThis, { tar, globals: { before, after } })
+</script>

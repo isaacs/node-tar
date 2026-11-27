@@ -10,11 +10,17 @@
   "scripts": {
     "snap": "ubq --update",
     "test": "ubq",
+    "test:bun": "bun node_modules/ubqtest/cli.js",
+    "test:deno": "deno run -A node_modules/ubqtest/cli.js",
+    "test:browser": "ubq browser install && ubq test/browser/core.test.ts",
+    "pretest:bun": "npm run prepare",
+    "pretest:deno": "npm run prepare",
+    "pretest:browser": "npm run prepare",
     "prepare": "tshy && bash scripts/build.sh",
     "preversion": "npm test",
     "postversion": "git push origin --follow-tags",
     "format": "prettier --write . --log-level warn",
-    "typedoc": "typedoc --tsconfig .tshy/esm.json ./src/index.ts ./src/node/index.ts",
+    "typedoc": "typedoc --tsconfig .tshy/esm.json ./src/server/index.ts ./src/index.ts",
     "lint": "oxlint --fix src test",
     "postsnap": "npm run lint",
     "postlint": "npm run format",
@@ -26,9 +32,10 @@
     "@types/node": "^25.9.1",
     "chmodr": "^2.0.2",
     "esbuild": "^0.28.0",
-    "mutate-fs": "^2.1.1",
+    "node-bzip2": "^1.0.2",
     "oxlint": "^1.67.0",
     "oxlint-tsgolint": "^0.23.0",
+    "playwright-core": "^1.65.1",
     "prettier": "^3.8.3",
     "tshy": "^4.1.2",
     "typedoc": "^0.28.19",
@@ -44,7 +51,7 @@
   "tshy": {
     "exports": {
       "./package.json": "./package.json",
-      ".": {
+      "./core": {
         "import": {
           "types": "./dist/esm/index.d.ts",
           "default": "./dist/esm/index.min.js"
@@ -54,24 +61,24 @@
           "default": "./dist/commonjs/index.min.js"
         }
       },
-      "./node": {
+      ".": {
         "import": {
-          "types": "./dist/esm/node/index.d.ts",
-          "default": "./dist/esm/node/index.min.js"
+          "types": "./dist/esm/server/index.d.ts",
+          "default": "./dist/esm/server/index.min.js"
         },
         "require": {
-          "types": "./dist/commonjs/node/index.d.ts",
-          "default": "./dist/commonjs/node/index.min.js"
+          "types": "./dist/commonjs/server/index.d.ts",
+          "default": "./dist/commonjs/server/index.min.js"
         }
       },
-      "./raw": "./src/index.ts",
-      "./node/raw": "./src/node/index.ts"
+      "./core/raw": "./src/index.ts",
+      "./raw": "./src/server/index.ts"
     },
     "selfLink": false
   },
   "exports": {
     "./package.json": "./package.json",
-    ".": {
+    "./core": {
       "import": {
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.min.js"
@@ -81,17 +88,17 @@
         "default": "./dist/commonjs/index.min.js"
       }
     },
-    "./node": {
+    ".": {
       "import": {
-        "types": "./dist/esm/node/index.d.ts",
-        "default": "./dist/esm/node/index.min.js"
+        "types": "./dist/esm/server/index.d.ts",
+        "default": "./dist/esm/server/index.min.js"
       },
       "require": {
-        "types": "./dist/commonjs/node/index.d.ts",
-        "default": "./dist/commonjs/node/index.min.js"
+        "types": "./dist/commonjs/server/index.d.ts",
+        "default": "./dist/commonjs/server/index.min.js"
       }
     },
-    "./raw": {
+    "./core/raw": {
       "import": {
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
@@ -101,25 +108,29 @@
         "default": "./dist/commonjs/index.js"
       }
     },
-    "./node/raw": {
+    "./raw": {
       "import": {
-        "types": "./dist/esm/node/index.d.ts",
-        "default": "./dist/esm/node/index.js"
+        "types": "./dist/esm/server/index.d.ts",
+        "default": "./dist/esm/server/index.js"
       },
       "require": {
-        "types": "./dist/commonjs/node/index.d.ts",
-        "default": "./dist/commonjs/node/index.js"
+        "types": "./dist/commonjs/server/index.d.ts",
+        "default": "./dist/commonjs/server/index.js"
       }
     }
   },
   "type": "module",
-  "main": "./dist/commonjs/index.min.js",
-  "types": "./dist/commonjs/index.d.ts",
-  "module": "./dist/esm/index.min.js",
+  "main": "./dist/commonjs/server/index.min.js",
+  "types": "./dist/commonjs/server/index.d.ts",
+  "module": "./dist/esm/server/index.min.js",
   "allowScripts": {
-    "esbuild@0.28.0": true
+    "esbuild@0.28.0": true,
+    "node-bzip2@1.0.2": true
   },
   "ubq": {
-    "coverage": "full"
+    "coverage": "full",
+    "exclude": [
+      "test/browser/**"
+    ]
   }
 }

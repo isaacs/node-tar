@@ -110,13 +110,10 @@ export class AppendScan {
         if (end > this.#size) return false
         if (entry.mtime) this.#mtimes?.set(entry.path, entry.mtime)
       }
-      // The parser does not look at the bytes of a body. Give it the
-      // bytes of the buffer in place of the rest of the body.
-      while (this.pos < end) {
-        const n = Math.min(CHUNK, end - this.pos)
-        parser.push(this.buf.subarray(0, n))
-        parser.next()
-        this.pos += n
+      // The rest of the body of the last entry is not read.
+      if (this.pos < end) {
+        parser.skipBody()
+        this.pos = end
       }
     } catch (er) {
       if (er !== STOP) throw er

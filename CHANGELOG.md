@@ -7,16 +7,11 @@ A new API. See "Migration from version 7" in the README.
 ### Breaking changes
 
 - Drop support for node <22
-- `tar` is now the runtime-neutral core. It uses no Node.js module,
-  and it needs the `fs` and `cwd` options for work on files.
-  `tar/node` has the defaults for a server-side runtime (`node:fs`,
-  `node:zlib`, the working directory, the platform, and the user of
-  the process).
 - Remove callbacks and Node.js streams. Each command returns a
   promise. `create()` with no `file` returns a web `ReadableStream`.
   `list()` and `extract()` read the `input` option, or a `file`.
 - Remove the `sync` option. Use `createSync`, `extractSync`,
-  `listSync`, `replaceSync`, and `updateSync` from `tar/node`.
+  `listSync`, `replaceSync`, and `updateSync`.
 - Rename `onReadEntry` to `onEntry`, which is awaited. `onReadEntry`
   and `onentry` are aliases of it.
 - The option aliases (`C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`, `L`,
@@ -32,8 +27,7 @@ A new API. See "Migration from version 7" in the README.
 - `Parser`, `Pack`, and `Unpack` are not streams. `Parser` is a
   state machine with `push()` and `next()`. `Pack` is an async
   iterator of chunks. `Unpack` has an `extract(input)` method.
-- Remove `WriteEntrySync` and `WriteEntryTar`. `PackSync` and
-  `UnpackSync` are exported from `tar/node` only.
+- Remove `WriteEntrySync` and `WriteEntryTar`.
 - Use `Uint8Array`, not `Buffer`. `Header#block` and the result of
   `Pax#encode()` are a `Uint8Array`.
 - `transform` returns a `TransformStream`. In `extractSync()`, it
@@ -47,15 +41,23 @@ A new API. See "Migration from version 7" in the README.
 - The readers detect the compression format. The `brotli` and `zstd`
   options are only for `create()`.
 - Remove the subpath exports (`tar/create`, `tar/extract`,
-  `tar/parse`, and the others). The exports are `tar`, `tar/node`,
-  `tar/raw`, and `tar/node/raw`.
+  `tar/parse`, and the others). The exports are `tar`, `tar/core`,
+  `tar/raw`, and `tar/core/raw`.
 - Remove all runtime dependencies: `minipass`, `minizlib`,
   `@isaacs/fs-minipass`, `chownr`, and `yallist`.
 
 ### New features
 
-- Run in a browser, a worker, or another runtime with web streams.
-  The core bundle has no Node.js code.
+- Add the `tar/core` entry point, the runtime-neutral core. It runs
+  in a browser, a worker, or another runtime with web streams. It
+  uses no `node:` module, and it needs the `fs` and `cwd` options
+  for work on files. It has no sync commands.
+- `tar` is the entry point for server-side runtimes: Node.js, and
+  each other runtime that has the `node:` modules. It has all of the
+  core, the sync commands, and the defaults (`node:fs`, `node:zlib`,
+  the working directory, the platform, and the user of the process).
+- `tar/raw` and `tar/core/raw` are the same two entry points as
+  separate modules that are not minified.
 - Add the `fs` option. All file system work goes through it, so a
   caller can give another file system.
 - Add the `input` option, and `entries()` and `entriesSync()`, which
@@ -65,12 +67,17 @@ A new API. See "Migration from version 7" in the README.
   `replace()`, and `update()` takes `WriteEntry` objects, `ReadEntry`
   objects, and iterables of entries.
 - Add the `Codec` type and the `codecs` option, to add a compression
-  format. The core has gzip. `tar/node` has gzip, brotli, and zstd
-  from `node:zlib`.
+  format. `tar` has gzip, brotli, and zstd from `node:zlib`.
+  `tar/core` has gzip.
+- `create()` writes the names of a directory in sorted order, so
+  the archive is the same on each runtime and file system.
+- `list()` and `extract()` with a `file` do not read the body of an
+  entry that nothing reads. A listing of an archive of large files
+  reads only the headers.
 - Add the `compress` option of `create()`. It takes a `Codec`, or
   `[codec, options]`, and writes the archive with that codec.
 - The options `platform`, `processUid`, `processGid`, `processUname`,
-  and `processUmask` give the facts of the process to the core.
+  and `processUmask` give the facts of the process to `tar/core`.
 - Nothing is read before the consumer asks for it: the readers read
   input, and `create()` reads files, only on demand.
 - The async extraction writes up to 16 entries at one time (the

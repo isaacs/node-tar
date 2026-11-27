@@ -81,7 +81,8 @@ export class PackJob {
   }
 }
 
-type Node<T> = { item: T; next?: Node<T> }
+/** One item of the queue of a pack, and the item after it. */
+export type QueueNode<T> = { item: T; next?: QueueNode<T> }
 
 /**
  * The parts of `Pack` and `PackSync` that are the same: the options,
@@ -106,8 +107,8 @@ export abstract class PackBase<
   codecOptions?: Record<string, unknown>
   /** True after `end()`. */
   ended: boolean = false
-  protected head?: Node<PackJob | WriteEntry | E | S>
-  protected tail?: Node<PackJob | WriteEntry | E | S>
+  protected head?: QueueNode<PackJob | WriteEntry | E | S>
+  protected tail?: QueueNode<PackJob | WriteEntry | E | S>
   protected wake?: () => void
   // The first path of each file that has more than one link.
   #links = new Map<string, string>()
@@ -266,7 +267,9 @@ export abstract class PackBase<
     // in itself.
     const up =
       this.opt.follow ? { key: idOf(stat), up: job.up } : undefined
-    return names.map(name => {
+    // Node.js sorts the names of a directory. Bun does not. Sort
+    // them, so that each runtime makes the same archive.
+    return [...names].sort().map(name => {
       const child = new PackJob(base + name, dir + name)
       child.up = up
       return child

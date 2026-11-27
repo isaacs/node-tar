@@ -51,7 +51,6 @@ const expect = [
   ['long/' + 'n'.repeat(150), 'File', 'λ long'],
   ['paxed', 'SymbolicLink', ''],
 ]
-const paths = expect.map(e => e[0] as string)
 const notCurrent = {
   name: 'TypeError',
   message: 'The body of an entry cannot be read after a later entry',

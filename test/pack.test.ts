@@ -2,7 +2,7 @@ import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
 import { resolve } from 'node:path'
 import zlib from 'node:zlib'
-import { any, assert, describe, test, testdir } from 'ubqtest'
+import { any, assert, beforeEach, describe, test, testdir } from 'ubqtest'
 import type { HeaderData } from '../src/header.js'
 import type { Codec, CodecStream } from '../src/codec.js'
 import type { PackOptions, PackOptionsSync } from '../src/options.js'
@@ -42,9 +42,24 @@ import {
 import { cat, ent, EOA, file, pax, xorCodec } from './helpers.js'
 
 /** Define the test one time for each mode. */
-const each = (name: string, fn: (mode: Mode) => Promise<void>) => {
-  for (const mode of modes) test(`${name}, ${mode.name}`, () => fn(mode))
+const each = (
+  name: string,
+  fn: (mode: Mode) => Promise<void>,
+  skip: string | false = false,
+) => {
+  for (const mode of modes) {
+    test(`${name}, ${mode.name}`, { skip }, () => fn(mode))
+  }
 }
+
+// On Windows, only a user with the privilege can make a symbolic
+// link.
+const noSymlink = isWindows && 'the test makes a symbolic link'
+/** Skip each test of the group on Windows. */
+const needsSymlink = () =>
+  beforeEach(({ skip }) => {
+    if (noSymlink) skip(noSymlink)
+  })
 
 // The header fields of an entry that a pack reads from the fixtures.
 const header = (fields: HeaderData) => ({
@@ -520,7 +535,7 @@ describe('filter', () => {
       },
       [''],
     )
-    const names = nodeFs.readdirSync(resolve(fixtures, 'tars'))
+    const names = nodeFs.readdirSync(resolve(fixtures, 'tars')).sort()
     assert.deepEqual(seen, ['./', ...names])
     assert.deepEqual(paths(data), ['./', names[0] as string])
   })
@@ -568,6 +583,24 @@ describe('order of the entries', () => {
       ['File', 'dir/x'],
       ['Directory', 'long-path/'],
       ...deepBlocks,
+    ])
+  })
+
+  each('the names of a directory are sorted', async mode => {
+    // A file system that gives the names in the reverse order.
+    const data = await mode.run({ cwd: fixtures }, ['tars'], {
+      async: {
+        readdir: async path => (await fs.readdir(path)).sort().reverse(),
+      },
+      sync: {
+        readdirSync: path => fsSync.readdirSync(path).sort().reverse(),
+      },
+    })
+    const names = nodeFs.readdirSync(resolve(fixtures, 'tars')).sort()
+    assert.greaterThan(names.length, 1)
+    assert.deepEqual(paths(data), [
+      'tars/',
+      ...names.map(name => `tars/${name}`),
     ])
   })
 })
@@ -873,12 +906,16 @@ describe('noDirRecurse and follow', () => {
     )
   })
 
-  each('follow adds what is in a linked directory', async mode => {
-    const cwd = testdir({ real: { f: 'ff' }, top: {} })
-    nodeFs.symlinkSync('../real', resolve(cwd, 'top/link'))
-    const data = await mode.run({ cwd, follow: true }, ['top'])
-    assert.deepEqual(paths(data), ['top/', 'top/link/', 'top/link/f'])
-  })
+  each(
+    'follow adds what is in a linked directory',
+    async mode => {
+      const cwd = testdir({ real: { f: 'ff' }, top: {} })
+      nodeFs.symlinkSync('../real', resolve(cwd, 'top/link'))
+      const data = await mode.run({ cwd, follow: true }, ['top'])
+      assert.deepEqual(paths(data), ['top/', 'top/link/', 'top/link/f'])
+    },
+    noSymlink,
+  )
 })
 
 describe('mtime and portable', () => {
@@ -1922,6 +1959,8 @@ describe('onWriteEntry', () => {
 })
 
 describe('a path that changes while the pack reads it', () => {
+  needsSymlink()
+
   // A file system that calls `swap` after the first lstat of `path`.
   const swapAfterLstat = (path: string, swap: () => void): Over => {
     let done = false
@@ -2072,6 +2111,8 @@ describe('a path that changes while the pack reads it', () => {
 })
 
 describe('follow and a link to a directory above', () => {
+  needsSymlink()
+
   const loops = () => {
     const cwd = testdir({ top: { sub: { f: 'ff' }, g: 'gg' } })
     nodeFs.symlinkSync('.', resolve(cwd, 'top/self-1'))

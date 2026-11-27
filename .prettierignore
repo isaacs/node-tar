@@ -3,14 +3,9 @@
 /package-lock.json
 /package.json
 /LICENSE.md
-/example
 /.github
 /dist
-/.env
 /ubq-snapshots
-/coverage
-/benchmark
-/test/fixture
 /test/fixtures
 /.tshy
 /docs

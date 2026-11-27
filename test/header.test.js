@@ -42,7 +42,7 @@ test('ustar format', () => {
   assert.equal(slab.subarray(0, 512).toString('hex'), buf.toString('hex'))
   assert.equal(
     slab.toString('hex'),
-    buf.toString('hex') + new Array(1025).join('0'),
+    buf.toString('hex') + '0'.repeat(1024),
   )
 
   const h2 = new Header(buf)
@@ -312,7 +312,7 @@ describe('prefix handling', () => {
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/r/e/a/l/l/y/-/' +
         'r/e/a/l/l/y/-/r/e/a/l/l/y/-/d/e/e/p/-/p/a/t/h/' +
-        new Array(20).join('long-file-') +
+        'long-file-'.repeat(19) +
         'long-file.txt',
       mode: 0o755,
       uid: 24561,
@@ -369,9 +369,9 @@ describe('prefix handling', () => {
 
     const h = new Header({
       path:
-        new Array(30).join('long-dirname-') +
+        'long-dirname-'.repeat(29) +
         'long-dirname/' +
-        new Array(20).join('long-file-') +
+        'long-file-'.repeat(19) +
         'long-file.txt',
       mode: 0o755,
       uid: 24561,

@@ -15,9 +15,10 @@ import {
 } from 'ubqtest'
 import type { Codec } from '../src/codec.js'
 import * as core from '../src/index.js'
-import * as tar from '../src/node/index.js'
+import * as tar from '../src/server/index.js'
 import { files } from './create-helpers.js'
 import { collect } from './create-helpers.js'
+import { isDeno, isWindows } from './helpers.js'
 
 // Options that fit `create` and `createSync`.
 type Options = Pick<
@@ -178,7 +179,10 @@ describe('the defaults', () => {
     )
   })
 
-  test('the user of the process', async () => {
+  // Windows has no process.getuid, so no file is a file of the user
+  // of the process.
+  const noUid = isWindows && 'Windows has no process.getuid'
+  test('the user of the process', { skip: noUid }, async () => {
     env({ USER: 'someone' })
     const dir = tree()
     const uname = async (opt: Options) => {
@@ -208,7 +212,16 @@ describe('the defaults', () => {
     const dir = chdir(tree())
     await tar.create({ file: 'a.tar' }, ['src'])
     tar.createSync({ file: 's.tar' }, ['src'])
-    assert.deepEqual(text(dir, 'a.tar'), text(dir, 's.tar'))
+    // The first pack can change an access time, so compare the
+    // entries, not the bytes.
+    const users = (file: string) =>
+      [...tar.entriesSync(nodeFs.readFileSync(file))].map(e => [
+        e.path,
+        e.uname,
+        e.uid,
+      ])
+    assert.equal(users('a.tar').length, 4)
+    assert.deepEqual(users('a.tar'), users('s.tar'))
     assert.equal(
       tar.entriesSync(nodeFs.readFileSync('a.tar')).next().value?.uname,
       '',
@@ -276,10 +289,14 @@ describe('the defaults', () => {
       [...tar.entriesSync(win)].map(e => e.path),
       ['src/a.txt'],
     )
-    await assert.rejects(
-      collect(tar.create({ cwd: dir }, ['src\\a.txt'])),
-      { code: 'ENOENT' },
-    )
+    // On Windows, the default is 'win32', and Windows itself takes
+    // the `\` as a separator.
+    if (!isWindows) {
+      await assert.rejects(
+        collect(tar.create({ cwd: dir }, ['src\\a.txt'])),
+        { code: 'ENOENT' },
+      )
+    }
 
     // codecs: the codec of the caller is before the zlib codecs
     const used: string[] = []
@@ -322,7 +339,10 @@ describe('compression', () => {
     test(`${name}: async`, async () => {
       const dir = tree()
       const file = resolve(dir, archive)
-      await tar.create({ file, cwd: dir, [name]: true }, ['src'])
+      // With portable, the archive has no access times, so two packs
+      // of the folder have the same bytes.
+      const opt = { cwd: dir, [name]: true, portable: true }
+      await tar.create({ ...opt, file }, ['src'])
       const plain = unzip(nodeFs.readFileSync(file))
       assert.deepEqual(
         [...tar.entriesSync(plain)].map(e => e.path),
@@ -333,9 +353,7 @@ describe('compression', () => {
       assert.equal(text(dir, 'out/src/sub/b.txt'), 'beta')
 
       // to a stream, and from data in memory
-      const data = await collect(
-        tar.create({ cwd: dir, [name]: true }, ['src']),
-      )
+      const data = await collect(tar.create(opt, ['src']))
       assert.deepEqual(new Uint8Array(unzip(data)), new Uint8Array(plain))
       assert.deepEqual(await listed({ input: data, file }), expect)
       const found: string[] = []
@@ -348,7 +366,8 @@ describe('compression', () => {
     test(`${name}: sync`, () => {
       const dir = tree()
       const file = resolve(dir, archive)
-      tar.createSync({ file, cwd: dir, [name]: true }, ['src'])
+      const opt = { cwd: dir, [name]: true, portable: true }
+      tar.createSync({ ...opt, file }, ['src'])
       const plain = unzip(nodeFs.readFileSync(file))
       assert.deepEqual(
         [...tar.entriesSync(plain)].map(e => e.path),
@@ -358,9 +377,7 @@ describe('compression', () => {
       tar.extractSync({ file, cwd: resolve(dir, 'out') })
       assert.equal(text(dir, 'out/src/sub/b.txt'), 'beta')
 
-      const data = Buffer.concat([
-        ...tar.createSync({ cwd: dir, [name]: true }, ['src']),
-      ])
+      const data = Buffer.concat([...tar.createSync(opt, ['src'])])
       assert.deepEqual(new Uint8Array(unzip(data)), new Uint8Array(plain))
       assert.deepEqual(listedSync({ input: data, file }), expect)
       assert.deepEqual(
@@ -456,10 +473,12 @@ describe('compression', () => {
   })
 })
 
-describe('a runtime with no zstd', () => {
+// The mockImport of ubq does not replace `node:zlib` on Deno.
+const noMock = isDeno && 'ubq cannot mock node:zlib on Deno'
+describe('a runtime with no zstd', { skip: noMock }, () => {
   test('the entry point loads, and has no zstd codec', async () => {
     const lean = await mockImport(
-      () => import('../src/node/index.js'),
+      () => import('../src/server/index.js'),
       [
         [
           () => import('node:zlib'),
@@ -503,8 +522,8 @@ describe('Windows', () => {
   test('the platform of the process is the default', async () => {
     stub(process, 'platform', 'win32')
     const win = await mockImport(
-      () => import('../src/node/index.js'),
-      [[() => import('../src/node/codecs.js'), {}]],
+      () => import('../src/server/index.js'),
+      [[() => import('../src/server/codecs.js'), {}]],
     )
     const dir = tree()
     const data = Buffer.concat([

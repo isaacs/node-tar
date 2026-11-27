@@ -343,6 +343,73 @@ describe('position', () => {
   })
 })
 
+describe('skipBody', () => {
+  const data = cat(file('a', 'x'.repeat(2000)), file('b', 'y'), EOA)
+  const types = (p: Parser) => {
+    const found: string[] = []
+    for (let ev; (ev = p.next()); ) found.push(ev.type)
+    return found
+  }
+
+  test('the caller skips the rest of a body', () => {
+    const p = new Parser()
+    p.push(data.subarray(0, 1024))
+    // The parser has input that it did not parse.
+    assert.equal(p.bodyRemain, 0)
+    assert.equal(p.next()?.type, 'entry')
+    assert.equal(p.bodyRemain, 0)
+    assert.deepEqual(types(p), ['body'])
+    assert.equal(p.bodyRemain, 1536)
+    p.skipBody()
+    assert.equal(p.bodyRemain, 0)
+    assert.equal(p.offset, 2560)
+    assert.equal(p.position, 2560)
+    p.push(data.subarray(2560))
+    assert.equal(p.bodyRemain, 0)
+    assert.deepEqual(types(p), [
+      'entryEnd',
+      'entry',
+      'body',
+      'entryEnd',
+      'end',
+    ])
+  })
+
+  test('an ignored entry has no end event', () => {
+    const p = new Parser({ filter: path => path === 'b' })
+    p.push(data.subarray(0, 1024))
+    assert.deepEqual(types(p), ['entry'])
+    assert.equal(p.bodyRemain, 1536)
+    p.skipBody()
+    p.push(data.subarray(2560))
+    assert.deepEqual(types(p), ['entry', 'body', 'entryEnd', 'end'])
+    assert.equal(p.position, 3584)
+  })
+
+  test('the body of a PAX header cannot be skipped', () => {
+    const p = new Parser()
+    p.push(pax([['path', 'p'.repeat(600)]]).subarray(0, 1024))
+    assert.deepEqual(types(p), [])
+    assert.equal(p.bodyRemain, 0)
+  })
+
+  test('a truncated body after a skip of no bytes', () => {
+    const warnings: Warning[] = []
+    const p = new Parser({ onwarn: (c, m) => warnings.push([c, m]) })
+    p.push(data.subarray(0, 1124))
+    assert.deepEqual(types(p), ['entry', 'body'])
+    assert.equal(p.bodyRemain, 1436)
+    p.end()
+    assert.deepEqual(types(p), ['entryEnd', 'end'])
+    assert.deepEqual(warnings, [
+      [
+        'TAR_BAD_ARCHIVE',
+        'Truncated input (needed 1436 more bytes, only 0 available)',
+      ],
+    ])
+  })
+})
+
 describe('end of the archive', () => {
   test('data after the end is dropped, and not kept', () => {
     const p = new Parser()

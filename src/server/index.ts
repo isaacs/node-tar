@@ -40,15 +40,15 @@ const fsSync: core.TarFSSync & core.ExtractFSSync & core.ReplaceFSSync =
 const platform = process.platform === 'win32' ? 'win32' : 'posix'
 const codecs = zlibCodecs()
 
-// Each member of the option type, with `fs` and `cwd` optional.
-type Loose<T> =
+/** Each member of the option type `T`, with `fs` and `cwd` optional. */
+export type Loose<T> =
   T extends unknown ?
     Omit<T, 'fs' | 'cwd'> &
       Partial<Pick<T, Extract<keyof T, 'fs' | 'cwd'>>>
   : never
 
-// The compression options, with the option types of `node:zlib`.
-type Zip = {
+/** The compression options, with the option types of `node:zlib`. */
+export type Zip = {
   /** Compress with gzip. An object is the options of `zlib.createGzip`. */
   gzip?: boolean | ZlibOptions
   /**
@@ -62,7 +62,8 @@ type Zip = {
    */
   zstd?: boolean | ZstdOptions
 }
-type Packing<T> = Omit<Loose<T>, keyof Zip> & Zip
+/** `Loose<T>`, with the compression options of `Zip`. */
+export type Packing<T> = Omit<Loose<T>, keyof Zip> & Zip
 
 /** The options of `entries`. */
 export type ReadOptions = core.ReadOptions

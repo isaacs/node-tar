@@ -5,14 +5,18 @@ Tar for JavaScript.
 This package reads and writes tar archives. It makes archives from
 files or from data in memory. It extracts archives to a file system,
 or gives you the entries one at a time. It reads and writes gzip, and
-with Node.js also brotli and zstd.
+in a server-side runtime also brotli and zstd.
 
 The package has two entry points:
 
-- `tar/node` is for Node.js and other server-side runtimes. It uses
-  `node:fs` and `node:zlib`, and it has sync commands.
-- `tar` is the core. It uses no Node.js module. It runs in a browser,
-  in a worker, and in each other runtime that has web streams.
+- `tar` is for server-side runtimes: Node.js, and each other runtime
+  that has the `node:` modules, such as Bun, Deno, and Cloudflare. It
+  uses `node:fs` and `node:zlib`, and it has sync commands. Most users
+  want this entry point.
+- `tar/core` is for browsers and each other runtime. It uses no
+  `node:` module. It runs in a browser, in a worker, and in each
+  runtime that has web streams. It needs the `fs` option for work on
+  files.
 
 The package has no runtime dependencies. The API uses promises, web
 streams, and `Uint8Array`.
@@ -23,21 +27,21 @@ streams, and `Uint8Array`.
 npm install tar
 ```
 
-The package needs Node.js 22 or later. The core also runs in a
-browser.
+`tar` needs Node.js 22 or later, or another server-side runtime that
+has the `node:` modules. `tar/core` also runs in a browser.
 
 The package has ES module and CommonJS builds. You can use `import` or
 `require()`.
 
 ## Quick start
 
-These examples use `tar/node`. A command has two arguments: an options
+These examples use `tar`, the server-side entry point. A command has two arguments: an options
 object, and for most commands a list of files.
 
 ### Create an archive
 
 ```js
-import { create } from 'tar/node'
+import { create } from 'tar'
 
 // A gzip archive of a directory and a file.
 await create({ file: 'demo.tgz', gzip: true }, ['src', 'package.json'])
@@ -49,7 +53,7 @@ bytes of the archive.
 ```js
 import { createWriteStream } from 'node:fs'
 import { Writable } from 'node:stream'
-import { create } from 'tar/node'
+import { create } from 'tar'
 
 const stream = create({ gzip: true }, ['src', 'package.json'])
 await stream.pipeTo(Writable.toWeb(createWriteStream('demo.tgz')))
@@ -62,7 +66,7 @@ working directory.
 
 ```js
 import { mkdir } from 'node:fs/promises'
-import { extract } from 'tar/node'
+import { extract } from 'tar'
 
 await mkdir('out', { recursive: true })
 await extract({ file: 'archive.tgz', cwd: 'out' })
@@ -77,7 +81,7 @@ iterable of `Uint8Array` chunks.
 
 ```js
 import { mkdir } from 'node:fs/promises'
-import { extract } from 'tar/node'
+import { extract } from 'tar'
 
 const res = await fetch('https://example.com/archive.tgz')
 await mkdir('out', { recursive: true })
@@ -87,7 +91,7 @@ await extract({ input: res.body, cwd: 'out' })
 ### List the entries
 
 ```js
-import { list } from 'tar/node'
+import { list } from 'tar'
 
 await list({
   file: 'archive.tgz',
@@ -100,7 +104,7 @@ iterator.
 
 ```js
 import { readFile } from 'node:fs/promises'
-import { entries } from 'tar/node'
+import { entries } from 'tar'
 
 for await (const entry of entries(await readFile('archive.tgz'))) {
   if (entry.path === 'package.json') {
@@ -116,7 +120,7 @@ compressed. `update()` does the same, but it does not add a file that
 is older than the entry of the same path in the archive.
 
 ```js
-import { replace, update } from 'tar/node'
+import { replace, update } from 'tar'
 
 await replace({ file: 'archive.tar' }, ['notes.txt'])
 await update({ file: 'archive.tar' }, ['src', 'package.json'])
@@ -124,8 +128,8 @@ await update({ file: 'archive.tar' }, ['src', 'package.json'])
 
 ### Sync commands
 
-Each command of `tar/node` has a sync form. A sync command returns
-when the work is done.
+Each command of `tar` has a sync form. A sync command returns when
+the work is done. `tar/core` has no sync commands.
 
 ```js
 import { mkdirSync } from 'node:fs'
@@ -135,7 +139,7 @@ import {
   listSync,
   replaceSync,
   updateSync,
-} from 'tar/node'
+} from 'tar'
 
 createSync({ file: 'demo.tar' }, ['src'])
 replaceSync({ file: 'demo.tar' }, ['package.json'])
@@ -153,20 +157,20 @@ With no `file` option, `createSync()` returns an iterator of
 
 ## Entry points
 
-| Import                    | Use                                                                                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tar/node`                | Node.js, and each runtime that has the `node:` modules. All of the core, the defaults below, the sync commands, and the `node:zlib` codecs. |
-| `tar`                     | The core. No Node.js module, no `process`, no `Buffer`. The async commands and the classes.                                                 |
-| `tar/raw`, `tar/node/raw` | The same two entry points as separate modules that are not minified.                                                                        |
+| Import                    | Use                                                                                                                                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tar`                     | Server-side runtimes: Node.js, and each other runtime that has the `node:` modules (Bun, Deno, Cloudflare). All of the core, the defaults below, the sync commands, and the `node:zlib` codecs. |
+| `tar/core`                | Browsers, and each other runtime. The core: no `node:` module, no `process`, no `Buffer`. The async commands and the classes. It needs the `fs` option for work on files.                       |
+| `tar/raw`, `tar/core/raw` | The same two entry points as separate modules that are not minified.                                                                                                                            |
 
-`tar` and `tar/node` are each one minified file.
+`tar` and `tar/core` are each one minified file.
 
-### The defaults of `tar/node`
+### The defaults of `tar`
 
-Each command of `tar/node` calls the command of the core with these
+Each command of `tar` calls the command of the core with these
 defaults:
 
-| Option         | Default in `tar/node`                                            |
+| Option         | Default in `tar`                                                 |
 | -------------- | ---------------------------------------------------------------- |
 | `fs`           | `node:fs/promises`. `node:fs` for a sync command.                |
 | `cwd`          | `process.cwd()`. A relative `cwd` is resolved from it.           |
@@ -182,8 +186,9 @@ defaults:
 
 ### The core in a browser or another runtime
 
-The core does not know the file system, the working directory, the
-platform, or the user of the process. You give them as options.
+`tar/core` is the core. It does not know the file system, the working
+directory, the platform, or the user of the process. You give them as
+options.
 
 The core needs these globals: `ReadableStream`, `TransformStream`,
 `Blob`, `TextEncoder`, `TextDecoder`, and `crypto.getRandomValues`. It
@@ -200,7 +205,7 @@ This example reads an archive from a `fetch()` response. It stops the
 download when it has the entry.
 
 ```js
-import { entries } from 'tar'
+import { entries } from 'tar/core'
 
 const res = await fetch('https://example.com/archive.tgz')
 for await (const entry of entries(res.body)) {
@@ -215,7 +220,7 @@ This example makes a gzip archive in memory, and reads it from a
 `Blob`. A `File` from a file input is also a `Blob`.
 
 ```js
-import { create, entries, WriteEntry } from 'tar'
+import { create, entries, WriteEntry } from 'tar/core'
 
 const stream = create({ gzip: true }, [
   new WriteEntry({ path: 'hello.txt' }, 'hello\n'),
@@ -283,7 +288,7 @@ Notes for an `ExtractFS`:
 This example extracts an archive into a `Map`.
 
 ```js
-import { create, extract, WriteEntry } from 'tar'
+import { create, extract, WriteEntry } from 'tar/core'
 
 // path -> { type, mode, mtime, chunks, target }
 const tree = new Map([
@@ -369,8 +374,8 @@ console.log(await new Blob(tree.get('/out/docs/hello.txt').chunks).text())
 #### The process options
 
 - `cwd` The directory that `extract()` writes into, and the directory
-  that the paths of `create()` are relative to. In the core it must be
-  an absolute path. `extract()` needs it. `create()` needs it only to
+  that the paths of `create()` are relative to. In `tar/core` it must
+  be an absolute path. `extract()` needs it. `create()` needs it only to
   add a path.
 - `platform` `'posix'` (default) or `'win32'`. With `'win32'`: each
   `\` in a path is a separator, and the path rules of Windows apply.
@@ -436,7 +441,7 @@ body.
 
 ```js
 import { readFile } from 'node:fs/promises'
-import { entries } from 'tar/node'
+import { entries } from 'tar'
 
 for await (const entry of entries(await readFile('archive.tgz'))) {
   if (entry.type !== 'File') continue
@@ -458,7 +463,7 @@ a promise, the command waits for it before it reads the next entry.
 In `list()`, you can read the body in `onEntry`.
 
 ```js
-import { list } from 'tar/node'
+import { list } from 'tar'
 
 await list({
   file: 'archive.tgz',
@@ -481,7 +486,7 @@ promise. `body` is an iterator of `Uint8Array` chunks. There is no
 
 ```js
 import { readFileSync } from 'node:fs'
-import { entriesSync } from 'tar/node'
+import { entriesSync } from 'tar'
 
 for (const entry of entriesSync(readFileSync('archive.tgz'))) {
   if (entry.path === 'package.json') console.log(entry.text())
@@ -536,7 +541,7 @@ The list of files of `create()`, `replace()`, and `update()` can have:
   `entries()`
 
 ```js
-import { create, WriteEntry } from 'tar/node'
+import { create, WriteEntry } from 'tar'
 
 await create({ file: 'bundle.tgz', gzip: true }, [
   'src',
@@ -552,7 +557,7 @@ This example copies an archive, and removes some entries.
 
 ```js
 import { readFile } from 'node:fs/promises'
-import { create, entries } from 'tar/node'
+import { create, entries } from 'tar'
 
 await create(
   {
@@ -601,7 +606,7 @@ names of the options.
 | `chmod`         | `noChmod: false` is `chmod: true`, if `chmod` is not set        |
 
 ```js
-import { c, t } from 'tar/node'
+import { c, t } from 'tar'
 
 await c({ f: 'alias.tgz', z: true, C: '.' }, ['src'])
 await t({ f: 'alias.tgz', onentry: entry => console.log(entry.path) })
@@ -631,12 +636,12 @@ Options:
 - `mode` The mode of the archive file. Default `0o666`.
 - `cwd` The directory that the paths in `files` are relative to.
 - `prefix` A directory to put before the path of each entry.
-- `gzip` Compress with gzip. In `tar/node`, an object is the options
-  of `zlib.createGzip()`.
-- `brotli` Compress with brotli. `tar/node` only. An object is the
+- `gzip` Compress with gzip. In `tar`, an object is the options of
+  `zlib.createGzip()`.
+- `brotli` Compress with brotli. Not in `tar/core`. An object is the
   options of `zlib.createBrotliCompress()`.
-- `zstd` Compress with zstd. `tar/node` only. An object is the options
-  of `zlib.createZstdCompress()`.
+- `zstd` Compress with zstd. Not in `tar/core`. An object is the
+  options of `zlib.createZstdCompress()`.
 - `compress` Compress with a `Codec` of your own: `codec`, or
   `[codec, options]`. See [Compression](#compression).
 - `codecs` More compression formats. See [Compression](#compression).
@@ -675,7 +680,7 @@ the second time that the pack finds it. Other objects, such as sockets
 and devices, are skipped.
 
 ```js
-import { create } from 'tar/node'
+import { create } from 'tar'
 
 await create(
   {
@@ -768,7 +773,7 @@ Devices and FIFOs are skipped with a `TAR_ENTRY_UNSUPPORTED` warning.
 
 ```js
 import { mkdir } from 'node:fs/promises'
-import { extract } from 'tar/node'
+import { extract } from 'tar'
 
 await mkdir('out', { recursive: true })
 await extract({
@@ -814,7 +819,7 @@ Options:
 - `strict`, `onwarn`, `fs`, `platform` The common options.
 
 ```js
-import { listSync } from 'tar/node'
+import { listSync } from 'tar'
 
 const paths = []
 listSync(
@@ -859,8 +864,8 @@ change in the same second as the entry is not seen.
 ### `entries(input, options)`
 
 Read the entries of an archive. The result is an async iterator of
-`ReadEntry` objects. `entriesSync()` of `tar/node` returns an iterator
-of `ReadEntrySync` objects.
+`ReadEntry` objects. `entriesSync()` returns an iterator of
+`ReadEntrySync` objects. `tar/core` does not have `entriesSync()`.
 
 Entries that are not an object of a file system, such as PAX headers,
 are not given.
@@ -888,14 +893,14 @@ To write a compressed archive, set `gzip`, `brotli`, or `zstd` in the
 options of `create()`. To write with a codec of your own, set
 `compress`. You can set only one of the four.
 
-| Format | `tar`                                                                            | `tar/node`                                             |
-| ------ | -------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| gzip   | Yes, with `CompressionStream` and `DecompressionStream`. Async only. No options. | Yes, with `node:zlib`. Options of `zlib.createGzip()`. |
-| brotli | No                                                                               | Yes, if `node:zlib` of the runtime has it              |
-| zstd   | No                                                                               | Yes, if `node:zlib` of the runtime has it              |
+| Format | `tar`                                                  | `tar/core`                                                                       |
+| ------ | ------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| gzip   | Yes, with `node:zlib`. Options of `zlib.createGzip()`. | Yes, with `CompressionStream` and `DecompressionStream`. Async only. No options. |
+| brotli | Yes, if `node:zlib` of the runtime has it              | No                                                                               |
+| zstd   | Yes, if `node:zlib` of the runtime has it              | No                                                                               |
 
 ```js
-import { create, list } from 'tar/node'
+import { create, list } from 'tar'
 
 await create({ file: 'src.tar.zst', zstd: true }, ['src'])
 await create({ file: 'src.tar.br', brotli: true }, ['src'])
@@ -927,7 +932,7 @@ from `input`, also set `file`.
 
 ```js
 import { readFile } from 'node:fs/promises'
-import { create, entries } from 'tar/node'
+import { create, entries } from 'tar'
 
 await create({ file: 'src.tar.br', brotli: true }, ['src'])
 const data = await readFile('src.tar.br')
@@ -948,10 +953,10 @@ the decompressed count is more than `maxDecompressionRatio` times the
 compressed count, the reader stops with a `TAR_ABORT` error. The
 default is 1000.
 
-The async codecs of `tar/node` give at most 64 KiB of output at a
-time, and only when the reader asks. Thus the reader stops soon after
-the limit. The sync codecs of `tar/node` give the limit to `node:zlib`
-as `maxOutputLength`.
+The async codecs of `tar` give at most 64 KiB of output at a time, and
+only when the reader asks. Thus the reader stops soon after the limit.
+The sync codecs of `tar` give the limit to `node:zlib` as
+`maxOutputLength`.
 
 ### The `Codec` type
 
@@ -999,7 +1004,7 @@ to the `compress()` function of the codec, set `compress` to
 also gets `portable: true` in its options.
 
 ```js
-import { create, gzip } from 'tar/node'
+import { create, gzip } from 'tar'
 
 // The built-in gzip of the core, not the gzip of `node:zlib`.
 await create({ file: 'core.tgz', compress: gzip }, ['src'])
@@ -1020,10 +1025,10 @@ decompress all of the input in one call.
 The exports for codecs are:
 
 - `gzip` The built-in codec of the core.
-- `zlibCodecs(zlib)` (`tar/node`) Makes the gzip, brotli, and zstd
-  codecs of a `node:zlib` module.
-- `zlibStream(stream)` (`tar/node`) Makes a `CodecStream` from a
-  `node:zlib` stream.
+- `zlibCodecs(zlib)` Makes the gzip, brotli, and zstd codecs of a
+  `node:zlib` module. Not in `tar/core`.
+- `zlibStream(stream)` Makes a `CodecStream` from a `node:zlib`
+  stream. Not in `tar/core`.
 
 ### Recipe: bzip2
 
@@ -1045,7 +1050,7 @@ no output limit. Thus this codec has two limits:
 ```js
 import bzip2 from 'node-bzip2'
 import { mkdir } from 'node:fs/promises'
-import { create, extract, list } from 'tar/node'
+import { create, extract, list } from 'tar'
 
 // A stream that collects all of its input. At the end it gives the
 // result of `fn` as one chunk.
@@ -1098,7 +1103,7 @@ await extract({ file: 'src.tar.bz2', codecs: [bz2], cwd: 'out' })
 ## Lower-level classes
 
 The commands use these classes. They are exported from `tar` and from
-`tar/node`. The sync classes are exported only from `tar/node`.
+`tar/core`. The sync classes are exported only from `tar`.
 
 | Export                       | What it is                                                                                                                                          |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1196,7 +1201,7 @@ iterator fails at the next read.
 An error that comes from a warning has the same fields.
 
 ```js
-import { list } from 'tar/node'
+import { list } from 'tar'
 
 await list({
   // This is not an archive.
@@ -1247,7 +1252,7 @@ before it are extracted. The entries after it are not.
 
 ```js
 import { mkdir, readdir } from 'node:fs/promises'
-import { create, extract, WriteEntry } from 'tar/node'
+import { create, extract, WriteEntry } from 'tar'
 
 // An archive with a path that goes out of the extraction directory.
 const archive = create({ preservePaths: true }, [
@@ -1387,7 +1392,7 @@ there with an error, and extracts no entry after that block.
 
 ```js
 import { mkdir } from 'node:fs/promises'
-import { extract } from 'tar/node'
+import { extract } from 'tar'
 
 const maxSize = 10 * 1024 * 1024
 
@@ -1449,12 +1454,17 @@ GitHub Security Advisories system of the repository.
 Version 8 is a new API. The commands have the same names and most of
 the same options.
 
+The import does not change. `tar` is the entry point for Node.js, as
+in version 7, and it has the same file system defaults. `tar/core` is
+new. It is for browsers and for each runtime that does not have the
+`node:` modules.
+
 | Version 7                                                                                                                                                                                                                                            | Version 8                                                                                                                                                                                |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Node.js 18 or later                                                                                                                                                                                                                                  | Node.js 22 or later. The core also runs in a browser.                                                                                                                                    |
-| `import { x } from 'tar'` with the file system                                                                                                                                                                                                       | `import { x } from 'tar/node'`. The `tar` export is the core, and it needs the `fs` and `cwd` options.                                                                                   |
+| Node.js 18 or later                                                                                                                                                                                                                                  | Node.js 22 or later. `tar/core` also runs in a browser.                                                                                                                                  |
+| `import { x } from 'tar'`                                                                                                                                                                                                                            | `import { x } from 'tar'`. The same entry point, with the same file system defaults. `tar/core` is a new entry point with no `node:` module.                                             |
 | `tar.x(options, files, callback)`                                                                                                                                                                                                                    | No callbacks. `await extract(options, files)`.                                                                                                                                           |
-| `sync: true`                                                                                                                                                                                                                                         | `createSync`, `extractSync`, `listSync`, `replaceSync`, `updateSync` from `tar/node`.                                                                                                    |
+| `sync: true`                                                                                                                                                                                                                                         | `createSync`, `extractSync`, `listSync`, `replaceSync`, `updateSync`.                                                                                                                    |
 | `tar.c({}, files)` returns a Node.js stream                                                                                                                                                                                                          | `create({}, files)` returns a web `ReadableStream`. `createSync()` returns an iterator of chunks.                                                                                        |
 | `stream.pipe(tar.x({ cwd }))`, `stream.pipe(tar.t())`                                                                                                                                                                                                | `extract({ input: stream, cwd })`, `list({ input: stream })`. The input is a web stream, an iterable of chunks, a `Blob`, or bytes. A Node.js `Readable` is an async iterable of chunks. |
 | `onReadEntry`, `onentry`                                                                                                                                                                                                                             | `onEntry`. The old names are aliases of it. A promise is awaited.                                                                                                                        |
@@ -1469,8 +1479,8 @@ the same options.
 | `Pack`, `Unpack`, and `Parser` are Node.js streams                                                                                                                                                                                                   | `Pack` is an async iterator of chunks. `Unpack` has an `extract(input)` method. `Parser` has `push()` and `next()`.                                                                      |
 | `ReadEntry` and `WriteEntry` are Minipass streams                                                                                                                                                                                                    | `ReadEntry` has the shape of a `Response`. `WriteEntry` is metadata and a body.                                                                                                          |
 | `WriteEntrySync`, `WriteEntryTar`                                                                                                                                                                                                                    | Removed. `WriteEntry` is the one class.                                                                                                                                                  |
-| `PackSync` and `UnpackSync` from `tar`                                                                                                                                                                                                               | `PackSync`, `UnpackSync`, `TarReaderSync`, and `ReadEntrySync` from `tar/node`.                                                                                                          |
-| Subpath exports: `tar/create`, `tar/extract`, `tar/list`, `tar/replace`, `tar/update`, `tar/pack`, `tar/unpack`, `tar/parse`, `tar/read-entry`, `tar/write-entry`, `tar/header`, `tar/pax`, `tar/types`, `tar/c`, `tar/x`, `tar/t`, `tar/r`, `tar/u` | Only `tar`, `tar/node`, `tar/raw`, and `tar/node/raw`.                                                                                                                                   |
+| `PackSync`, `UnpackSync`                                                                                                                                                                                                                             | `PackSync`, `UnpackSync`, `TarReaderSync`, and `ReadEntrySync`. `tar/core` does not have the sync classes.                                                                               |
+| Subpath exports: `tar/create`, `tar/extract`, `tar/list`, `tar/replace`, `tar/update`, `tar/pack`, `tar/unpack`, `tar/parse`, `tar/read-entry`, `tar/write-entry`, `tar/header`, `tar/pax`, `tar/types`, `tar/c`, `tar/x`, `tar/t`, `tar/r`, `tar/u` | Only `tar`, `tar/core`, `tar/raw`, and `tar/core/raw`.                                                                                                                                   |
 | `brotli: true` or `zstd: true` to read an archive                                                                                                                                                                                                    | Not needed. The readers detect the format. For brotli, they use the file name. `Codec` objects in the `codecs` option add formats.                                                       |
 | Dependencies: `minipass`, `minizlib`, `@isaacs/fs-minipass`, `chownr`, `yallist`                                                                                                                                                                     | No dependencies.                                                                                                                                                                         |
 
@@ -1478,7 +1488,7 @@ Version 7 code, and the same work in version 8:
 
 ```js
 import { createReadStream, mkdirSync } from 'node:fs'
-import { create, extract, listSync } from 'tar/node'
+import { create, extract, listSync } from 'tar'
 
 // tar.c({ f: 'demo.tgz', z: true, C: '.' }, ['src'], callback)
 await create({ file: 'demo.tgz', gzip: true, cwd: '.' }, ['src'])

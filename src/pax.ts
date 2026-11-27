@@ -182,7 +182,10 @@ const parseKVLine = (
 
   const k = r.replace(/^SCHILY\.(dev|ino|nlink)/, '$1')
 
-  const v = kv.join('=').replace(/\0.*/s, '')
+  // The value ends at the first NUL.
+  const joined = kv.join('=')
+  const nul = joined.indexOf('\0')
+  const v = nul === -1 ? joined : joined.slice(0, nul)
   switch (k) {
     case 'path':
     case 'linkpath':

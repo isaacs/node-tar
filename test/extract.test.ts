@@ -13,7 +13,9 @@ import type {
 } from '../src/fs.js'
 import { Pax } from '../src/pax.js'
 import { makeTar } from './fixtures/make-tar.js'
-import { hookFs } from './helpers.js'
+import { hookFs, posixOnly } from './helpers.js'
+
+posixOnly()
 
 // The modules of Node fit the adapter types as they are.
 const fs: ExtractFS & TarFS = nodeFsPromises
@@ -158,6 +160,75 @@ describe('file list and filter', () => {
     check(dir + '/a')
     check(dir + '/s')
   })
+})
+
+describe('the body of an entry that is not extracted is not read', () => {
+  const big = new Uint8Array(3 * 1024 * 1024).map((_, i) => i % 251)
+  const data = makeTar([
+    { path: 'keep', type: 'File', size: 3 },
+    'abc',
+    { path: 'big', type: 'File', size: big.length },
+    big,
+    { path: 'last', type: 'File', size: 3 },
+    'end',
+  ])
+  const afterBig = 1536 + big.length
+
+  // Extract with a fs that records the reads of the archive file.
+  const run = async (
+    mode: 'async' | 'sync',
+    filter?: (path: string) => boolean,
+    files?: string[],
+  ) => {
+    const dir = testdir({ 'a.tar': Buffer.from(data), out: {} })
+    const file = dir + '/a.tar'
+    const cwd = dir + '/out'
+    const hooked = hookFs()
+    if (mode === 'sync') {
+      extractSync({ file, cwd, filter, fs: hooked.fsSync }, files)
+    } else await extract({ file, cwd, filter, fs: hooked.fs }, files)
+    const reads = hooked.calls
+      .filter(c => c[0] === 'read' && c[1] === file)
+      .map(c => [c[4], c[5]])
+    return { cwd, reads }
+  }
+
+  for (const mode of ['async', 'sync'] as const) {
+    test(`${mode}: an entry that the filter refuses`, async () => {
+      const { cwd, reads } = await run(mode, path => path !== 'big')
+      assert.deepEqual(nodeFs.readdirSync(cwd).sort(), ['keep', 'last'])
+      assert.equal(nodeFs.readFileSync(cwd + '/last', 'utf8'), 'end')
+      assert.deepEqual(reads, [
+        [65536, 0],
+        [1024, afterBig],
+      ])
+    })
+
+    test(`${mode}: an entry that the files list does not have`, async () => {
+      const { cwd, reads } = await run(mode, undefined, ['keep', 'last'])
+      assert.deepEqual(nodeFs.readdirSync(cwd).sort(), ['keep', 'last'])
+      assert.deepEqual(reads, [
+        [65536, 0],
+        [1024, afterBig],
+      ])
+    })
+
+    test(`${mode}: an entry that is extracted is read`, async () => {
+      const { cwd, reads } = await run(mode)
+      assert.deepEqual(nodeFs.readdirSync(cwd).sort(), [
+        'big',
+        'keep',
+        'last',
+      ])
+      assert.equal(nodeFs.readFileSync(cwd + '/big').equals(big), true)
+      let pos = 0
+      for (const [len, at] of reads) {
+        assert.equal(at, pos)
+        pos += len as number
+      }
+      assert.equal(pos, data.length)
+    })
+  }
 })
 
 describe('no file list', () => {

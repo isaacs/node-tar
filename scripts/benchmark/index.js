@@ -50,7 +50,7 @@ const baseline = await import(
   )
 )
 const current = await import(
-  String(pathToFileURL(resolve(root, 'dist/esm/node/index.min.js')))
+  String(pathToFileURL(resolve(root, 'dist/esm/server/index.min.js')))
 )
 
 // Each build has one function for each case. A function gets the

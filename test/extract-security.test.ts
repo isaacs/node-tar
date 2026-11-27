@@ -17,9 +17,12 @@ import {
   hookFs,
   longLink,
   longPath,
+  posixOnly,
   runExtract,
   SKIP,
 } from './helpers.js'
+
+posixOnly()
 
 const modes = ['async', 'sync'] as const
 const MTIME = new Date('2001-02-03T04:05:06Z')

@@ -11,7 +11,9 @@ import { ReadEntry, ReadEntrySync } from '../src/read-entry.js'
 import { Unpack, UnpackSync } from '../src/unpack.js'
 import { Pax } from '../src/pax.js'
 import { makeTar } from './fixtures/make-tar.js'
-import { hookFs, runExtract, SKIP } from './helpers.js'
+import { hookFs, posixOnly, runExtract, SKIP } from './helpers.js'
+
+posixOnly()
 
 // The modules of Node fit the adapter types as they are.
 const fs: ExtractFS = nodeFsPromises
@@ -881,7 +883,10 @@ test('unpack big enough to pause/drain', async () => {
     file: fixtures + '/parses.tar',
     maxReadSize: 4096,
   })
-  assert.deepEqual(nodeFs.readdirSync(dir), nodeFs.readdirSync(parses))
+  assert.deepEqual(
+    nodeFs.readdirSync(dir).sort(),
+    nodeFs.readdirSync(parses).sort(),
+  )
 })
 
 describe('set owner', () => {
@@ -2288,7 +2293,7 @@ describe('handle EPERMs when creating symlinks', () => {
       )
       assert.equal(read(`${cwd}/x/y`), 'hello, world')
       assert.equal(read(`${cwd}/x/z`), 'hello, world')
-      assert.deepEqual(nodeFs.readdirSync(`${cwd}/x`), ['y', 'z'])
+      assert.deepEqual(nodeFs.readdirSync(`${cwd}/x`).sort(), ['y', 'z'])
     })
   }
 })
@@ -2830,7 +2835,13 @@ describe('jobs option', () => {
       await extract({ cwd, fs: counted, input: data, jobs })
       assert.equal(most, expect)
       assert.equal(calls.filter(c => c[0] === 'close').length, 5)
-      assert.deepEqual(nodeFs.readdirSync(cwd), ['a', 'b', 'c', 'd', 'e'])
+      assert.deepEqual(nodeFs.readdirSync(cwd).sort(), [
+        'a',
+        'b',
+        'c',
+        'd',
+        'e',
+      ])
     })
   }
 })

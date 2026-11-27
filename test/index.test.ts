@@ -5,7 +5,7 @@ import * as tar from '../src/index.js'
 
 const root = resolve(import.meta.dirname, '..')
 const src = resolve(root, 'src')
-const node = resolve(src, 'node')
+const server = resolve(src, 'server')
 
 // The text of the file with no comments.
 const code = (file: string) =>
@@ -41,7 +41,7 @@ const graph = (entry: string) => {
 const problems = (file: string) => {
   const found: string[] = []
   const name = relative(root, file)
-  if (file.startsWith(node)) found.push(`${name} is a node file`)
+  if (file.startsWith(server)) found.push(`${name} is a server file`)
   for (const spec of imports(file)) {
     if (!spec.startsWith('.')) found.push(`${name} imports ${spec}`)
   }
@@ -67,14 +67,14 @@ describe('the core entry point', () => {
       assert.contains(names, name)
     }
     assert.deepEqual(
-      [...new Set(problems(resolve(node, 'index.ts')))],
+      [...new Set(problems(resolve(server, 'index.ts')))],
       [
-        'src/node/index.ts is a node file',
-        'src/node/index.ts imports node:fs',
-        'src/node/index.ts imports node:fs/promises',
-        'src/node/index.ts imports node:path',
-        'src/node/index.ts imports node:zlib',
-        'src/node/index.ts uses process',
+        'src/server/index.ts is a server file',
+        'src/server/index.ts imports node:fs',
+        'src/server/index.ts imports node:fs/promises',
+        'src/server/index.ts imports node:path',
+        'src/server/index.ts imports node:zlib',
+        'src/server/index.ts uses process',
       ],
     )
   })
@@ -111,6 +111,7 @@ describe('the core entry point', () => {
       'Unpack',
       'UnpackBase',
       'WriteEntry',
+      'aliases',
       'c',
       'create',
       'entries',

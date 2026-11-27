@@ -1,6 +1,6 @@
 // The entry point for each runtime. It reads no file system and no
 // process state: the caller gives them in the options. The entry
-// point `node/index.ts` fills in those options, and adds the sync
+// point `server/index.ts` fills in those options, and adds the sync
 // commands.
 
 export { Header, type HeaderData } from './header.js'
@@ -9,7 +9,16 @@ export * as types from './types.js'
 export { gzip, type Codec, type CodecStream } from './codec.js'
 export { create, create as c } from './create.js'
 export { CwdError } from './cwd-error.js'
-export type { WithAliases } from './dealias.js'
+export { aliases } from './dealias.js'
+export type {
+  Aliased,
+  Aliases,
+  AliasOf,
+  FileOption,
+  NoFileOption,
+  RequiredOption,
+  WithAliases,
+} from './dealias.js'
 export { entries, EntryCursor, TarReader } from './entries.js'
 export { extract, extract as x } from './extract.js'
 export type * from './fs.js'
@@ -21,6 +30,7 @@ export {
   PackBase,
   PackJob,
   type Ancestor,
+  type QueueNode,
   type PackInput,
   type PackInputSync,
   type PackLoad,

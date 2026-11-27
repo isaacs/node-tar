@@ -10,10 +10,18 @@ import {
   zlibCodecs,
   zlibStream,
   type ZlibModule,
-} from '../src/node/codecs.js'
+} from '../src/server/codecs.js'
 import type { ReadOptions } from '../src/options.js'
 import { fixtures } from './create-helpers.js'
-import { cat, chunked, countedSource, EOA, file, hdr } from './helpers.js'
+import {
+  cat,
+  chunked,
+  countedSource,
+  EOA,
+  file,
+  hdr,
+  isDeno,
+} from './helpers.js'
 
 const codecs = zlibCodecs()
 const named = (name: string, list: Codec[] = codecs) => {
@@ -253,10 +261,18 @@ describe('portable gzip', () => {
     const expect = zlib.gzipSync(tar, { level: 1 })
     expect[9] = 255
     assert(gz.compressSync)
-    assert.deepEqual(
-      await compress(gz, [tar], opt),
-      new Uint8Array(expect),
-    )
+    // On Bun and Deno, a zlib stream at level 1 does not make the
+    // bytes of gzipSync. Compare with a zlib stream that gets the
+    // same calls.
+    const stream = zlib.createGzip({ level: 1 })
+    const parts: Uint8Array[] = []
+    stream.on('data', (part: Uint8Array) => parts.push(part))
+    stream.write(tar)
+    stream.end()
+    await new Promise(res => stream.on('end', res))
+    const expectStream = cat(...parts)
+    expectStream[9] = 255
+    assert.deepEqual(await compress(gz, [tar], opt), expectStream)
     assert.deepEqual(
       new Uint8Array(gz.compressSync(tar, opt)),
       new Uint8Array(expect),
@@ -449,7 +465,11 @@ describe('the ratio limit stops the decompression early', () => {
     })
   }
 
-  test('the gzip codec of the web streams', async () => {
+  test('the gzip codec of the web streams', async ({ skip }) => {
+    // Deno's DecompressionStream makes all the output of a chunk of
+    // input as one chunk. The reader gets all of it before the limit
+    // can stop the stream.
+    if (isDeno) skip('the DecompressionStream of Deno makes one chunk')
     const data = zlib.gzipSync(bomb)
     const allowed = data.length * max
     // The bytes that come out of the decompression stream.
@@ -537,7 +557,12 @@ describe('the ratio limit stops the decompression early', () => {
         )
       })
 
-      test(`${codec.name}: damaged data is the error of zlib`, () => {
+      test(`${codec.name}: damaged data is the error of zlib`, t => {
+        // Deno's brotliDecompressSync returns no bytes for damaged
+        // data, and does not throw.
+        if (isDeno && codec.name === 'brotli') {
+          t.skip('brotliDecompressSync of Deno does not throw')
+        }
         assert(codec.compressSync && codec.decompressSync)
         const data = codec.compressSync(tar)
         data.fill(0xff, 8, 30)
@@ -610,6 +635,17 @@ describe('the end of a zlib stream', () => {
     await written.catch(() => {})
     assert.equal(stream.destroyed, true)
     assert.equal(await assert.rejects(writer.closed, Error), reason)
+  })
+
+  test("an 'end' event after the reader cancelled", async () => {
+    // Deno emits 'end' after destroy() for a stream that has all its
+    // output.
+    const stream = zlib.createGunzip()
+    const { readable } = zlibStream(stream)
+    await readable.cancel(new Error('stop'))
+    assert.equal(stream.destroyed, true)
+    // A listener that throws makes emit() throw.
+    assert.equal(stream.emit('end'), true)
   })
 
   test('abort of the writable side', async () => {

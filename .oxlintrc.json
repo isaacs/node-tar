@@ -1,0 +1,10 @@
+{
+  "overrides": [
+    {
+      "files": ["test/**"],
+      "rules": {
+        "no-control-regex": "off"
+      }
+    }
+  ]
+}

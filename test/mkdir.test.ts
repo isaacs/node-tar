@@ -1,7 +1,9 @@
 import * as nodeFs from 'node:fs'
 import { assert, describe, test, testdir } from 'ubqtest'
 import { mkdir, mkdirSync, type MkdirOptions } from '../src/mkdir.js'
-import { hookFs, SKIP, type FsOp } from './helpers.js'
+import { hookFs, posixOnly, SKIP, type FsOp } from './helpers.js'
+
+posixOnly()
 
 const modes = ['async', 'sync'] as const
 

@@ -20,15 +20,24 @@ permissions:
   contents: read
 
 jobs:
+  # The whole suite on each supported version of Node.js, with the
+  # type check. On Linux and macOS, the run fails if code ran in no
+  # test. On Windows, many tests skip, so that check is off.
   build:
     strategy:
       matrix:
         node-version: [22.x, 24.x, 26.x]
         platform:
+        # coverage-check is the value of UBQ_COVERAGE_CHECK: 1 or 0.
         - os: ubuntu-latest
           shell: bash
+          coverage-check: '1'
         - os: macos-latest
           shell: bash
+          coverage-check: '1'
+        - os: windows-latest
+          shell: bash
+          coverage-check: '0'
       fail-fast: false
 
     runs-on: ${{ matrix.platform.os }}
@@ -37,6 +46,14 @@ jobs:
         shell: ${{ matrix.platform.shell }}
 
     steps:
+      # The fixtures have symbolic links, long paths, and files that
+      # the tests compare byte for byte.
+      - name: Configure Git
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.symlinks true
+          git config --global core.longpaths true
+
       - name: Checkout Repository
         uses: actions/checkout@v6
 
@@ -50,3 +67,72 @@ jobs:
 
       - name: Run Tests
         run: npm test
+        env:
+          UBQ_COVERAGE_CHECK: ${{ matrix.platform.coverage-check }}
+
+  # The whole suite on Bun, with the coverage check. Node.js installs
+  # the dependencies and makes the build.
+  bun:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Use Nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Use Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Tests on Bun
+        run: npm run test:bun
+
+  # The whole suite on Deno, with the coverage check. Node.js
+  # installs the dependencies and makes the build.
+  deno:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Use Nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Use Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Tests on Deno
+        run: npm run test:deno
+
+  # The tests of the core bundle in a real browser page (Chromium).
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Use Nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install the system libraries of the browser
+        run: npx playwright-core install-deps chromium
+
+      - name: Run Tests in the Browser
+        run: npm run test:browser

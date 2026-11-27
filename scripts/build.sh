@@ -16,7 +16,7 @@ for format in esm commonjs; do
     --minify \
     --platform=node \
     --sourcemap \
-    --bundle dist/$format/node/index.js \
-    --outfile=dist/$format/node/index.min.js \
+    --bundle dist/$format/server/index.js \
+    --outfile=dist/$format/server/index.min.js \
     --format=${format/commonjs/cjs}
 done

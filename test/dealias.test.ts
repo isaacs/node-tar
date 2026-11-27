@@ -7,7 +7,7 @@ import { extractSync } from '../src/extract.js'
 import type { ExtractFS, TarFS } from '../src/fs.js'
 import * as core from '../src/index.js'
 import { listSync } from '../src/list.js'
-import * as node from '../src/node/index.js'
+import * as server from '../src/server/index.js'
 import { replaceSync } from '../src/replace.js'
 import { updateSync } from '../src/update.js'
 
@@ -122,10 +122,10 @@ describe('dealias', () => {
       // With no `input`, it needs `file` or its alias.
       Fits<Extract, { C: string; f: string; fs: ExtractFS & TarFS }>,
       Fits<Extract, { C: string; fs: ExtractFS & TarFS }>,
-      Fits<WithAliases<node.ExtractOptions>, { f: string }>,
-      Fits<WithAliases<node.ExtractOptions>, { C: string }>,
-      Fits<WithAliases<node.CreateOptions>, { z: { level: number } }>,
-      Fits<WithAliases<node.CreateOptions>, { z: string }>,
+      Fits<WithAliases<server.ExtractOptions>, { f: string }>,
+      Fits<WithAliases<server.ExtractOptions>, { C: string }>,
+      Fits<WithAliases<server.CreateOptions>, { z: { level: number } }>,
+      Fits<WithAliases<server.CreateOptions>, { z: string }>,
     ] = [
       true,
       true,
@@ -162,15 +162,15 @@ const points = [
     r: replaceSync,
     u: updateSync,
   },
-  { name: 'node', fs: nodeFsPromises, ...node },
+  { name: 'server', fs: nodeFsPromises, ...server },
   {
-    name: 'node, sync',
+    name: 'server, sync',
     fs: nodeFs,
-    c: node.createSync,
-    x: node.extractSync,
-    t: node.listSync,
-    r: node.replaceSync,
-    u: node.updateSync,
+    c: server.createSync,
+    x: server.extractSync,
+    t: server.listSync,
+    r: server.replaceSync,
+    u: server.updateSync,
   },
 ] as Point[]
 
@@ -178,7 +178,7 @@ const tree = () =>
   testdir({ src: { 'a.txt': 'alpha', 'b.txt': 'beta' }, out: {} })
 const paths = (file: string) => {
   const found: string[] = []
-  node.listSync({ file, onEntry: entry => found.push(entry.path) })
+  server.listSync({ file, onEntry: entry => found.push(entry.path) })
   return found
 }
 
@@ -187,7 +187,7 @@ describe('the commands take the aliases', () => {
     test(`${name}: create`, async () => {
       const dir = tree()
       const f = dir + '/a.tgz'
-      const codecs = node.zlibCodecs()
+      const codecs = server.zlibCodecs()
       await c({ fs, codecs, f, C: dir, z: { level: 1 } }, ['src/a.txt'])
       assert.deepEqual(
         [...nodeFs.readFileSync(f).subarray(0, 2)],
@@ -199,7 +199,7 @@ describe('the commands take the aliases', () => {
     test(`${name}: extract`, async () => {
       const dir = tree()
       const f = dir + '/a.tar'
-      node.createSync({ file: f, cwd: dir }, ['src/a.txt'])
+      server.createSync({ file: f, cwd: dir }, ['src/a.txt'])
       const seen: string[] = []
       const onentry = (entry: core.EntryData) => seen.push(entry.path)
       const C = dir + '/out'
@@ -215,7 +215,7 @@ describe('the commands take the aliases', () => {
     test(`${name}: list`, async () => {
       const dir = tree()
       const f = dir + '/a.tar'
-      node.createSync({ file: f, cwd: dir }, ['src/a.txt', 'src/b.txt'])
+      server.createSync({ file: f, cwd: dir }, ['src/a.txt', 'src/b.txt'])
       const seen: string[] = []
       const onReadEntry = (entry: core.EntryData) => seen.push(entry.path)
       await t({ fs, f, onReadEntry }, ['src/b.txt'])
@@ -243,9 +243,11 @@ describe('the commands take the aliases', () => {
     const fs = nodeFsPromises
     const done: Promise<void> = core.c({ fs, f, C: dir }, ['src'])
     await done
-    const stream: ReadableStream<Uint8Array> = node.c({ C: dir }, ['src'])
+    const stream: ReadableStream<Uint8Array> = server.c({ C: dir }, [
+      'src',
+    ])
     await stream.cancel()
-    const none: void = node.createSync({ f, C: dir, h: true }, ['src'])
+    const none: void = server.createSync({ f, C: dir, h: true }, ['src'])
     assert.equal(none, undefined)
     const chunks: Iterable<Uint8Array> = createSync(
       { fs: nodeFs, C: dir },

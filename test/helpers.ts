@@ -1,5 +1,6 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
+import { beforeEach } from 'ubqtest'
 import { Header, type HeaderData } from '../src/header.js'
 import type { Codec } from '../src/codec.js'
 import type {
@@ -14,6 +15,24 @@ import type { UnpackOptions } from '../src/options.js'
 import type { WarnData, WarnOptions } from '../src/warn.js'
 import { Parser } from '../src/parser.js'
 import type { EntryData } from '../src/read-entry.js'
+
+// The runtime of the tests, for a test that one runtime cannot run.
+export const isDeno = 'Deno' in globalThis
+export const isWindows = process.platform === 'win32'
+
+/**
+ * Skip each test of the file on Windows. A test file calls it one
+ * time, at its top level.
+ *
+ * The core has the platform 'posix' unless an option sets it. The
+ * tests of the extraction give it the paths of the system and no
+ * platform. On Windows, a path such as `C:\dir` is then not an
+ * absolute path, and the tests compare the modes of POSIX.
+ */
+export const posixOnly = () =>
+  beforeEach(({ skip }) => {
+    if (isWindows) skip('the test extracts with the platform posix')
+  })
 
 export const hdr = (h: HeaderData) => {
   const block = new Uint8Array(512)

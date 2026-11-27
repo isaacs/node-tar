@@ -3,19 +3,17 @@ import type { Transform } from 'node:stream'
 import * as nodeZlib from 'node:zlib'
 import type { Codec, CodecStream } from '../codec.js'
 
-type Z = typeof nodeZlib
-
 /**
  * The functions of `node:zlib` that the codecs use. A runtime can
  * have no brotli functions or no zstd functions.
  */
 export type ZlibModule = Pick<
-  Z,
+  typeof nodeZlib,
   'createGzip' | 'createGunzip' | 'gzipSync' | 'gunzipSync'
 > &
   Partial<
     Pick<
-      Z,
+      typeof nodeZlib,
       | 'createBrotliCompress'
       | 'createBrotliDecompress'
       | 'brotliCompressSync'
@@ -90,7 +88,11 @@ export const zlibStream = (
     stream.pause()
     output.enqueue(chunk)
   })
-  stream.on('end', () => output.close())
+  // On Deno, a zlib stream that already has all its output emits
+  // 'end' after it is destroyed. The output is then closed already.
+  stream.on('end', () => {
+    if (!done) output.close()
+  })
   stream.on('error', er => {
     output.error(er)
     input.error(er)

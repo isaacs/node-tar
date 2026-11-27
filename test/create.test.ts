@@ -1,10 +1,8 @@
-//@ts-ignore
-import mutateFS from 'mutate-fs'
 import * as nodeFs from 'node:fs'
 import * as nodeFsPromises from 'node:fs/promises'
 import { resolve } from 'node:path'
 import zlib from 'node:zlib'
-import { assert, cleanup, describe, env, test, testdir } from 'ubqtest'
+import { assert, describe, test, testdir } from 'ubqtest'
 import type { Codec, CodecStream } from '../src/codec.js'
 import { create, createSync } from '../src/create.js'
 import type {
@@ -17,14 +15,11 @@ import { PackSync } from '../src/pack.js'
 import type { WarnData } from '../src/warn.js'
 import { WriteEntry } from '../src/write-entry.js'
 import {
-  atime,
   collect,
-  ctime,
   files,
   fixtures,
   fs,
   fsSync,
-  mtime,
   paths,
   read,
   tars,

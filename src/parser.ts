@@ -143,6 +143,36 @@ export class Parser<E extends EntryData = EntryData> {
   }
 
   /**
+   * The number of bytes of the body of the current entry, with its
+   * padding, that are after the input given so far. The caller can
+   * skip them in its input, and call `skipBody()`. It is 0 if the
+   * parser has input that it did not parse, and in a PAX or GNU
+   * header, because the parser reads that body.
+   */
+  get bodyRemain(): number {
+    const chunk = this.#chunk
+    const state = this.#state
+    return (
+        (state !== BODY && state !== IGNORE) ||
+          this.#queue.length ||
+          (chunk && this.#pos < chunk.length)
+      ) ?
+        0
+      : this.#blockRemain
+  }
+
+  /**
+   * Count the `bodyRemain` bytes as parsed. The next input is the
+   * header after the body.
+   */
+  skipBody(): void {
+    this.#entryEnd = this.#state === BODY
+    this.offset += this.#blockRemain
+    this.#remain = this.#blockRemain = this.#held = 0
+    this.#endBody()
+  }
+
+  /**
    * The next event. `undefined` means that the parser needs more
    * input, or after the `end` event, that it is done.
    */

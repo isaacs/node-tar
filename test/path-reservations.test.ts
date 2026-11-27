@@ -160,8 +160,13 @@ test('a task that fails frees its paths', async () => {
 })
 
 test('a reservation is released when its work is done', async () => {
-  setFlagsFromString('--expose-gc')
-  const gc = runInNewContext('gc') as () => void
+  // Bun has its own function to collect garbage, and no V8 flags.
+  const { Bun } = globalThis as { Bun?: { gc(force: boolean): void } }
+  let gc = () => Bun?.gc(true)
+  if (!Bun) {
+    setFlagsFromString('--expose-gc')
+    gc = runInNewContext('gc') as () => void
+  }
   const reservations = new PathReservations()
   let ref: WeakRef<object> | undefined
   await (() => {

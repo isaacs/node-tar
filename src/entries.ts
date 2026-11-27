@@ -15,16 +15,17 @@ import {
   type BodySourceSync,
   type EntryData,
 } from './read-entry.js'
+import { SKIP, type Skip } from './read-file.js'
 import { tarError } from './warn.js'
 
 // A source of input chunks: an iterator, or the reader of a stream.
-type Source = {
+type Source = Partial<Skip> & {
   next():
     | IteratorResult<Uint8Array, unknown>
     | Promise<IteratorResult<Uint8Array, unknown>>
   return?(): unknown
 }
-type SourceSync = Iterator<Uint8Array, unknown>
+type SourceSync = Iterator<Uint8Array, unknown> & Partial<Skip>
 
 // The number of bytes to read before the choice of a codec.
 const headLength = (codecs: Codec[]) =>
@@ -116,6 +117,19 @@ export class EntryCursor<E extends EntryData> {
   }
 }
 
+// Skip the rest of a body that no consumer reads, if it is after the
+// input that the parser has, and the source can skip it. The source
+// must be the input of the reader: decompressed data has no place in
+// the input.
+const skipBody = <E extends EntryData>(
+  cursor: EntryCursor<E>,
+  source: Partial<Skip>,
+) => {
+  if (cursor.current) return
+  const n = cursor.parser.bodyRemain
+  if (n && source[SKIP]?.(n)) cursor.parser.skipBody()
+}
+
 const toSource = (input: TarInput): Source => {
   if (input instanceof Uint8Array) return [input].values()
   if (input instanceof ArrayBuffer) return [new Uint8Array(input)].values()
@@ -184,6 +198,7 @@ export class TarReader
       const source = (this.#source ??= await this.#open(this.#input))
       const head = this.#head
       this.#head = undefined
+      if (source === this.#input) skipBody(this.#cursor, source)
       const res = head ? { value: head, done: false } : await source.next()
       if (res.done) this.parser.end()
       else this.parser.push(res.value)
@@ -314,6 +329,7 @@ export class TarReaderSync
     const source = (this.#source ??= this.#open(this.#input))
     const head = this.#head
     this.#head = undefined
+    if (source === this.#input) skipBody(this.#cursor, source)
     const res = head ? { value: head, done: false } : source.next()
     if (res.done) this.parser.end()
     else this.parser.push(res.value)

@@ -4,9 +4,19 @@ import { resolve } from 'node:path'
 import zlib from 'node:zlib'
 import { assert, describe, test, testdir } from 'ubqtest'
 import type { TarFileHandle, TarFS, TarFSSync } from '../src/fs.js'
+import type { ListOptions } from '../src/options.js'
 import { filesFilter, list, listSync } from '../src/list.js'
 import { readFile, readFileSync } from '../src/read-file.js'
-import { cat, EOA, file, xorCodec, xorCompress } from './helpers.js'
+import {
+  cat,
+  EOA,
+  file,
+  longPath,
+  pax,
+  rec,
+  xorCodec,
+  xorCompress,
+} from './helpers.js'
 
 // The modules of Node fit the adapter types as they are.
 const fs: TarFS = nodeFsPromises
@@ -203,6 +213,385 @@ describe('file', () => {
       maxReadSize: 1024,
     })
     assert.deepEqual(sync.calls, calls)
+  })
+})
+
+describe('a body that no consumer reads is not read from the file', () => {
+  const K = 1024
+  const M = K * K
+  const FIRST = 64 * K
+  const body = (size: number, seed: number) => {
+    const b = new Uint8Array(size)
+    for (let i = 0; i < size; i++) b[i] = (i * 7 + seed) % 251
+    return b
+  }
+  const big = body(3 * M, 1)
+  const y = body(2 * M, 2)
+  // The place of each part: 'small' 0, 'big' 1024 (body 1536), the
+  // PAX header and 'pax-name' 3147264, the GNU header and 'y' 3149312
+  // (body 3150848), 'last' 5248000, the end 5249024.
+  const afterBig = 1536 + 3 * M
+  const afterY = afterBig + 3584 + 2 * M
+  const archive = cat(
+    file('small', 'abc'),
+    file('big', big),
+    pax([['path', 'pax-name']]),
+    file('x', 'xyz'),
+    longPath('long-name'),
+    file('y', y),
+    file('last', 'end'),
+    EOA,
+  )
+  const allPaths = ['small', 'big', 'pax-name', 'long-name', 'last']
+  const skipped = [
+    `read ${FIRST} 0`,
+    `read ${FIRST} ${afterBig}`,
+    `read 2048 ${afterY}`,
+  ]
+
+  type Shared = Pick<
+    ListOptions,
+    'strict' | 'maxReadSize' | 'maxMetaEntrySize' | 'codecs'
+  > & { filter?: (path: string) => boolean }
+  type Result = {
+    found: [path: string, body?: Uint8Array][]
+    warnings: [code: string, message: string][]
+    error?: string
+  }
+  // What a consumer takes of a body: all of it, or the first part.
+  type Take = (path: string) => 'all' | 'part' | undefined
+
+  const run = async (
+    result: Result,
+    reads: string[] | undefined,
+    work: () => unknown,
+  ) => {
+    try {
+      await work()
+    } catch (er) {
+      result.error = (er as Error).message
+    }
+    return { ...result, reads }
+  }
+
+  const listAsync = (
+    source: { file: string; fs: TarFS } | { input: Uint8Array },
+    opt: Shared,
+    take: Take,
+    files?: string[],
+  ) => {
+    const result: Result = { found: [], warnings: [] }
+    return run(result, undefined, () =>
+      list(
+        {
+          ...opt,
+          ...source,
+          onwarn: (code, message) => result.warnings.push([code, message]),
+          onEntry: async entry => {
+            const t = take(entry.path)
+            const part =
+              t === 'all' ? await entry.bytes()
+              : t === 'part' ? (await entry.body.getReader().read()).value
+              : undefined
+            result.found.push(part ? [entry.path, part] : [entry.path])
+          },
+        },
+        files,
+      ),
+    )
+  }
+
+  const listFileSync = (
+    path: string,
+    fs: TarFSSync,
+    opt: Shared,
+    take: Take,
+    files?: string[],
+  ) => {
+    const result: Result = { found: [], warnings: [] }
+    return run(result, undefined, () =>
+      listSync(
+        {
+          ...opt,
+          file: path,
+          fs,
+          onwarn: (code, message) => result.warnings.push([code, message]),
+          onEntry: entry => {
+            const t = take(entry.path)
+            const part =
+              t === 'all' ? entry.bytes()
+              : t === 'part' ? entry.body.next().value
+              : undefined
+            result.found.push(part ? [entry.path, part] : [entry.path])
+          },
+        },
+        files,
+      ),
+    )
+  }
+
+  // List the data from a file, async and sync. Each must give the
+  // entries, the warnings, and the error that the data gives when it
+  // is all in memory. Returns them, and the reads of the file.
+  const both = async (
+    data: Uint8Array,
+    opt: Shared = {},
+    take: Take = () => undefined,
+    files?: string[],
+  ) => {
+    const name = opt.codecs ? 'a.tar.xor' : 'a.tar'
+    const path = resolve(testdir({ [name]: Buffer.from(data) }), name)
+    const expect = await listAsync({ input: data }, opt, take, files)
+    const a = mockFs()
+    const async = await listAsync(
+      { file: path, fs: a.mock },
+      opt,
+      take,
+      files,
+    )
+    const s = mockFsSync()
+    const sync = await listFileSync(path, s.mock, opt, take, files)
+    const reads = a.calls.filter(c => c.startsWith('read'))
+    assert.deepEqual(
+      s.calls.filter(c => c.startsWith('read')),
+      reads,
+    )
+    for (const actual of [async, sync]) {
+      assert.deepEqual(
+        actual.found.map(f => f[0]),
+        expect.found.map(f => f[0]),
+      )
+      assert.deepEqual(actual.warnings, expect.warnings)
+      assert.equal(actual.error, expect.error)
+    }
+    // The parts of the bodies have other sizes if all the data is in
+    // memory, so the two file results are compared with each other.
+    assert.equal(async.found.length, sync.found.length)
+    for (const [i, [, part]] of async.found.entries()) {
+      const other = sync.found[i]?.[1]
+      assert.equal(!part, !other)
+      if (part && other) {
+        assert.equal(Buffer.from(part).equals(other), true)
+      }
+    }
+    return { ...async, reads, paths: async.found.map(f => f[0]) }
+  }
+
+  // True if the reads are in sequence and get all the bytes from
+  // `from` to `to`.
+  const sequential = (reads: string[], to: number, from: number = 0) => {
+    let pos = from
+    for (const read of reads) {
+      const [, len, at] = read.split(' ').map(Number)
+      if (at !== pos) return false
+      pos += len as number
+    }
+    return pos === to
+  }
+
+  const same = (a: Uint8Array | undefined, b: Uint8Array) =>
+    !!a && Buffer.from(a).equals(b)
+
+  test('no body is read', async () => {
+    const { reads, paths, warnings } = await both(archive)
+    assert.deepEqual(paths, allPaths)
+    assert.deepEqual(warnings, [])
+    assert.deepEqual(reads, skipped)
+  })
+
+  test('a body that onEntry reads is complete', async () => {
+    const { reads, found } = await both(archive, {}, path =>
+      path === 'big' || path === 'pax-name' ? 'all' : undefined,
+    )
+    assert.deepEqual(
+      found.map(f => f[0]),
+      allPaths,
+    )
+    assert.equal(same(found[1]?.[1], big), true)
+    assert.equal(same(found[2]?.[1], Buffer.from('xyz')), true)
+    // Each read is two times the size of the read before it. The
+    // last of them has the first part of 'y'. The rest is skipped.
+    assert.deepEqual(reads, [
+      `read ${FIRST} 0`,
+      `read ${2 * FIRST} ${FIRST}`,
+      `read ${4 * FIRST} ${3 * FIRST}`,
+      `read ${8 * FIRST} ${7 * FIRST}`,
+      `read ${16 * FIRST} ${15 * FIRST}`,
+      `read ${32 * FIRST} ${31 * FIRST}`,
+      `read 2048 ${afterY}`,
+    ])
+  })
+
+  test('the last body that onEntry reads is complete', async () => {
+    const { reads, found } = await both(archive, {}, path =>
+      path === 'long-name' ? 'all' : undefined,
+    )
+    assert.equal(same(found[3]?.[1], y), true)
+    assert.deepEqual(reads.slice(0, 1), skipped.slice(0, 1))
+    assert.equal(
+      sequential(reads.slice(1), archive.length, afterBig),
+      true,
+    )
+  })
+
+  test('the rest of a body that onEntry reads in part is skipped', async () => {
+    const { reads, found } = await both(archive, {}, path =>
+      path === 'big' ? 'part' : undefined,
+    )
+    assert.equal(same(found[1]?.[1], big.subarray(0, FIRST - 1536)), true)
+    assert.deepEqual(reads, skipped)
+  })
+
+  test('the body of an entry that the filter refuses', async () => {
+    const { reads, paths } = await both(archive, {
+      filter: path => path !== 'big' && path !== 'long-name',
+    })
+    assert.deepEqual(paths, ['small', 'pax-name', 'last'])
+    assert.deepEqual(reads, skipped)
+  })
+
+  test('the body of an entry that the files list does not have', async () => {
+    const { reads, paths } = await both(archive, {}, undefined, [
+      'pax-name',
+      'last',
+    ])
+    assert.deepEqual(paths, ['pax-name', 'last'])
+    assert.deepEqual(reads, skipped)
+  })
+
+  test('a compressed file is read in full', async () => {
+    const data = xorCompress(archive)
+    const { reads, paths } = await both(data, { codecs: [xorCodec] })
+    assert.deepEqual(paths, allPaths)
+    assert.equal(sequential(reads, data.length), true)
+  })
+
+  test('small bodies are read in sequence', async () => {
+    const parts: Uint8Array[] = []
+    for (let i = 0; i < 400; i++) parts.push(file(`f${i}`, body(1000, i)))
+    const data = cat(...parts, EOA)
+    const { reads, found } = await both(data, {}, path =>
+      path === 'f399' ? 'all' : undefined,
+    )
+    assert.equal(found.length, 400)
+    assert.equal(same(found[399]?.[1], body(1000, 399)), true)
+    assert.deepEqual(reads, [
+      `read ${FIRST} 0`,
+      `read ${2 * FIRST} ${FIRST}`,
+      `read ${4 * FIRST} ${3 * FIRST}`,
+      `read ${data.length - 7 * FIRST} ${7 * FIRST}`,
+    ])
+  })
+
+  test('a skip is 1 MiB at least', async () => {
+    // The first read has the header and 65024 bytes of the body.
+    const less = cat(file('a', body(M + 65024 - 512, 3)), file('b'), EOA)
+    const { reads, paths } = await both(less)
+    assert.deepEqual(paths, ['a', 'b'])
+    assert.equal(sequential(reads, less.length), true)
+    const enough = cat(file('a', body(M + 65024, 3)), file('b'), EOA)
+    assert.deepEqual((await both(enough)).reads, [
+      `read ${FIRST} 0`,
+      `read 1536 ${FIRST + M}`,
+    ])
+  })
+
+  test('maxReadSize is the most bytes of one read', async () => {
+    const { reads, paths } = await both(archive, { maxReadSize: 2048 })
+    assert.deepEqual(paths, allPaths)
+    assert.deepEqual(reads, [
+      'read 2048 0',
+      `read 2048 ${afterBig}`,
+      `read 2048 ${afterBig + 2048}`,
+      `read 2048 ${afterY}`,
+    ])
+  })
+
+  describe('a truncated file', () => {
+    for (const [name, size] of [
+      ['in the first read', 1536 + 1000],
+      ['after the first read', 1536 + 2 * M + 100],
+      ['in the padding', afterBig - 100],
+      ['in the second body', afterY - 512],
+    ] as const) {
+      test(`${name}: the same warning, and no skip to the end`, async () => {
+        const data = archive.subarray(0, size)
+        const { reads, warnings } = await both(data)
+        assert.equal(warnings.length, 1)
+        assert.match(warnings[0], [
+          'TAR_BAD_ARCHIVE',
+          /^Truncated input \(needed \d+ more bytes/,
+        ])
+        // All the bytes of the body that are in the file are read.
+        if (size < afterBig) assert.equal(sequential(reads, size), true)
+        else {
+          assert.deepEqual(reads.slice(0, 1), skipped.slice(0, 1))
+          assert.equal(sequential(reads.slice(1), size, afterBig), true)
+        }
+        const strict = await both(data, { strict: true })
+        assert.match(strict.error ?? '', /Truncated input/)
+      })
+    }
+
+    test('a body that ends at the end of the file is skipped', async () => {
+      const { reads, paths, warnings } = await both(
+        archive.subarray(0, afterBig),
+      )
+      assert.deepEqual(paths, ['small', 'big'])
+      assert.deepEqual(warnings, [])
+      assert.deepEqual(reads, skipped.slice(0, 1))
+    })
+  })
+
+  test('data after the end of the archive is not read', async () => {
+    const data = cat(archive, body(M, 4))
+    const { reads, paths, warnings } = await both(data)
+    assert.deepEqual(paths, allPaths)
+    assert.deepEqual(warnings, [])
+    assert.deepEqual(reads, [
+      ...skipped.slice(0, 2),
+      `read ${FIRST} ${afterY}`,
+    ])
+  })
+
+  test('strict, and a warning after a skip', async () => {
+    const bad = file('bad')
+    bad[0] = 0x7a
+    const data = cat(file('big', big), bad, file('ok'), EOA)
+    const { reads, paths, warnings } = await both(data)
+    assert.deepEqual(paths, ['big', 'ok'])
+    assert.deepEqual(warnings, [['TAR_ENTRY_INVALID', 'checksum failure']])
+    assert.deepEqual(reads, [
+      `read ${FIRST} 0`,
+      `read 2048 ${512 + 3 * M}`,
+    ])
+    const strict = await both(data, { strict: true })
+    assert.equal(strict.error, 'TAR_ENTRY_INVALID: checksum failure')
+    assert.deepEqual(strict.paths, ['big'])
+    assert.deepEqual(
+      (await both(archive, { strict: true })).paths,
+      allPaths,
+    )
+  })
+
+  test('a PAX header is read, if it is not too large', async () => {
+    const header = pax([
+      ['comment', body(M + M / 2, 5).map(b => 0x61 + (b % 26))],
+      ['path', 'renamed'],
+    ])
+    const data = cat(header, file('f', 'body'), EOA)
+    const size = 512 + rec('path', 'renamed').length
+    assert.equal(header.length > size + M + M / 2, true)
+    const read = await both(data, { maxMetaEntrySize: 2 * M })
+    assert.deepEqual(read.paths, ['renamed'])
+    assert.equal(sequential(read.reads, data.length), true)
+    // The parser ignores a header that is too large.
+    const ignored = await both(data)
+    assert.deepEqual(ignored.paths, ['f'])
+    assert.deepEqual(ignored.reads, [
+      `read ${FIRST} 0`,
+      `read 2048 ${header.length}`,
+    ])
   })
 })
 
