@@ -7,6 +7,7 @@ import type {
   CreateFileHandle,
   CreateFS,
   CreateFSSync,
+  CreateStats,
 } from '../src/fs.js'
 import type { CreateOptions, CreateOptionsSync } from '../src/options.js'
 import { PackSync } from '../src/pack.js'
@@ -468,6 +469,102 @@ describe('a last path with no body ends the archive one time', () => {
       },
     )
   }
+})
+
+// https://github.com/isaacs/node-tar/issues/395
+describe('the same content gives the same bytes', () => {
+  // The files as a different system has them: other times and
+  // owners, and another order of the names of a directory.
+  const system = (n: number): Over => {
+    const change = <T extends CreateStats>(stat: T): T =>
+      Object.assign(stat, {
+        mtime: new Date(n * 1e11),
+        atime: new Date(n * 2e11),
+        ctime: new Date(n * 3e11),
+        uid: 1000 + n,
+        gid: 2000 + n,
+      })
+    const order = (names: string[]) =>
+      n % 2 ? names.sort() : names.sort().reverse()
+    return {
+      async: {
+        lstat: async path => change(await nodeFsPromises.lstat(path)),
+        readdir: async path => order(await nodeFsPromises.readdir(path)),
+      },
+      sync: {
+        lstatSync: path => change(nodeFs.lstatSync(path)),
+        readdirSync: path => order(nodeFs.readdirSync(path)),
+      },
+    }
+  }
+  const tree = () =>
+    testdir({
+      pkg: {
+        'a.txt': 'alpha',
+        'b.txt': 'b'.repeat(1000),
+        empty: {},
+        sub: { 'c.txt': 'c', deep: { 'd.txt': 'd' } },
+      },
+    })
+  const mtime = new Date('1985-10-26T08:15:00.000Z')
+  const sameBytes = { portable: true, mtime, codecs: zlibCodecs() }
+
+  let first: Buffer | undefined
+  each('portable and mtime', async way => {
+    const cwd = tree()
+    const one = await way.run({ ...sameBytes, cwd }, ['pkg'], system(1))
+    const two = await way.run({ ...sameBytes, cwd }, ['pkg'], system(2))
+    assert.equal(one.equals(two), true)
+    // Each way to make the archive gives these bytes, from each copy
+    // of the tree.
+    first ??= one
+    assert.equal(one.equals(first), true)
+    assert.deepEqual(paths(one), [
+      'pkg/',
+      'pkg/a.txt',
+      'pkg/b.txt',
+      'pkg/empty/',
+      'pkg/sub/',
+      'pkg/sub/c.txt',
+      'pkg/sub/deep/',
+      'pkg/sub/deep/d.txt',
+    ])
+    for (const { entry } of read(one)) {
+      assert.match(entry, {
+        uid: undefined,
+        gid: undefined,
+        uname: '',
+        atime: undefined,
+        ctime: undefined,
+        mtime: entry.type === 'Directory' ? undefined : mtime,
+      })
+    }
+
+    // The gzip header does not name the system, and the tar data in
+    // it is the same.
+    const gz1 = await way.run(
+      { ...sameBytes, cwd, gzip: true },
+      ['pkg'],
+      system(1),
+    )
+    const gz2 = await way.run(
+      { ...sameBytes, cwd, gzip: true },
+      ['pkg'],
+      system(2),
+    )
+    assert.equal(gz1[9], 255)
+    assert.equal(gz1.equals(gz2), true)
+    assert.equal(zlib.gunzipSync(gz1).equals(one), true)
+  })
+
+  each('without the options, the bytes are different', async way => {
+    const cwd = tree()
+    for (const opt of [{ portable: true }, { mtime }, {}]) {
+      const one = await way.run({ ...opt, cwd }, ['pkg'], system(1))
+      const two = await way.run({ ...opt, cwd }, ['pkg'], system(2))
+      assert.equal(one.equals(two), false)
+    }
+  })
 })
 
 describe('the archive file', () => {

@@ -798,6 +798,64 @@ await create(
 )
 ```
 
+### Reproducible archives
+
+`create()` gives the same tar bytes for the same content, on each
+system and at each time, if you do these things:
+
+- Set `portable: true`. It leaves out the data of one system: `uid`,
+  `gid`, `uname`, `gname`, `atime`, `ctime`, `dev`, `ino`, `nlink`,
+  and the `mtime` of a directory. It removes the write permission of
+  the group and of others from each mode.
+- Set `mtime` to a fixed `Date`. Each file and each link then has that
+  time, and not the time of the file on disk. Without `mtime`, the
+  bytes change when a file is written again with the same content.
+  Some programs do not accept a date before 1980.
+- Give the same paths in the same order, with the same `cwd` layout
+  and `prefix`. The names in a directory need no work: `create()`
+  writes them in sorted order on each runtime and file system.
+- Use the same version of this package.
+
+Two things come from the file system, and `portable` does not change
+them:
+
+- The mode. Windows does not keep the permission bits, so a file has
+  another mode there. To get the same bytes on each system, set
+  `entry.mode` in `onWriteEntry`.
+- Hard links. A file with more than one link is a hard link entry the
+  second time that the pack finds it. A copy of the tree without the
+  links gives other bytes.
+
+Compression has its own rules. With `portable`, the header of gzip
+data does not name the system: byte 9 is 255, "unknown". The
+compressed bytes can still differ, because they come from the zlib
+library of the runtime. A different runtime, a different version of
+zlib, or a different `level` can give other bytes for the same input.
+The tar bytes in the compressed data do not differ. To compare two
+archives, or to make a digest that must not change, use the tar bytes.
+
+```js
+import { createHash } from 'node:crypto'
+import { create } from 'tar'
+
+const options = {
+  portable: true,
+  mtime: new Date('1985-10-26T08:15:00.000Z'),
+  onWriteEntry: entry => {
+    entry.mode = entry.type === 'Directory' ? 0o755 : 0o644
+  },
+}
+const digest = async () => {
+  const hash = createHash('sha256')
+  for await (const chunk of create(options, ['src', 'package.json'])) {
+    hash.update(chunk)
+  }
+  return hash.digest('hex')
+}
+
+console.log((await digest()) === (await digest()))
+```
+
 ### `extract(options, files)`
 
 Extract the entries of an archive into the directory `cwd`. If `files`
