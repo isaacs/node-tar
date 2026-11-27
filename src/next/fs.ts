@@ -137,11 +137,11 @@ export type CreateFileHandle = {
     length: number,
     position: number,
   ): Promise<{ bytesRead: number }>
-  /** Write at the end of what the handle wrote before. */
   write(
     buffer: Uint8Array,
     offset: number,
     length: number,
+    position: number,
   ): Promise<{ bytesWritten: number }>
   stat(): Promise<{ size: number; dev: number; ino: number }>
   close(): Promise<void>
@@ -177,12 +177,12 @@ export type CreateFSSync = {
     length: number,
     position: number,
   ): number
-  /** Write at the end of what the descriptor wrote before. */
   writeSync(
     fd: number,
     buffer: Uint8Array,
     offset: number,
     length: number,
+    position: number,
   ): number
   closeSync(fd: number): void
   lstatSync(path: string): CreateStats
@@ -190,3 +190,13 @@ export type CreateFSSync = {
   readdirSync(path: string): string[]
   readlinkSync(path: string): string
 }
+
+/**
+ * The subset of `node:fs/promises` that `replace` and `update` use:
+ * `open` with the flags `'r+'`, `'w+'`, and `'r'`, the functions of a
+ * file handle, and the functions that read the files to add.
+ */
+export type ReplaceFS = CreateFS
+
+/** The subset of `node:fs` that `replaceSync` and `updateSync` use. */
+export type ReplaceFSSync = CreateFSSync

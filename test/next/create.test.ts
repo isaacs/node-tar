@@ -437,7 +437,7 @@ describe('the archive file', () => {
           return {
             read: (...a) => handle.read(...a),
             stat: () => handle.stat(),
-            write: async (buf, off, length) => {
+            write: async (buf, off, length, pos) => {
               const bytesWritten =
                 write ?
                   write(
@@ -450,7 +450,7 @@ describe('the archive file', () => {
                       ),
                     length,
                   )
-                : (await handle.write(buf, off, length)).bytesWritten
+                : (await handle.write(buf, off, length, pos)).bytesWritten
               return { bytesWritten }
             },
             close: async () => {

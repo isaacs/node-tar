@@ -2834,3 +2834,39 @@ describe('jobs option', () => {
     })
   }
 })
+
+test('a symlink waits for the entry that makes its target', async () => {
+  const cwd = testdir({})
+  const data = makeTar([
+    { path: 'a/dir', type: 'Directory', mode: 0o755 },
+    { path: 'a/link', type: 'SymbolicLink', linkpath: 'dir' },
+    { path: 'a/link/x', type: 'File', size: 1 },
+    'x',
+    '',
+    '',
+  ])
+  // The directory takes a long time to make. The link must not exist
+  // before its target, or the file that goes through the link fails.
+  const fs: ExtractFS = {
+    ...nodeFsPromises,
+    constants: nodeFs.constants,
+    mkdir: async (dir, opt) => {
+      if (String(dir).endsWith('/a/dir')) {
+        await new Promise(res => setTimeout(res, 50))
+      }
+      return nodeFsPromises.mkdir(dir, opt)
+    },
+  }
+  const warnings: string[] = []
+  await extract({
+    cwd,
+    fs,
+    input: data,
+    preservePaths: true,
+    onwarn: (_, message) => {
+      warnings.push(message)
+    },
+  })
+  assert.deepEqual(warnings, [])
+  assert.equal(nodeFs.readFileSync(cwd + '/a/dir/x', 'utf8'), 'x')
+})

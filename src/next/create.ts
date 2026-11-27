@@ -24,14 +24,74 @@ const check = (opt: { file?: string; fs?: unknown }, files: unknown[]) => {
   }
 }
 
-const write = async (
+const writeAll = async (
   handle: CreateFileHandle,
   buf: Uint8Array,
   length: number,
+  position: number,
 ) => {
   for (let off = 0; off < length; ) {
-    off += (await handle.write(buf, off, length - off)).bytesWritten
+    off += (await handle.write(buf, off, length - off, position + off))
+      .bytesWritten
   }
+}
+
+/**
+ * Write the chunks to the file, from `position`. Chunks that are
+ * smaller than 64 KiB are put together for one write.
+ */
+export const writeChunks = async (
+  handle: CreateFileHandle,
+  chunks: AsyncIterable<Uint8Array>,
+  position: number,
+): Promise<void> => {
+  const batch = new Uint8Array(BATCH)
+  let used = 0
+  const flush = async () => {
+    await writeAll(handle, batch, used, position)
+    position += used
+    used = 0
+  }
+  for await (const chunk of chunks) {
+    if (used + chunk.length > BATCH || chunk.length >= SMALL) await flush()
+    if (chunk.length >= SMALL) {
+      await writeAll(handle, chunk, chunk.length, position)
+      position += chunk.length
+    } else {
+      batch.set(chunk, used)
+      used += chunk.length
+    }
+  }
+  await flush()
+}
+
+/** The sync form of `writeChunks`. */
+export const writeChunksSync = (
+  fs: CreateFSSync,
+  fd: number,
+  chunks: Iterable<Uint8Array>,
+  position: number,
+): void => {
+  const batch = new Uint8Array(BATCH)
+  let used = 0
+  const write = (buf: Uint8Array, length: number) => {
+    for (let off = 0; off < length; ) {
+      off += fs.writeSync(fd, buf, off, length - off, position + off)
+    }
+    position += length
+  }
+  for (const chunk of chunks) {
+    if (used + chunk.length > BATCH || chunk.length >= SMALL) {
+      write(batch, used)
+      used = 0
+    }
+    if (chunk.length >= SMALL) write(chunk, chunk.length)
+    else {
+      batch.set(chunk, used)
+      used += chunk.length
+    }
+  }
+  write(batch, used)
 }
 
 const createFile = async (
@@ -43,25 +103,62 @@ const createFile = async (
   const handle = await fs.open(file, 'w', mode)
   let ok = false
   try {
-    const batch = new Uint8Array(BATCH)
-    let used = 0
-    for await (const chunk of pack) {
-      if (used + chunk.length > BATCH || chunk.length >= SMALL) {
-        await write(handle, batch, used)
-        used = 0
-      }
-      if (chunk.length >= SMALL) await write(handle, chunk, chunk.length)
-      else {
-        batch.set(chunk, used)
-        used += chunk.length
-      }
-    }
-    await write(handle, batch, used)
+    await writeChunks(handle, pack, 0)
     ok = true
   } finally {
     const closed = handle.close()
     await (ok ? closed : closed.catch(noop))
   }
+}
+
+/**
+ * Make the pack for the files of a command. A name that starts with
+ * `@` is the path of an archive: the pack gets its entries.
+ */
+export const packFiles = (
+  opt: CreateOptions,
+  files: PackInput[],
+): Pack => {
+  const { fs, strict, onwarn, codecs, platform } = opt
+  const pack = new Pack(opt)
+  for (const item of files) {
+    if (typeof item !== 'string' || item.charAt(0) !== '@') pack.add(item)
+    else {
+      const archive = pack.resolve(item.slice(1))
+      pack.add(
+        new TarReader(readFile(fs as CreateFS, archive, opt.maxReadSize), {
+          strict,
+          onwarn,
+          codecs,
+          platform,
+          file: archive,
+        }),
+      )
+    }
+  }
+  return pack.end()
+}
+
+/** The sync form of `packFiles`. */
+export const packFilesSync = (
+  opt: CreateOptionsSync,
+  files: PackInputSync[],
+): PackSync => {
+  const { strict, onwarn, codecs, platform } = opt
+  const pack = new PackSync(opt)
+  for (const item of files) {
+    if (typeof item !== 'string' || item.charAt(0) !== '@') pack.add(item)
+    else {
+      const archive = pack.resolve(item.slice(1))
+      pack.add(
+        new TarReaderSync(
+          readFileSync(opt.fs as CreateFSSync, archive, opt.maxReadSize),
+          { strict, onwarn, codecs, platform, file: archive },
+        ),
+      )
+    }
+  }
+  return pack
 }
 
 /**
@@ -91,26 +188,9 @@ export function create(
   files: PackInput[],
 ): Promise<void> | ReadableStream<Uint8Array> {
   check(opt, files)
-  const { file, fs, strict, onwarn, codecs, platform } = opt
-  const pack = new Pack(opt)
-  for (const item of files) {
-    if (typeof item !== 'string' || item.charAt(0) !== '@') pack.add(item)
-    else {
-      const archive = pack.resolve(item.slice(1))
-      pack.add(
-        new TarReader(readFile(fs as CreateFS, archive, opt.maxReadSize), {
-          strict,
-          onwarn,
-          codecs,
-          platform,
-          file: archive,
-        }),
-      )
-    }
-  }
-  pack.end()
-  return file ?
-      createFile(pack, fs as CreateFS, file, opt.mode || 0o666)
+  const pack = packFiles(opt, files)
+  return opt.file ?
+      createFile(pack, opt.fs as CreateFS, opt.file, opt.mode || 0o666)
     : toStream(pack)
 }
 
@@ -136,46 +216,13 @@ export function createSync(
   files: PackInputSync[],
 ): void | IterableIterator<Uint8Array, undefined> {
   check(opt, files)
-  const { file, strict, onwarn, codecs, platform } = opt
+  const { file } = opt
   const fs = opt.fs as CreateFSSync
-  const pack = new PackSync(opt)
-  for (const item of files) {
-    if (typeof item !== 'string' || item.charAt(0) !== '@') pack.add(item)
-    else {
-      const archive = pack.resolve(item.slice(1))
-      pack.add(
-        new TarReaderSync(readFileSync(fs, archive, opt.maxReadSize), {
-          strict,
-          onwarn,
-          codecs,
-          platform,
-          file: archive,
-        }),
-      )
-    }
-  }
+  const pack = packFilesSync(opt, files)
   if (!file) return pack
   const fd = fs.openSync(file, 'w', opt.mode || 0o666)
   try {
-    const batch = new Uint8Array(BATCH)
-    let used = 0
-    const write = (buf: Uint8Array, length: number) => {
-      for (let off = 0; off < length; ) {
-        off += fs.writeSync(fd, buf, off, length - off)
-      }
-    }
-    for (const chunk of pack) {
-      if (used + chunk.length > BATCH || chunk.length >= SMALL) {
-        write(batch, used)
-        used = 0
-      }
-      if (chunk.length >= SMALL) write(chunk, chunk.length)
-      else {
-        batch.set(chunk, used)
-        used += chunk.length
-      }
-    }
-    write(batch, used)
+    writeChunksSync(fs, fd, pack, 0)
   } catch (er) {
     try {
       fs.closeSync(fd)

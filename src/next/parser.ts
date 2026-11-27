@@ -70,6 +70,12 @@ export class Parser<E extends EntryData = EntryData> {
    * entry that is not a meta entry.
    */
   position: number = 0
+  /**
+   * The number of input bytes that are parsed: the header blocks and
+   * the body blocks. At an `entry` event, it is the place of the body
+   * of the entry in the input.
+   */
+  offset: number = 0
 
   #opt: WarnOptions
   #filter?: (path: string, entry: E) => boolean
@@ -80,8 +86,6 @@ export class Parser<E extends EntryData = EntryData> {
   // a header block that is in more than one chunk
   #block?: Uint8Array
   #blockLen: number = 0
-  // the number of input bytes that are parsed
-  #offset: number = 0
   #state: number = BEGIN
   // the entry of the body that is read or skipped now
   #entry?: E
@@ -187,7 +191,7 @@ export class Parser<E extends EntryData = EntryData> {
       const remain = this.#remain
       const len = n < remain ? n : remain
       this.#pos = pos + n
-      this.#offset += n
+      this.offset += n
       this.#blockRemain = blockRemain - n
       this.#remain = remain - len
       const last = n === blockRemain
@@ -222,7 +226,7 @@ export class Parser<E extends EntryData = EntryData> {
   #endBody() {
     const entry = this.#entry
     if (entry) {
-      this.position = this.#offset
+      this.position = this.offset
       this.#entry = undefined
     }
     if (!entry?.invalid) this.#sawValid = true
@@ -265,7 +269,7 @@ export class Parser<E extends EntryData = EntryData> {
   }
 
   #consumeHeader(buf: Uint8Array, off: number): ParseEvent<E> | undefined {
-    this.#offset += 512
+    this.offset += 512
     if (this.#sawValid === undefined) this.#sawValid = false
     let header: Header
     try {
@@ -355,7 +359,7 @@ export class Parser<E extends EntryData = EntryData> {
       this.#state = entry.ignore ? IGNORE : BODY
     } else {
       this.#state = HEADER
-      this.position = this.#offset
+      this.position = this.offset
       this.#entryEnd = !entry.ignore
     }
     return { type: 'entry', entry }

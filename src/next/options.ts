@@ -2,7 +2,13 @@ import type { Codec } from './codec.js'
 import type { EntryData, ReadEntry, ReadEntrySync } from './read-entry.js'
 import type { ExtractFS, ExtractFSSync, TarFS, TarFSSync } from './fs.js'
 import type { WarnOptions } from './warn.js'
-import type { CreateFS, CreateFSSync, CreateStats } from './fs.js'
+import type {
+  CreateFS,
+  CreateFSSync,
+  CreateStats,
+  ReplaceFS,
+  ReplaceFSSync,
+} from './fs.js'
 import type { WriteEntry } from './write-entry.js'
 
 /** The options of a `Parser`. */
@@ -312,4 +318,30 @@ export type CreateOptions = PackOptions & {
 export type CreateOptionsSync = PackOptionsSync & {
   /** The mode of the archive file. Default 0o666. */
   mode?: number
+}
+
+/** The options of `replace` and `update`. */
+export type ReplaceOptions = CreateOptions & {
+  /** The path of the archive file. It is made if it does not exist. */
+  file: string
+  fs: ReplaceFS
+  /**
+   * Gets the path and the `mtime` of each entry that the archive
+   * has. `update` adds a path only if it is not older than the
+   * `mtime` here.
+   */
+  mtimeCache?: Map<string, Date>
+}
+
+/** The options of `replaceSync` and `updateSync`. */
+export type ReplaceOptionsSync = CreateOptionsSync & {
+  /** The path of the archive file. It is made if it does not exist. */
+  file: string
+  fs: ReplaceFSSync
+  /**
+   * Gets the path and the `mtime` of each entry that the archive
+   * has. `updateSync` adds a path only if it is not older than the
+   * `mtime` here.
+   */
+  mtimeCache?: Map<string, Date>
 }

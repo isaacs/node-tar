@@ -387,9 +387,23 @@ export class UnpackBase<
     return true
   }
 
-  /** The paths that the entry must have for itself while it is made. */
+  /**
+   * The paths that the entry must have for itself while it is made.
+   * A link also reserves its target, so that an entry that makes the
+   * target, and an entry that goes through the link, do not run at
+   * the same time as the link.
+   */
   reservedPaths(entry: E): string[] {
-    return entry.linkpath ? [entry.path, entry.linkpath] : [entry.path]
+    const { path, linkpath } = entry
+    if (!linkpath) return [path]
+    // The target of a symlink is relative to the directory of the
+    // link. The target of a hard link is relative to the cwd.
+    return [
+      path,
+      entry.type === 'SymbolicLink' && !isAbsolute(linkpath) ?
+        join(dirname(path), linkpath)
+      : linkpath,
+    ]
   }
 
   /** The options to make a directory with a mode. */
