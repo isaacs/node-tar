@@ -1708,6 +1708,48 @@ In `create()`:
 If this package does not do what this section says, report it with the
 GitHub Security Advisories system of the repository.
 
+## Benchmarks
+
+`scripts/benchmark/index.js` compares the current build with
+`tar@7.5.24`. Each time is the median of 15 rounds, in milliseconds.
+The ratio is the version 8 time divided by the 7.5.24 time. A ratio
+below 1 means that version 8 is faster.
+
+- `small` is 2000 files of 0.5 KiB to 6.8 KiB in 200 directories.
+- `large` is 4 files of 16 MiB each.
+
+| Case                      |  7.5.24 |   8.0.2 | Ratio |
+| ------------------------- | ------: | ------: | ----: |
+| small: create async       |   83.87 |   71.82 | 0.856 |
+| small: create sync        |   87.41 |   62.33 | 0.713 |
+| small: create gzip async  |  349.58 |  349.55 | 1.000 |
+| small: list async         |   12.07 |    4.96 | 0.411 |
+| small: list sync          |   11.65 |    4.75 | 0.408 |
+| small: list gzip async    |   29.41 |   18.90 | 0.643 |
+| small: parse in memory    |   10.45 |    4.10 | 0.392 |
+| small: extract async      |  225.35 |  182.13 | 0.808 |
+| small: extract sync       |  257.27 |  268.32 | 1.043 |
+| small: extract gzip async |  270.45 |  202.89 | 0.750 |
+| large: create async       |   23.11 |   24.93 | 1.079 |
+| large: create sync        |   19.27 |   18.29 | 0.949 |
+| large: create gzip async  | 2622.90 | 2625.00 | 1.001 |
+| large: list async         |    8.73 |    0.77 | 0.088 |
+| large: list sync          |    6.05 |    0.17 | 0.028 |
+| large: list gzip async    |  164.80 |  156.38 | 0.949 |
+| large: parse in memory    |    0.13 |    0.10 | 0.754 |
+| large: extract async      |   13.62 |   12.70 | 0.932 |
+| large: extract sync       |   16.59 |   14.30 | 0.862 |
+| large: extract gzip async |  225.99 |  164.18 | 0.726 |
+
+These times are from Node.js 26.5.0 on an Apple M3 Max with macOS.
+A difference of a few percent is not reliable. To get the times for
+your machine, build the package and run the script:
+
+```
+npm run prepare
+node scripts/benchmark/index.js --rounds=15
+```
+
 ## Migration from version 7
 
 Version 8 is a new API. The commands have the same names and most of
