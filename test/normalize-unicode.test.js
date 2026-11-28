@@ -58,3 +58,11 @@ test('more strings than the cache holds', () => {
   // A string that the cache dropped still gets the same result.
   assert.equal(normalizeUnicode('cafe\u0301 0'), 'CAFE\u0301 0')
 })
+
+// A long path is not kept in the cache. GHSA-7c32-79xj-j3jp.
+test('a long string', () => {
+  const long1 = (cafe1 + '/').repeat(100)
+  const long2 = (cafe2 + '/').repeat(100)
+  assert.equal(normalizeUnicode(long1), normalizeUnicode(long2))
+  assert.equal(normalizeUnicode(long1), 'CAFÉ/'.repeat(100))
+})

@@ -175,6 +175,11 @@ A new API. See "Migration from version 7" in the README.
 
 ### Bug fixes
 
+- An async extraction keeps one object for each part of a path, in
+  place of one string for each parent path. A path with many parts
+  and many characters used about 17 MB for each entry. The Unicode
+  cache no longer keeps a path of more than 256 characters.
+  (GHSA-7c32-79xj-j3jp)
 - A `size` in a global PAX header is ignored, as in bsdtar. It set
   the size of each later file entry.
 - `extract()` checks the parent directories of an entry again after

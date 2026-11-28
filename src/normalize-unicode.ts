@@ -7,7 +7,16 @@ const normalizeCache: Record<string, string> = Object.create(null)
 // Limit the size of this. Very low-sophistication LRU cache
 const MAX = 10000
 const cache = new Set<string>()
+// A longer string is not cached. Long paths do not repeat, and the
+// cache would keep them for the life of the process.
+const MAX_LENGTH = 256
 export const normalizeUnicode = (s: string): string => {
+  if (s.length > MAX_LENGTH) {
+    return s
+      .normalize('NFD')
+      .toLocaleLowerCase('en')
+      .toLocaleUpperCase('en')
+  }
   if (!cache.has(s)) {
     // shake out identical accents and ligatures
     normalizeCache[s] = s

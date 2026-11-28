@@ -8,17 +8,17 @@ import { join } from './path.js'
 
 type Handler = () => void
 type Queue = (Handler | Set<Handler>)[]
-type Reservation = { paths: string[]; dirs: Set<string> }
-
-// The parent directories of a normalized path.
-// '/a/b/c' gives ['/', '/a', '/a/b'].
-const getDirs = (path: string) => {
-  const dirs: string[] = []
-  for (let i = path.indexOf('/'); i !== -1; i = path.indexOf('/', i + 1)) {
-    dirs.push(path.slice(0, i) || '/')
-  }
-  return dirs
+// One part of a path. `queue` has the tasks that wait for the path,
+// in order. A function has the path for itself. A Set of functions
+// shares the path as a parent directory. So a path uses memory for
+// its own parts only, and not for each of its parent paths.
+type Node = {
+  queue: Queue
+  name: string
+  up?: Node
+  kids?: Map<string, Node>
 }
+type Reservation = { paths: Set<Node>; dirs: Set<Node> }
 
 /**
  * Gives each task the exclusive use of its paths, and the shared use
@@ -30,10 +30,7 @@ const getDirs = (path: string) => {
  * path, because they can be the same file on disk.
  */
 export class PathReservations {
-  // For each path: the tasks that wait for it, in order. A function
-  // has the path for itself. A Set of functions shares the path as a
-  // parent directory.
-  #queues = new Map<string, Queue>()
+  #root: Node = { queue: [], name: '' }
   #reservations = new Map<Handler, Reservation>()
   #running = new Set<Handler>()
   #win32: boolean
@@ -66,33 +63,37 @@ export class PathReservations {
     })
   }
 
-  #add(paths: string[], fn: Handler) {
-    paths =
-      this.#win32 ?
-        ['win32 parallelization disabled']
-      : [
-          ...new Set(
-            paths.map(p =>
-              stripTrailingSlashes(join(normalizeUnicode(p))),
-            ),
-          ),
-        ]
-    const dirs = new Set<string>(paths.flatMap(getDirs))
+  #add(names: string[], fn: Handler) {
+    const root = this.#root
+    const paths = new Set<Node>()
+    const dirs = new Set<Node>()
+    for (const name of this.#win32 ?
+      ['win32 parallelization disabled']
+    : names) {
+      const path =
+        this.#win32 ? name : (
+          stripTrailingSlashes(join(normalizeUnicode(name)))
+        )
+      let node = root
+      for (const part of path.split('/')) {
+        if (node !== root) dirs.add(node)
+        const kids = (node.kids ??= new Map<string, Node>())
+        let kid = kids.get(part)
+        if (!kid)
+          kids.set(part, (kid = { queue: [], name: part, up: node }))
+        node = kid
+      }
+      paths.add(node)
+    }
     // A path of the task is exclusive, so it also covers the use of
     // that path as a parent directory of another path.
     for (const p of paths) dirs.delete(p)
     this.#reservations.set(fn, { dirs, paths })
-    for (const p of paths) {
-      const q = this.#queues.get(p)
-      if (!q) this.#queues.set(p, [fn])
-      else q.push(fn)
-    }
-    for (const dir of dirs) {
-      const q = this.#queues.get(dir)
-      const last = q?.[q.length - 1]
-      if (!q) this.#queues.set(dir, [new Set([fn])])
-      else if (last instanceof Set) last.add(fn)
-      else q.push(new Set([fn]))
+    for (const p of paths) p.queue.push(fn)
+    for (const { queue } of dirs) {
+      const last = queue[queue.length - 1]
+      if (last instanceof Set) last.add(fn)
+      else queue.push(new Set([fn]))
     }
     this.#run(fn)
   }
@@ -103,10 +104,10 @@ export class PathReservations {
   #run(fn: Handler) {
     const { paths, dirs } = this.#reservations.get(fn) as Reservation
     for (const p of paths) {
-      if (this.#queues.get(p)?.[0] !== fn) return
+      if (p.queue[0] !== fn) return
     }
-    for (const dir of dirs) {
-      const first = this.#queues.get(dir)?.[0]
+    for (const { queue } of dirs) {
+      const first = queue[0]
       if (!(first instanceof Set) || !first.has(fn)) return
     }
     this.#running.add(fn)
@@ -116,28 +117,29 @@ export class PathReservations {
   #clear(fn: Handler) {
     const { paths, dirs } = this.#reservations.get(fn) as Reservation
     const next = new Set<Handler>()
-    for (const path of paths) {
+    for (const { queue } of paths) {
       // A running task is first in the queue of each of its paths.
-      const q = this.#queues.get(path) as Queue
-      const after = q[1]
-      if (!after) {
-        this.#queues.delete(path)
-        continue
-      }
-      q.shift()
+      queue.shift()
+      const after = queue[0]
       if (typeof after === 'function') next.add(after)
-      else for (const f of after) next.add(f)
+      else if (after) for (const f of after) next.add(f)
     }
-    for (const dir of dirs) {
+    for (const { queue } of dirs) {
       // A running task is in the first set of each of its directories.
-      const q = this.#queues.get(dir) as Queue
-      const first = q[0] as Set<Handler>
+      const first = queue[0] as Set<Handler>
       if (first.size > 1) first.delete(fn)
-      else if (q.length === 1) this.#queues.delete(dir)
       else {
-        q.shift()
+        queue.shift()
         // Two sets in a row would be one set, so this is a function.
-        next.add(q[0] as Handler)
+        if (queue.length) next.add(queue[0] as Handler)
+      }
+    }
+    // Remove each node that no task uses. Each directory of the task
+    // is above one of its paths.
+    for (let node of paths) {
+      while (node.up && !node.queue.length && !node.kids?.size) {
+        node.up.kids?.delete(node.name)
+        node = node.up
       }
     }
     this.#running.delete(fn)

@@ -232,3 +232,40 @@ test('a reservation is released when its work is done', async () => {
   })
   assert.deepEqual(order, [1])
 })
+
+test('the root waits for a task below it, and the reverse', async () => {
+  const { log, task } = tasks()
+  const r = new PathReservations()
+  await Promise.all([
+    r.reserve(['/a/b'], task('below')),
+    r.reserve(['/'], task('root')),
+    r.reserve(['/c'], task('after')),
+  ])
+  assert.deepEqual(log, [
+    'below start',
+    'below end',
+    'root start',
+    'root end',
+    'after start',
+    'after end',
+  ])
+})
+
+// A path uses memory for its own parts, and not for each of its
+// parent paths. GHSA-7c32-79xj-j3jp.
+test('long paths with many parts use little memory', async () => {
+  const path = (i: number) =>
+    Array.from({ length: 1024 }, () => `${i}`.padEnd(31, 'b')).join('/')
+  const r = new PathReservations()
+  let open!: () => void
+  const gate = new Promise<void>(res => (open = res))
+  const before = process.memoryUsage().heapUsed
+  const all: Promise<void>[] = []
+  for (let i = 0; i < 16; i++) all.push(r.reserve([path(i)], () => gate))
+  const used = process.memoryUsage().heapUsed - before
+  open()
+  await Promise.all(all)
+  // 16 paths of 32 KiB. A string for each parent path of each one
+  // would be more than 250 MiB.
+  assert(used < 64 * 1024 * 1024, `${used} bytes`)
+})
