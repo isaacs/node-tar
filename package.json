@@ -2,7 +2,7 @@
   "author": "Isaac Z. Schlueter",
   "name": "tar",
   "description": "tar for JavaScript",
-  "version": "8.0.0",
+  "version": "8.0.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/isaacs/node-tar.git"
