@@ -962,6 +962,43 @@ describe('pending PAX fields apply to the next file entry only', () => {
       { path: 'l', linkpath: 'safe' },
     ])
   })
+  // bsdtar does the same.
+  test('a global size is ignored', () => {
+    const hidden = hdr({ path: 'hidden.txt', type: 'File' })
+    const zero = parse([
+      pax([['size', '0']], true),
+      file('carrier.txt', hidden),
+      file('after.txt', 'after'),
+      EOA,
+    ])
+    assert.match(zero.entries, [
+      { path: 'carrier.txt', size: 512, globalExtended: { size: 0 } },
+      { path: 'after.txt', size: 5 },
+    ])
+    assert.equal(zero.entries.length, 2)
+
+    const large = parse([
+      pax([['size', '512']], true),
+      file('empty.txt'),
+      file('after.txt', 'after'),
+      EOA,
+    ])
+    assert.match(large.entries, [
+      { path: 'empty.txt', size: 0 },
+      { path: 'after.txt', size: 5 },
+    ])
+
+    // The size of a local header is used.
+    const local = parse([
+      pax([['size', '0']], true),
+      pax([['size', '512']]),
+      hdr({ path: 'carrier.txt', type: 'File', size: 0 }),
+      hidden,
+      EOA,
+    ])
+    assert.match(local.entries, [{ path: 'carrier.txt', size: 512 }])
+    assert.equal(local.entries.length, 1)
+  })
 })
 
 describe('PAX records are framed by their length', () => {

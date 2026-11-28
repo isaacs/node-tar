@@ -117,9 +117,8 @@ export class Header implements HeaderData {
       exForFields?.gid ?? gexForFields?.gid ?? decNumber(buf, off + 116, 8)
 
     this.size = notNegative(
-      exForFields?.size ??
-        gexForFields?.size ??
-        decNumber(buf, off + 124, 12),
+      // A global header does not set a size.
+      exForFields?.size ?? decNumber(buf, off + 124, 12),
     )
     this.mtime =
       exForFields?.mtime ??
@@ -205,13 +204,13 @@ export class Header implements HeaderData {
       this,
       Object.fromEntries(
         Object.entries(ex).filter(([k, v]) => {
-          // we slurp in everything except for the path attribute in
-          // a global extended header, because that's weird. Also, any
-          // null/undefined values are ignored.
+          // A global extended header does not set a path, a
+          // linkpath, or a size. Also, any null/undefined values are
+          // ignored.
           return !(
             v === null ||
             v === undefined ||
-            (k === 'size' && Number(v) < 0) ||
+            (k === 'size' && (gex || Number(v) < 0)) ||
             (k === 'path' && gex) ||
             (k === 'linkpath' && gex) ||
             k === 'global'

@@ -175,6 +175,8 @@ A new API. See "Migration from version 7" in the README.
 
 ### Bug fixes
 
+- A `size` in a global PAX header is ignored, as in bsdtar. It set
+  the size of each later file entry.
 - `extract()` checks the parent directories of an entry again after
   it makes the entry. If another process replaced one of them with a
   symbolic link, the entry is a `TAR_ENTRY_ERROR` warning, and no
