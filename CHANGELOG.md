@@ -73,6 +73,9 @@ A new API. See "Migration from version 7" in the README.
 
 ### New features
 
+- `delete()` and `deleteSync()` remove entries from an archive file:
+  the paths in a list, the entries that a `filter` accepts, or both.
+  The archive keeps its compression.
 - Add the `tar/core` entry point, the runtime-neutral core. It runs
   in a browser, a worker, or another runtime with web streams. It
   uses no `node:` module, and it needs the `fs` and `cwd` options

@@ -37,7 +37,7 @@ type Source = Partial<Skip> & {
 type SourceSync = Iterator<Uint8Array, unknown> & Partial<Skip>
 
 // The number of bytes to read before the choice of a codec.
-const headLength = (codecs: Codec[]) =>
+export const headLength = (codecs: Codec[]) =>
   Math.max(512, ...codecs.map(c => c.headLength))
 
 const isTar = (head: Uint8Array) => {
@@ -49,7 +49,7 @@ const isTar = (head: Uint8Array) => {
   }
 }
 
-const findCodec = (
+export const findCodec = (
   codecs: Codec[],
   head: Uint8Array,
   file: string = '',

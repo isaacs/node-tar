@@ -8,6 +8,7 @@ export { Pax } from './pax.js'
 export * as types from './types.js'
 export { gzip, type Codec, type CodecStream } from './codec.js'
 export { create, create as c } from './create.js'
+export { delete } from './delete.js'
 export { CwdError } from './cwd-error.js'
 export { aliases } from './dealias.js'
 export type {

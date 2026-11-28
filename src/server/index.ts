@@ -12,6 +12,7 @@ import type { BrotliOptions, ZlibOptions, ZstdOptions } from 'node:zlib'
 import type { Codec } from '../codec.js'
 import * as core from '../index.js'
 import { createSync as coreCreateSync } from '../create.js'
+import { deleteSync as coreDeleteSync } from '../delete.js'
 import {
   dealias,
   type FileOption,
@@ -34,9 +35,12 @@ export { ReadEntrySync } from '../read-entry.js'
 export { UnpackSync } from '../unpack.js'
 export { zlibCodecs, codecStream, type ZlibModule } from './codecs.js'
 
-const fs: core.TarFS & core.ExtractFS & core.ReplaceFS = nodeFsPromises
-const fsSync: core.TarFSSync & core.ExtractFSSync & core.ReplaceFSSync =
-  nodeFs
+const fs: core.TarFS & core.ExtractFS & core.ReplaceFS & core.DeleteFS =
+  nodeFsPromises
+const fsSync: core.TarFSSync &
+  core.ExtractFSSync &
+  core.ReplaceFSSync &
+  core.DeleteFSSync = nodeFs
 const platform = process.platform === 'win32' ? 'win32' : 'posix'
 const codecs = zlibCodecs()
 
@@ -85,6 +89,10 @@ export type CreateOptionsSync = Packing<core.CreateOptionsSync>
 export type ReplaceOptions = Packing<core.ReplaceOptions>
 /** The options of `replaceSync` and `updateSync`. */
 export type ReplaceOptionsSync = Packing<core.ReplaceOptionsSync>
+/** The options of `delete`. */
+export type DeleteOptions = Loose<core.DeleteOptions>
+/** The options of `deleteSync`. */
+export type DeleteOptionsSync = Loose<core.DeleteOptionsSync>
 
 // The options that get a default.
 type Defaults = {
@@ -248,4 +256,21 @@ export const updateSync = (
   files: PackInputSync[],
 ): void => coreUpdateSync(fill(opt, fsSync, true), files)
 
+/**
+ * Remove entries from an archive file: each entry that `files` lists,
+ * and each entry in a directory that it lists. With `opt.filter`,
+ * only if the filter also returns true.
+ */
+const del = (
+  opt: WithAliases<DeleteOptions>,
+  files?: string[],
+): Promise<void> => core.delete(fill(opt, fs, false), files)
+
+/** The sync form of `delete`. */
+export const deleteSync = (
+  opt: WithAliases<DeleteOptionsSync>,
+  files?: string[],
+): void => coreDeleteSync(fill(opt, fsSync, false), files)
+
+export { del as delete }
 export { create as c, extract as x, list as t, replace as r, update as u }

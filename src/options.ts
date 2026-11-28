@@ -6,6 +6,8 @@ import type {
   CreateFS,
   CreateFSSync,
   CreateStats,
+  DeleteFS,
+  DeleteFSSync,
   ReplaceFS,
   ReplaceFSSync,
 } from './fs.js'
@@ -400,4 +402,38 @@ export type ReplaceOptionsSync = CreateOptionsSync & {
    * `mtime` here.
    */
   mtimeCache?: Map<string, Date>
+}
+
+/** The options of `delete`. */
+export type DeleteOptions = Omit<ReadOptions, 'filter'> & {
+  /** The path of the archive file. */
+  file: string
+  fs: DeleteFS
+  /**
+   * Return true to remove the entry. With a list of paths, an entry
+   * is removed only if the list also has it.
+   */
+  filter?: (path: string, entry: ReadEntry) => boolean
+  /**
+   * The most bytes to read from the file at one time. Default, and
+   * with 0, 16 MiB. A positive integer, or `Infinity`.
+   */
+  maxReadSize?: number
+}
+
+/** The options of `deleteSync`. */
+export type DeleteOptionsSync = Omit<ReadOptionsSync, 'filter'> & {
+  /** The path of the archive file. */
+  file: string
+  fs: DeleteFSSync
+  /**
+   * Return true to remove the entry. With a list of paths, an entry
+   * is removed only if the list also has it.
+   */
+  filter?: (path: string, entry: ReadEntrySync) => boolean
+  /**
+   * The most bytes to read from the file at one time. Default, and
+   * with 0, 16 MiB. A positive integer, or `Infinity`.
+   */
+  maxReadSize?: number
 }

@@ -137,6 +137,7 @@ import {
   createSync,
   extractSync,
   listSync,
+  deleteSync,
   replaceSync,
   updateSync,
 } from 'tar'
@@ -144,6 +145,7 @@ import {
 createSync({ file: 'demo.tar' }, ['src'])
 replaceSync({ file: 'demo.tar' }, ['package.json'])
 updateSync({ file: 'demo.tar' }, ['README.md'])
+deleteSync({ file: 'demo.tar' }, ['package.json'])
 listSync({
   file: 'demo.tar',
   onEntry: entry => console.log(entry.path),
@@ -266,9 +268,10 @@ has the signature of the function of the same name in
 | `ExtractFS` | `extract()`                                                     | `open`, `stat`, `lstat`, `mkdir`, `chmod`, `chown`, `lchown`, `utimes`, `lutimes`, `rmdir`, `unlink`, `rename`, `link`, `symlink`. The handle has `write`, `utimes`, `chown`, and `close`. `constants` is optional. |
 | `CreateFS`  | `create()`                                                      | `open`, `lstat`, `stat`, `readdir`, `readlink`. The handle has `read`, `write`, `stat`, and `close`. `lstat` and `stat` can get the option `{ bigint: true }`.                                                      |
 | `ReplaceFS` | `replace()`, `update()`                                         | The same as `CreateFS`. `open` gets the flags `'r+'`, `'w+'`, and `'r'`.                                                                                                                                            |
+| `DeleteFS`  | `delete()`                                                      | `TarFS` and `CreateFS`, and `rename` and `unlink`.                                                                                                                                                                  |
 
-The sync types are `TarFSSync`, `ExtractFSSync`, `CreateFSSync`, and
-`ReplaceFSSync`. They have the functions of `node:fs` that work on a
+The sync types are `TarFSSync`, `ExtractFSSync`, `CreateFSSync`,
+`ReplaceFSSync`, and `DeleteFSSync`. They have the functions of `node:fs` that work on a
 file descriptor: `openSync`, `fstatSync`, `readSync`, `writeSync`,
 `futimesSync`, `fchownSync`, `closeSync`, and the sync forms of the
 path functions above.
@@ -653,48 +656,28 @@ await create(
 
 ### Remove an entry from an archive
 
-There is no command that removes an entry in place. Write a new
-archive from the old one with a `filter`, and then put the new file
-in the place of the old file. The operand `@old.tar` adds the entries
-of that archive.
+`delete()` removes entries from an archive file. `delete` is a
+reserved word, so import it with a different name, or call it as a
+property.
 
 ```js
-import { rename } from 'node:fs/promises'
-import { create } from 'tar'
+import * as tar from 'tar'
+import { delete as del, deleteSync } from 'tar'
 
-// Remove each entry for which `remove(path, entry)` returns true.
-const removeEntries = async (file, remove) => {
-  const tmp = file + '.tmp'
-  await create(
-    { file: tmp, filter: (path, entry) => !remove(path, entry) },
-    ['@' + file],
-  )
-  await rename(tmp, file)
-}
-
-await removeEntries('archive.tar', path => path === 'README.md')
+await tar.delete({ file: 'archive.tar' }, ['README.md'])
 // A directory, and all that is in it.
-await removeEntries(
-  'archive.tar',
-  path => path === 'src/lib' || path.startsWith('src/lib/'),
-)
+await del({ file: 'archive.tar' }, ['src/lib'])
+// Each entry for which the filter returns true.
+deleteSync({
+  file: 'archive.tar',
+  filter: path => path.endsWith('.map'),
+})
 ```
-
-Notes:
-
-- The entries that stay have the same content, the same order, and
-  the same fields. The headers are written again, so their bytes can
-  differ: for example, a GNU long name header becomes a PAX header
-  with the same path.
-- The reader finds the compression of the old archive. The new
-  archive is not compressed unless you set an option such as
-  `gzip: true`.
-- The disk must have space for the two files until the `rename()`.
 
 ## Commands
 
 Each command is `command(options, files)`. The aliases `c`, `x`, `t`,
-`r`, and `u` are also exported.
+`r`, and `u` are also exported. `delete()` has no alias.
 
 These options are common to each command:
 
@@ -1071,6 +1054,40 @@ Options:
   each entry that the archive has.
 - All the options of `create()`, but not `gzip`, `brotli`, `zstd`, or
   `compress`.
+
+### `delete(options, files)`
+
+Remove entries from an archive file. An entry is removed if `files`
+has its path, or the path of one of its parent directories. Each
+entry with that path is removed. The result is a `Promise<void>`.
+
+The command writes the entries that stay to a new file next to the
+archive, and then renames the new file to the path of the archive.
+If the command fails, the archive does not change.
+
+Options:
+
+- `file` The path of the archive. Required.
+- `filter` A function `(path, entry)`. Return true to remove the
+  entry. With `files`, an entry is removed only if `files` matches it
+  and the filter returns true. With no `files`, the filter is
+  required.
+- `codecs`, `maxDecompressionRatio`, `maxReadSize`, and the other
+  options of `entries()`.
+
+Notes:
+
+- A path in `files` that no entry matches is a `TAR_ENTRY_ERROR`
+  warning, `<path>: not found in archive`. With `strict`, it is an
+  error, and the archive does not change.
+- The entries that stay have the same content, the same order, and
+  the same fields. The headers are written again, so their bytes can
+  differ: for example, a GNU long name header becomes a PAX header
+  with the same path.
+- The new file has the compression of the archive, with the default
+  options of the codec, and the permission bits of the archive.
+- The disk must have space for the two files until the rename. A
+  hard link to the old archive file keeps the old content.
 
 ### `update(options, files)`
 
@@ -1694,30 +1711,30 @@ in version 7, and it has the same file system defaults. `tar/core` is
 new. It is for browsers and for each runtime that does not have the
 `node:` modules.
 
-| Version 7                                                                                                                                                                                                                                            | Version 8                                                                                                                                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Node.js 18 or later                                                                                                                                                                                                                                  | Node.js 22 or later. `tar/core` also runs in a browser.                                                                                                                                                                                              |
-| `import { x } from 'tar'`                                                                                                                                                                                                                            | `import { x } from 'tar'`. The same entry point, with the same file system defaults. `tar/core` is a new entry point with no `node:` module.                                                                                                         |
-| `tar.x(options, files, callback)`                                                                                                                                                                                                                    | No callbacks. `await extract(options, files)`.                                                                                                                                                                                                       |
-| `sync: true`                                                                                                                                                                                                                                         | `createSync`, `extractSync`, `listSync`, `replaceSync`, `updateSync`.                                                                                                                                                                                |
-| `tar.c({}, files)` returns a Node.js stream                                                                                                                                                                                                          | `create({}, files)` returns a web `ReadableStream`. `createSync()` returns an iterator of chunks.                                                                                                                                                    |
-| `stream.pipe(tar.x({ cwd }))`, `stream.pipe(tar.t())`                                                                                                                                                                                                | `extract({ input: stream, cwd })`, `list({ input: stream })`. The input is a web stream, an iterable of chunks, a `Blob`, or bytes. A Node.js `Readable` is an async iterable of chunks.                                                             |
-| `onReadEntry`, `onentry`                                                                                                                                                                                                                             | `onEntry`. The old names are aliases of it. A promise is awaited.                                                                                                                                                                                    |
-| `entry.on('data', ...)`, `entry.resume()`                                                                                                                                                                                                            | `entry.body`, `bytes()`, `arrayBuffer()`, `text()`, `blob()`. You do not have to read or drain a body.                                                                                                                                               |
-| `new Parser()` and `'entry'` events                                                                                                                                                                                                                  | `for await (const entry of entries(input))`                                                                                                                                                                                                          |
-| `Buffer`                                                                                                                                                                                                                                             | `Uint8Array`. `Header#block` and the result of `Pax#encode()` are a `Uint8Array`.                                                                                                                                                                    |
-| Option aliases: `C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`, `L`, `h`, `strip-components`, `stripComponents`, `keep-newer`, `keepNewer`, `keep-newer-files`, `keepNewerFiles`, `keep-existing`, `keepExisting`, `no-mtime`                                | The same aliases, in the commands. See [Option aliases](#option-aliases).                                                                                                                                                                            |
-| `noChmod`                                                                                                                                                                                                                                            | `chmod`. `noChmod: false` is `chmod: true`, if `chmod` is not set.                                                                                                                                                                                   |
-| `noResume`, `ondone`, `dirCache`, `linkCache`, `readdirCache`, `statCache`                                                                                                                                                                           | Removed.                                                                                                                                                                                                                                             |
+| Version 7                                                                                                                                                                                                                                            | Version 8                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node.js 18 or later                                                                                                                                                                                                                                  | Node.js 22 or later. `tar/core` also runs in a browser.                                                                                                                                                                                               |
+| `import { x } from 'tar'`                                                                                                                                                                                                                            | `import { x } from 'tar'`. The same entry point, with the same file system defaults. `tar/core` is a new entry point with no `node:` module.                                                                                                          |
+| `tar.x(options, files, callback)`                                                                                                                                                                                                                    | No callbacks. `await extract(options, files)`.                                                                                                                                                                                                        |
+| `sync: true`                                                                                                                                                                                                                                         | `createSync`, `extractSync`, `listSync`, `replaceSync`, `updateSync`.                                                                                                                                                                                 |
+| `tar.c({}, files)` returns a Node.js stream                                                                                                                                                                                                          | `create({}, files)` returns a web `ReadableStream`. `createSync()` returns an iterator of chunks.                                                                                                                                                     |
+| `stream.pipe(tar.x({ cwd }))`, `stream.pipe(tar.t())`                                                                                                                                                                                                | `extract({ input: stream, cwd })`, `list({ input: stream })`. The input is a web stream, an iterable of chunks, a `Blob`, or bytes. A Node.js `Readable` is an async iterable of chunks.                                                              |
+| `onReadEntry`, `onentry`                                                                                                                                                                                                                             | `onEntry`. The old names are aliases of it. A promise is awaited.                                                                                                                                                                                     |
+| `entry.on('data', ...)`, `entry.resume()`                                                                                                                                                                                                            | `entry.body`, `bytes()`, `arrayBuffer()`, `text()`, `blob()`. You do not have to read or drain a body.                                                                                                                                                |
+| `new Parser()` and `'entry'` events                                                                                                                                                                                                                  | `for await (const entry of entries(input))`                                                                                                                                                                                                           |
+| `Buffer`                                                                                                                                                                                                                                             | `Uint8Array`. `Header#block` and the result of `Pax#encode()` are a `Uint8Array`.                                                                                                                                                                     |
+| Option aliases: `C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`, `L`, `h`, `strip-components`, `stripComponents`, `keep-newer`, `keepNewer`, `keep-newer-files`, `keepNewerFiles`, `keep-existing`, `keepExisting`, `no-mtime`                                | The same aliases, in the commands. See [Option aliases](#option-aliases).                                                                                                                                                                             |
+| `noChmod`                                                                                                                                                                                                                                            | `chmod`. `noChmod: false` is `chmod: true`, if `chmod` is not set.                                                                                                                                                                                    |
+| `noResume`, `ondone`, `dirCache`, `linkCache`, `readdirCache`, `statCache`                                                                                                                                                                           | Removed.                                                                                                                                                                                                                                              |
 | `transform` returns a Node.js stream                                                                                                                                                                                                                 | `transform` returns a `TransformStream`, or an object with a `readable` and a `writable` web stream. For a Node.js `Transform` stream, return `codecStream(stream)`. In `extractSync()`, it returns a function that gets a chunk and returns a chunk. |
-| In strict mode, an `Unpack` stream emitted `'error'` and then extracted the entries after it                                                                                                                                                         | In strict mode, the extraction stops at the first error.                                                                                                                                                                                             |
-| `Pack`, `Unpack`, and `Parser` are Node.js streams                                                                                                                                                                                                   | `Pack` is an async iterator of chunks. `Unpack` has an `extract(input)` method. `Parser` has `push()` and `next()`.                                                                                                                                  |
-| `ReadEntry` and `WriteEntry` are Minipass streams                                                                                                                                                                                                    | `ReadEntry` has the shape of a `Response`. `WriteEntry` is metadata and a body.                                                                                                                                                                      |
-| `WriteEntrySync`, `WriteEntryTar`                                                                                                                                                                                                                    | Removed. `WriteEntry` is the one class.                                                                                                                                                                                                              |
-| `PackSync`, `UnpackSync`                                                                                                                                                                                                                             | `PackSync`, `UnpackSync`, `TarReaderSync`, and `ReadEntrySync`. `tar/core` does not have the sync classes.                                                                                                                                           |
-| Subpath exports: `tar/create`, `tar/extract`, `tar/list`, `tar/replace`, `tar/update`, `tar/pack`, `tar/unpack`, `tar/parse`, `tar/read-entry`, `tar/write-entry`, `tar/header`, `tar/pax`, `tar/types`, `tar/c`, `tar/x`, `tar/t`, `tar/r`, `tar/u` | Only `tar`, `tar/core`, `tar/raw`, and `tar/core/raw`.                                                                                                                                                                                               |
-| `brotli: true` or `zstd: true` to read an archive                                                                                                                                                                                                    | Not needed. The readers detect the format. For brotli, they use the file name. `Codec` objects in the `codecs` option add formats.                                                                                                                   |
-| Dependencies: `minipass`, `minizlib`, `@isaacs/fs-minipass`, `chownr`, `yallist`                                                                                                                                                                     | No dependencies.                                                                                                                                                                                                                                     |
+| In strict mode, an `Unpack` stream emitted `'error'` and then extracted the entries after it                                                                                                                                                         | In strict mode, the extraction stops at the first error.                                                                                                                                                                                              |
+| `Pack`, `Unpack`, and `Parser` are Node.js streams                                                                                                                                                                                                   | `Pack` is an async iterator of chunks. `Unpack` has an `extract(input)` method. `Parser` has `push()` and `next()`.                                                                                                                                   |
+| `ReadEntry` and `WriteEntry` are Minipass streams                                                                                                                                                                                                    | `ReadEntry` has the shape of a `Response`. `WriteEntry` is metadata and a body.                                                                                                                                                                       |
+| `WriteEntrySync`, `WriteEntryTar`                                                                                                                                                                                                                    | Removed. `WriteEntry` is the one class.                                                                                                                                                                                                               |
+| `PackSync`, `UnpackSync`                                                                                                                                                                                                                             | `PackSync`, `UnpackSync`, `TarReaderSync`, and `ReadEntrySync`. `tar/core` does not have the sync classes.                                                                                                                                            |
+| Subpath exports: `tar/create`, `tar/extract`, `tar/list`, `tar/replace`, `tar/update`, `tar/pack`, `tar/unpack`, `tar/parse`, `tar/read-entry`, `tar/write-entry`, `tar/header`, `tar/pax`, `tar/types`, `tar/c`, `tar/x`, `tar/t`, `tar/r`, `tar/u` | Only `tar`, `tar/core`, `tar/raw`, and `tar/core/raw`.                                                                                                                                                                                                |
+| `brotli: true` or `zstd: true` to read an archive                                                                                                                                                                                                    | Not needed. The readers detect the format. For brotli, they use the file name. `Codec` objects in the `codecs` option add formats.                                                                                                                    |
+| Dependencies: `minipass`, `minizlib`, `@isaacs/fs-minipass`, `chownr`, `yallist`                                                                                                                                                                     | No dependencies.                                                                                                                                                                                                                                      |
 
 Version 7 code, and the same work in version 8:
 

@@ -222,3 +222,17 @@ export type ReplaceFS = CreateFS
 
 /** The subset of `node:fs` that `replaceSync` and `updateSync` use. */
 export type ReplaceFSSync = CreateFSSync
+
+/**
+ * The subset of `node:fs/promises` that `delete` uses: the functions
+ * that read and write an archive file, `stat`, `rename`, and
+ * `unlink`.
+ */
+export type DeleteFS = TarFS &
+  CreateFS &
+  Pick<ExtractFS, 'rename' | 'unlink'>
+
+/** The subset of `node:fs` that `deleteSync` uses. */
+export type DeleteFSSync = TarFSSync &
+  CreateFSSync &
+  Pick<ExtractFSSync, 'renameSync' | 'unlinkSync'>

@@ -115,6 +115,7 @@ describe('the core entry point', () => {
       'aliases',
       'c',
       'create',
+      'delete',
       'entries',
       'extract',
       'gzip',
