@@ -175,6 +175,10 @@ A new API. See "Migration from version 7" in the README.
 
 ### Bug fixes
 
+- `extract()` checks the parent directories of an entry again after
+  it makes the entry. If another process replaced one of them with a
+  symbolic link, the entry is a `TAR_ENTRY_ERROR` warning, and no
+  content is written to a file. (GHSA-2wgf-wpj6-9qw5)
 - On Windows, `extract()` with `preservePaths` sets the owner of
   each directory that it makes, not only of the last one.
 - `update()` checks the paths in a directory also when the time of

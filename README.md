@@ -1667,7 +1667,14 @@ command. They are not vulnerabilities of this package.
 In `extract()`:
 
 - A parent directory of an entry is replaced with a symbolic link
-  after it is checked and before the entry is made.
+  after it is checked and before the entry is made. The extraction
+  checks the parent directories again after it makes the entry. If
+  one of them is a symbolic link then, the entry is a
+  `TAR_ENTRY_ERROR` warning with a `SymlinkError`, and no content is
+  written to a file. But the empty file, the directory, or the link
+  can be made at the place that the symbolic link gives, and an
+  object can be removed there. A process that puts the directory
+  back before the second check is not found.
 - The path of a link target is changed after it is checked and before
   the link is made.
 - Where the file system has no `O_NOFOLLOW` (Windows, or an `fs`

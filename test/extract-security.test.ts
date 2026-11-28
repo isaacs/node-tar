@@ -908,3 +908,52 @@ describe('resource limits', () => {
     })
   }
 })
+
+// A local process replaces a parent directory of an entry with a
+// symbolic link, after the extraction checks the directory and
+// before it makes the entry. GHSA-2wgf-wpj6-9qw5.
+describe('a parent directory becomes a symbolic link', () => {
+  const cases = {
+    File: ['open', ent({ path: 'd/x', type: 'File' }, 'pwned')],
+    Directory: ['mkdir', dir('d/x')],
+    SymbolicLink: ['symlink', link('d/x', 'target')],
+    Link: ['link', hard('d/x', 'target')],
+  } as const
+
+  for (const mode of modes) {
+    for (const [type, [op, entry]] of Object.entries(cases)) {
+      test(`${type}, ${mode}`, async () => {
+        const top = testdir({ in: { target: 'target' }, out: {} })
+        const cwd = resolve(top, 'in')
+        const out = resolve(top, 'out')
+        let swapped = false
+        const { warnings } = await runExtract(
+          mode,
+          { cwd },
+          cat(entry, ent({ path: 'e/after', type: 'File' }, 'after'), EOA),
+          {
+            // The path of the entry is the last argument of `link`
+            // and `symlink`, and the first of the others.
+            [op]: (...args: unknown[]) => {
+              const made = args.some(a => /[\\/]d[\\/]x$/.test(String(a)))
+              if (swapped || !made) return
+              swapped = true
+              nodeFs.rmdirSync(cwd + '/d')
+              nodeFs.symlinkSync(out, cwd + '/d', 'junction')
+            },
+          },
+        )
+        assert.equal(swapped, true)
+        assert.equal(warnings.length, 1)
+        assert.match(warnings[0], [
+          'TAR_ENTRY_ERROR',
+          'TAR_SYMLINK_ERROR: Cannot extract through symbolic link',
+          { name: 'SymlinkError', symlink: cwd + '/d' },
+        ])
+        // The extraction wrote no content through the link.
+        if (type === 'File') assert.equal(read(out, 'x'), '')
+        assert.equal(read(cwd, 'e/after'), 'after')
+      })
+    }
+  }
+})

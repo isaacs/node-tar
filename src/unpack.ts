@@ -490,6 +490,19 @@ export class UnpackBase<
         ).split('/')
   }
 
+  /**
+   * The parts of the path from the extraction directory to the
+   * parent directory of an entry. The extraction checks them again
+   * after it makes the entry: none of them can be a symbolic link
+   * then. So a directory that another process replaced with a
+   * symbolic link during the extraction is an error of the entry.
+   */
+  parentParts(absolute: string): string[] {
+    const { cwd } = this
+    const parent = absolute === cwd ? cwd : this.dirname(absolute)
+    return parent === cwd ? [] : relative(cwd, parent).split('/')
+  }
+
   /** The error for a link target that goes through a symbolic link. */
   symlinkError(symlink: string, parts: string[]): SymlinkError {
     return new SymlinkError(
@@ -680,14 +693,17 @@ export class Unpack extends UnpackBase<ReadEntry, ExtractOptions> {
     if (fileTypes.has(entry.type)) {
       return this.#file(entry, absolute, body, reader)
     }
-    if (dirTypes.has(entry.type)) return this.#directory(entry, absolute)
-    await this.#ensureNoSymlink(this.linkParts(entry, absolute))
-    const linkpath = String(entry.linkpath)
-    if (entry.type === 'Link') {
-      await fs.link(this.resolve(cwd, linkpath), absolute)
-    } else {
-      await fs.symlink(linkpath, absolute)
+    if (dirTypes.has(entry.type)) await this.#directory(entry, absolute)
+    else {
+      await this.#ensureNoSymlink(this.linkParts(entry, absolute))
+      const linkpath = String(entry.linkpath)
+      if (entry.type === 'Link') {
+        await fs.link(this.resolve(cwd, linkpath), absolute)
+      } else {
+        await fs.symlink(linkpath, absolute)
+      }
     }
+    await this.#ensureNoSymlink(this.parentParts(absolute))
   }
 
   async #unlink(path: string): Promise<void> {
@@ -737,6 +753,9 @@ export class Unpack extends UnpackBase<ReadEntry, ExtractOptions> {
       entry.mode ?? this.fmode,
     )
     try {
+      // The file is open. Write to it only if no parent directory
+      // became a symbolic link before the open.
+      await this.#ensureNoSymlink(this.parentParts(absolute))
       if (reader) await this.#pipe(entry, body, reader, handle)
       else for (const part of body) await handle.write(part)
 
@@ -927,14 +946,17 @@ export class UnpackSync extends UnpackBase<
     if (fileTypes.has(entry.type)) {
       return this.#file(entry, absolute, reader)
     }
-    if (dirTypes.has(entry.type)) return this.#directory(entry, absolute)
-    this.#ensureNoSymlink(this.linkParts(entry, absolute))
-    const linkpath = String(entry.linkpath)
-    if (entry.type === 'Link') {
-      fs.linkSync(this.resolve(cwd, linkpath), absolute)
-    } else {
-      fs.symlinkSync(linkpath, absolute)
+    if (dirTypes.has(entry.type)) this.#directory(entry, absolute)
+    else {
+      this.#ensureNoSymlink(this.linkParts(entry, absolute))
+      const linkpath = String(entry.linkpath)
+      if (entry.type === 'Link') {
+        fs.linkSync(this.resolve(cwd, linkpath), absolute)
+      } else {
+        fs.symlinkSync(linkpath, absolute)
+      }
     }
+    this.#ensureNoSymlink(this.parentParts(absolute))
   }
 
   #unlink(path: string): void {
@@ -991,6 +1013,9 @@ export class UnpackSync extends UnpackBase<
       entry.mode ?? this.fmode,
     )
     try {
+      // The file is open. Write to it only if no parent directory
+      // became a symbolic link before the open.
+      this.#ensureNoSymlink(this.parentParts(absolute))
       const tx = this.opt.transform?.(entry)
       for (;;) {
         let part: Uint8Array | null
