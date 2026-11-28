@@ -936,7 +936,7 @@ Options:
   `(chunk) => chunk`, or `undefined`. With `transform`, one entry is
   extracted at a time. The result can be each object that has a
   `readable` and a `writable` web stream. For a Node.js `Transform`
-  stream, return `zlibStream(stream)`. See
+  stream, return `codecStream(stream)`. See
   [Migration from version 7](#migration-from-version-7).
 - `keep` Do not write over an existing file.
 - `newer` Do not write over a file that is newer than the entry.
@@ -1252,7 +1252,7 @@ The exports for codecs are:
 - `gzip` The built-in codec of the core.
 - `zlibCodecs(zlib)` Makes the gzip, brotli, and zstd codecs of a
   `node:zlib` module. Not in `tar/core`.
-- `zlibStream(stream)` Makes a `CodecStream` from a `node:zlib`
+- `codecStream(stream)` Makes a `CodecStream` from a `node:zlib`
   stream, or from another Node.js `Transform` stream. Not in
   `tar/core`.
 
@@ -1709,7 +1709,7 @@ new. It is for browsers and for each runtime that does not have the
 | Option aliases: `C`, `f`, `z`, `P`, `U`, `k`, `m`, `p`, `L`, `h`, `strip-components`, `stripComponents`, `keep-newer`, `keepNewer`, `keep-newer-files`, `keepNewerFiles`, `keep-existing`, `keepExisting`, `no-mtime`                                | The same aliases, in the commands. See [Option aliases](#option-aliases).                                                                                                                                                                            |
 | `noChmod`                                                                                                                                                                                                                                            | `chmod`. `noChmod: false` is `chmod: true`, if `chmod` is not set.                                                                                                                                                                                   |
 | `noResume`, `ondone`, `dirCache`, `linkCache`, `readdirCache`, `statCache`                                                                                                                                                                           | Removed.                                                                                                                                                                                                                                             |
-| `transform` returns a Node.js stream                                                                                                                                                                                                                 | `transform` returns a `TransformStream`, or an object with a `readable` and a `writable` web stream. For a Node.js `Transform` stream, return `zlibStream(stream)`. In `extractSync()`, it returns a function that gets a chunk and returns a chunk. |
+| `transform` returns a Node.js stream                                                                                                                                                                                                                 | `transform` returns a `TransformStream`, or an object with a `readable` and a `writable` web stream. For a Node.js `Transform` stream, return `codecStream(stream)`. In `extractSync()`, it returns a function that gets a chunk and returns a chunk. |
 | In strict mode, an `Unpack` stream emitted `'error'` and then extracted the entries after it                                                                                                                                                         | In strict mode, the extraction stops at the first error.                                                                                                                                                                                             |
 | `Pack`, `Unpack`, and `Parser` are Node.js streams                                                                                                                                                                                                   | `Pack` is an async iterator of chunks. `Unpack` has an `extract(input)` method. `Parser` has `push()` and `next()`.                                                                                                                                  |
 | `ReadEntry` and `WriteEntry` are Minipass streams                                                                                                                                                                                                    | `ReadEntry` has the shape of a `Response`. `WriteEntry` is metadata and a body.                                                                                                                                                                      |
@@ -1743,15 +1743,15 @@ await extract({
 A `transform` of version 7 returned a Node.js stream, such as a
 `Transform` of `node:stream` or a Minipass stream. In version 8 the
 content goes through web streams. To keep a Node.js `Transform`
-stream, give it to `zlibStream()`. The result has the `readable` and
+stream, give it to `codecStream()`. The result has the `readable` and
 `writable` streams that `transform` needs. A stream that is not a
 `Transform` of `node:stream`, such as a Minipass stream, is not
-tested with `zlibStream()`. Write it again as a `TransformStream`.
+tested with `codecStream()`. Write it again as a `TransformStream`.
 
 ```js
 import { mkdir } from 'node:fs/promises'
 import { Transform } from 'node:stream'
-import { extract, zlibStream } from 'tar'
+import { extract, codecStream } from 'tar'
 
 // The transform stream of version 7.
 const upper = () =>
@@ -1765,7 +1765,7 @@ await extract({
   file: 'archive.tgz',
   cwd: 'upper',
   transform: entry =>
-    entry.path.endsWith('.md') ? zlibStream(upper()) : undefined,
+    entry.path.endsWith('.md') ? codecStream(upper()) : undefined,
 })
 ```
 

@@ -76,6 +76,7 @@ describe('the exports', () => {
         'ReadEntrySync',
         'TarReaderSync',
         'UnpackSync',
+        'codecStream',
         'createSync',
         'entriesSync',
         'extractSync',
@@ -83,7 +84,6 @@ describe('the exports', () => {
         'replaceSync',
         'updateSync',
         'zlibCodecs',
-        'zlibStream',
       ],
     )
     assert.equal(tar.c, tar.create)
@@ -461,7 +461,7 @@ describe('a transform of version 7 that returns a Node.js stream', () => {
         done(null, String(chunk).toUpperCase()),
     })
   const ways = {
-    zlibStream: () => tar.zlibStream(upper()),
+    codecStream: () => tar.codecStream(upper()),
     // The stream types of `node:stream/web` and of the DOM library
     // are not the same types.
     'Duplex.toWeb': () =>

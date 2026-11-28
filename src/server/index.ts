@@ -32,7 +32,7 @@ export { TarReaderSync } from '../entries.js'
 export { PackSync } from '../pack.js'
 export { ReadEntrySync } from '../read-entry.js'
 export { UnpackSync } from '../unpack.js'
-export { zlibCodecs, zlibStream, type ZlibModule } from './codecs.js'
+export { zlibCodecs, codecStream, type ZlibModule } from './codecs.js'
 
 const fs: core.TarFS & core.ExtractFS & core.ReplaceFS = nodeFsPromises
 const fsSync: core.TarFSSync & core.ExtractFSSync & core.ReplaceFSSync =

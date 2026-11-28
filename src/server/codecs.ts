@@ -45,7 +45,7 @@ const CHUNK = 64 * 1024
  * Each write is a task for a thread.
  * @param first called with the first chunk of output
  */
-export const zlibStream = (
+export const codecStream = (
   stream: Transform,
   batch: boolean = false,
   first?: (chunk: Uint8Array) => void,
@@ -171,8 +171,8 @@ const make = (
   decompressSync: (data: Uint8Array, options: Options) => Uint8Array,
 ): Codec => ({
   ...base,
-  decompress: () => zlibStream(decompress({ chunkSize: CHUNK })),
-  compress: options => zlibStream(compress(options), true),
+  decompress: () => codecStream(decompress({ chunkSize: CHUNK })),
+  compress: options => codecStream(compress(options), true),
   decompressSync: (data, { maxOutputLength }) => {
     try {
       return decompressSync(data, limit(maxOutputLength))
@@ -233,7 +233,7 @@ export const zlibCodecs = (z: ZlibModule = nodeZlib): Codec[] => {
     {
       ...gzip,
       compress: ({ portable: p, ...options }: Options = {}) =>
-        zlibStream(z.createGzip(options), true, p ? portable : undefined),
+        codecStream(z.createGzip(options), true, p ? portable : undefined),
       compressSync: (data, { portable: p, ...options }: Options = {}) => {
         const out = z.gzipSync(data, options)
         if (p) portable(out)

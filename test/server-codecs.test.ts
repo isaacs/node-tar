@@ -8,7 +8,7 @@ import { entries, entriesSync } from '../src/entries.js'
 import { list, listSync } from '../src/list.js'
 import {
   zlibCodecs,
-  zlibStream,
+  codecStream,
   type ZlibModule,
 } from '../src/server/codecs.js'
 import type { ReadOptions } from '../src/options.js'
@@ -622,7 +622,7 @@ describe('the end of a zlib stream', () => {
 
   test('cancel while a write waits for the reader', async () => {
     const stream = zlib.createGunzip()
-    const { readable, writable } = zlibStream(stream)
+    const { readable, writable } = codecStream(stream)
     const writer = writable.getWriter()
     // This write is complete only when its output is read.
     const written = writer.write(zlib.gzipSync(new Uint8Array(1 << 22)))
@@ -641,7 +641,7 @@ describe('the end of a zlib stream', () => {
     // Deno emits 'end' after destroy() for a stream that has all its
     // output.
     const stream = zlib.createGunzip()
-    const { readable } = zlibStream(stream)
+    const { readable } = codecStream(stream)
     await readable.cancel(new Error('stop'))
     assert.equal(stream.destroyed, true)
     // A listener that throws makes emit() throw.
@@ -650,7 +650,7 @@ describe('the end of a zlib stream', () => {
 
   test('abort of the writable side', async () => {
     const stream = zlib.createGzip()
-    const { readable, writable } = zlibStream(stream)
+    const { readable, writable } = codecStream(stream)
     const reason = new Error('give up')
     const writer = writable.getWriter()
     // This write waits for a reader.
